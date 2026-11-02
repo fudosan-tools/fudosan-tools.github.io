@@ -112,7 +112,10 @@
   }
   function dragTo(x, y) {
     drag.x = x; drag.y = y; moveGhost(x, y);
-    var now = Date.now(); if (now - drag.last < 110) return;
+    var now = Date.now(), wait = 110 - (now - drag.last);
+    clearTimeout(drag.timer);
+    // 速く動かして止めたときも、指の位置まで追いつく
+    if (wait > 0) { drag.timer = setTimeout(function () { if (drag) dragTo(drag.x, drag.y); }, wait); return; }
     var id = drag.ph.dataset.id, dr = dock.parentNode.getBoundingClientRect();
     var inDock = id !== STORE && y >= dr.top - 6 && x >= dr.left && x <= dr.right;
     var box = inDock ? dock : grid, ph = drag.ph, moved = false;
@@ -121,12 +124,8 @@
       if (ph.parentNode !== box) {
         // ドックがいっぱいなら、いちばん近い道具と入れかえる
         if (box === dock && appsIn(dock).length >= DOCK_MAX && n) {
-          ph.parentNode.insertBefore(n.el, ph); box.insertBefore(ph, box.children[0] || null);
-          // n.el が抜けた位置へ ph を置きなおす
-          var rest = appsIn(dock).filter(function (e) { return e !== ph; });
-          var bb = dock.getBoundingClientRect(), idx = 0;
-          rest.forEach(function (e, i) { if (x > bb.left + e.offsetLeft + e.offsetWidth / 2) idx = i + 1; });
-          dock.insertBefore(ph, rest[idx] || null);
+          var after = n.el.nextSibling;
+          ph.parentNode.insertBefore(n.el, ph); box.insertBefore(ph, after);
         } else if (n && x < n.cx && box === dock) { box.insertBefore(ph, n.el); }
         else if (n && near) { box.insertBefore(ph, n.el); }
         else if (n && box === grid && y < n.cy - n.h * 0.4) { box.insertBefore(ph, n.el); }
@@ -155,6 +154,10 @@
     save();
   }
   function endDrag(keep) {
+    if (drag) {
+      clearTimeout(drag.timer);
+      if (keep) { drag.last = 0; dragTo(drag.x, drag.y); clearTimeout(drag.timer); }
+    }
     var d = drag; if (!d) return; drag = null; clearInterval(d.timer);
     var fin = false, done = function () {
       if (fin) return; fin = true;
