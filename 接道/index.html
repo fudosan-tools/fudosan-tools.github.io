@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>接道の特例と50戸連たん</title>
+<link rel="stylesheet" href="../共通/common.css">
+<style>
+  /* ---- 探す欄 ---- */
+  .search { display: grid; grid-template-columns: 9em 14em 1fr auto; gap: 10px 12px; align-items: end; }
+  .search .field { margin: 0; }
+  @media (max-width: 760px) { .search { grid-template-columns: 1fr 1fr; } .search .q, .search .go { grid-column: 1 / -1; } }
+  .search .go .btn { width: 100%; min-height: 40px; }
+  .cands { margin-top: 8px; font-size: 13px; color: var(--ink-2); }
+  .cands button { margin: 2px 6px 2px 0; }
+
+  /* ---- 結果の頭 ---- */
+  .res-head { margin: 36px 0 16px; }
+  .res-head .city { font-family: var(--font-head); font-size: 30px; font-weight: 700; line-height: 1.3; letter-spacing: .02em; }
+  .res-head .who-s { margin-top: 4px; }
+  .jump { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 14px 0 0; font-size: 13px; }
+  .jump a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--rule-strong); }
+  .jump a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .who-s { color: var(--ink-2); font-size: 14px; }
+  .figures .v.txt, .figures .v .txt { font-size: 18px; white-space: normal; }
+  .empty { color: var(--muted); padding: 24px 0; }
+
+  /* ---- 「名前と中身」の並び ---- */
+  dl.kv { display: grid; grid-template-columns: 10em 1fr; margin: 0; border-top: 1px solid var(--rule); }
+  dl.kv dt, dl.kv dd { margin: 0; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+  dl.kv dt { color: var(--ink-2); font-size: 13px; padding-right: 12px; }
+  dl.kv dd.none { color: var(--muted); }
+  @media (max-width: 640px) { dl.kv { grid-template-columns: 1fr; } dl.kv dt { border-bottom: none; padding-bottom: 0; } }
+  ul.pts { margin: 6px 0 0; padding-left: 1.2em; }
+  ul.pts li { margin: 2px 0; }
+  ul.checklist { list-style: none; padding-left: 0; }
+  .src { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .src a { color: var(--muted); }
+  #out { overflow-wrap: anywhere; }   /* 出典の長いURLで、スマホの画面が横にはみ出さないように */
+
+  /* ---- 図（zu.js） ---- */
+  svg.dg { display: block; width: 100%; height: auto; font-family: var(--font); }
+  .dg-road { fill: var(--head); stroke: var(--rule-strong); stroke-width: 1; }
+  .dg-pass { fill: var(--sheet); stroke: var(--ink-2); stroke-width: 1; }
+  .dg-house { fill: none; stroke: var(--rule-strong); stroke-width: 1; }
+  .dg-site { fill: var(--accent-weak); stroke: var(--accent); stroke-width: 1.2; }
+  .dg-center { stroke: var(--rule-strong); stroke-width: 1; stroke-dasharray: 6 4; }
+  .dg-setback { stroke: var(--caution); stroke-width: 1; stroke-dasharray: 3 3; }
+  .dg-end { stroke: var(--ink-2); stroke-width: 2; }
+  .dg-ext { stroke: var(--accent); stroke-width: .8; stroke-dasharray: 2 3; }
+  .dg-dim line { stroke: var(--accent); stroke-width: 1; }
+  .dg-t { fill: var(--ink-2); font-size: 11px; }
+  .dg-faint { fill: var(--muted); }
+  .dg-ts, .dg-ta { fill: var(--accent); font-size: 12px; font-weight: 600; }
+
+  /* ---- 3つの場合（お客様向け） ---- */
+  .cases { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--rule-strong); }
+  .cases > div { padding: 14px 16px 14px 0; border-right: 1px solid var(--rule); min-width: 0; }
+  .cases > div + div { padding-left: 16px; }
+  .cases > div:last-child { border-right: 0; }
+  .cases .t { font-family: var(--font-head); font-weight: 700; margin: 8px 0 2px; }
+  .cases .d { font-size: 13px; color: var(--ink-2); }
+  @media (max-width: 760px) { .cases { grid-template-columns: 1fr; } .cases > div { border-right: 0; border-bottom: 1px solid var(--rule); padding-left: 0 !important; } }
+
+  /* 上のメニューに見出しが隠れないように */
+  section[id], h3[id] { scroll-margin-top: 64px; }
+
+  /* ---- いまの状況から ---- */
+  .tri { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 32px; align-items: start; margin-top: 8px; }
+  @media (max-width: 760px) { .tri { grid-template-columns: 1fr; } .tri-out { margin-top: 12px; } }
+  .tri .formrows .fr { grid-template-columns: 8.5em 1fr; }
+  .tri select { width: 100%; min-width: 0; }
+  @media (max-width: 640px) { .tri .formrows .fr { grid-template-columns: 1fr; } }
+  .tri-out { border: 1px solid var(--rule); background: var(--sheet); padding: 12px 14px; }
+  .tri-out .t { font-family: var(--font-head); font-weight: 700; margin-bottom: 4px; }
+  .tri-out p { margin: 6px 0; font-size: 14px; }
+
+  /* ---- 基準をしぼる ---- */
+  .kj-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 32px; align-items: start; margin-top: 8px; }
+  @media (max-width: 760px) { .kj-wrap { grid-template-columns: 1fr; } .kj-fig { margin-top: 12px; } }
+  .kj-wrap .formrows .fr { grid-template-columns: 8.5em 1fr; }
+  @media (max-width: 640px) { .kj-wrap .formrows .fr { grid-template-columns: 1fr; } }
+  .kj-wrap .seg { display: flex; width: 100%; }
+  .kj-wrap .seg button { min-height: 36px; flex: 1; }
+  .kj-fig { border: 1px solid var(--rule); background: var(--sheet); padding: 12px; }
+  .kj-fig .cap { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .kj-sum { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; margin: 22px 0 0; padding: 10px 0; border-top: 1px solid var(--rule-strong); font-size: 13px; color: var(--ink-2); }
+  .kj-sum b { font-size: 20px; color: var(--accent); font-weight: 600; margin-right: 2px; }
+  .kj-list { border-bottom: 1px solid var(--rule); }
+  details.kj { position: relative; border-top: 1px solid var(--rule); padding: 12px 0 12px 14px; }
+  details.kj::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; background: var(--rule); }
+  details.kj.fit-ok::before { background: var(--ok); }
+  details.kj.fit-cond::before { background: var(--caution); }
+  details.kj.fit-no > summary, details.kj.fit-other > summary { color: var(--muted); }
+  details.kj > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 6em minmax(0, 1fr) auto; gap: 2px 12px; align-items: baseline; }
+  details.kj > summary::-webkit-details-marker { display: none; }
+  details.kj > summary::after { content: "詳しく"; font-size: 12px; color: var(--accent); grid-column: 3; grid-row: 1; }
+  details.kj[open] > summary::after { content: "閉じる"; }
+  .kj-code { font-weight: 600; font-size: 14px; grid-column: 1; grid-row: 1; }
+  .kj-title { font-size: 14px; line-height: 1.6; grid-column: 2; grid-row: 1; }
+  .kj-st { grid-column: 1; grid-row: 2; font-size: 12px; }
+  .kj-meta { grid-column: 2 / 4; grid-row: 2; font-size: 12px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+  details.kj.fit-no .kj-meta, details.kj.fit-other .kj-meta { color: var(--muted); }
+  @media (max-width: 640px) {
+    details.kj > summary { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .kj-code { grid-column: 1; grid-row: 1; } .kj-st { grid-column: 2; grid-row: 1; }
+    .kj-title { grid-column: 1 / -1; grid-row: 2; } .kj-meta { grid-column: 1 / -1; grid-row: 3; }
+  }
+  .kj-why { font-size: 13px; margin: 10px 0 0; color: var(--ink-2); }
+  .kj-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 0 24px; margin-top: 12px; color: var(--ink); }
+  .kj-body.nofig { grid-template-columns: 1fr; }
+  @media (max-width: 640px) { .kj-body { grid-template-columns: 1fr; } .kj-body .mini { max-width: 260px; margin-bottom: 8px; } }
+  .kj-body ul.pts { font-size: 13.5px; }
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="setsudou"></nav>
+<main class="page">
+  <div class="page-head">
+    <div class="eyebrow"><span id="area">―</span> ・ 確認日 <span id="checked">―</span></div>
+    <h1>接道の特例と50戸連たん</h1>
+    <p class="lead">道路に2m以上接していない土地でも、建築基準法43条2項の「認定」「許可」（以前の「43条ただし書」）で建てられることがあります。市区町村を選ぶと、受け持つ役所と、公開されている基準を出します。</p>
+  </div>
+
+  <section class="panel">
+    <div class="search">
+      <div class="field"><label class="lab" for="pref">都道府県</label>
+        <select id="pref"><option value="">すべて</option></select></div>
+      <div class="field"><label class="lab" for="city">市区町村を一覧から選ぶ</label>
+        <select id="city"><option value="">選んでください</option></select></div>
+      <div class="field q"><label class="lab" for="q">または、住所・市の名前で探す</label>
+        <input id="q" type="search" placeholder="例：横浜市中区山下町／茅ヶ崎／東京都葛飾区" autocomplete="off"></div>
+      <div class="field go"><span class="lab">&nbsp;</span><button class="btn primary" id="go" type="button">調べる</button></div>
+    </div>
+    <div id="msg" class="cands"></div>
+  </section>
+
+  <div id="out"></div>
+
+  <section class="for-client" id="about">
+    <h2><span class="no">―</span>道路に2m接していない土地の3つの場合</h2>
+    <div class="cases" id="cases"></div>
+  </section>
+
+  <div class="disclaimer">この道具は、各役所が公開している基準を短く言いかえた目安です。認定・許可が出るかは、1件ごとの審査で決まります。前に許可が出た通路でも、次も出るとは限りません。必ず、受け持つ役所（建築指導の窓口）で事前に相談し、建築士に確かめてください。市街化調整区域の建築は、開発許可の担当窓口で確かめてください。図は考え方を示すもので、縮尺は正確ではありません。出典は各項目の下にあります。</div>
+</main>
+<script src="../共通/common.js"></script>
+<script src="data/setsudou_data.js"></script>
+<script src="setsudou.js"></script>
+<script src="zu.js"></script>
+<script>
+(function () {
+  "use strict";
+  var S = window.Setsudou, Z = window.SetsudouZu;
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function srcs(list) {
+    if (!list || !list.length) return "";
+    return '<div class="src">出典：' + list.map(function (s) {
+      return s.u ? '<a href="' + esc(s.u) + '" target="_blank" rel="noopener">' + esc(s.t || s.u) + "</a>" : esc(s.t);
+    }).join("／") + "</div>";
+  }
+  function row(k, v) {
+    var none = v == null || v === "";
+    return "<dt>" + esc(k) + "</dt><dd" + (none ? ' class="none"' : "") + ">" + (none ? "公開資料で確かめられませんでした（役所で確認）" : esc(v)) + "</dd>";
+  }
+  function li(a) { return a && a.length ? '<ul class="pts">' + a.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ul>" : ""; }
+
+  // ---- 市区町村の一覧（都道府県を選ぶと、その市区町村が全部並ぶ） ----
+  function fillCity() {
+    var p = $("pref").value, D = S.data();
+    var list = D.municipalities.filter(function (m) { return !p || m.pref === p; });
+    var html = '<option value="">選んでください（' + list.length + "）</option>";
+    S.prefs().forEach(function (pp) {
+      var g = list.filter(function (m) { return m.pref === pp; });
+      if (!g.length) return;
+      html += '<optgroup label="' + pp + '">' + g.map(function (m) { return '<option value="' + esc(m.pref + "|" + m.name) + '">' + esc(m.name) + "</option>"; }).join("") + "</optgroup>";
+    });
+    $("city").innerHTML = html;
+  }
+
+  // ---- 許可の基準（data/kijun がある役所） ----
+  var KJ = null;
+  function minWidth(kj) {
+    var best = null;
+    kj.kijun.forEach(function (k) {
+      if ((k.shape !== "路線" && k.shape !== "専用") || !k.w || !k.w[0]) return;
+      if (!best || k.w[0] < best.w) best = { w: k.w[0], codes: [k.code], kinds: [k.kind] };
+      else if (k.w[0] === best.w) { best.codes.push(k.code); best.kinds.push(k.kind); }
+    });
+    return best;
+  }
+  function metaOf(k) {
+    var a = [];
+    if (k.w) a.push("幅 " + (k.w[0] ? k.w[0] + "m" : "") + (k.w[1] != null ? "〜" + k.w[1] + "m未満" : "以上"));
+    if (k.len) a.push("長さ " + k.len + "m以下");
+    if (k.dist) a.push("道路まで " + k.dist + "m以内");
+    if (k.floors) a.push(String(k.floors).split(/[（(。]/)[0]);
+    return a;
+  }
+  function kindTag(k) { return k.kind === "包括" ? '<span class="tag opt">包括同意</span>' : '<span class="tag ask">個別に審査会</span>'; }
+  function kijunHtml(kj) {
+    var unv = kj.unverified && kj.unverified.length ? "<h3>この資料で確かめられなかったこと</h3>" + li(kj.unverified) : "";
+    if (!kj.kijun.length) { KJ = null; return '<h3>基準ごとの条件</h3><p class="note caution">' + esc(kj.note || "基準の本文が公開されていません。") + "</p>" + unv + srcs(kj.src); }
+    KJ = kj;
+    return '<h3 id="kj">条件を入れて、使えそうな基準をしぼる</h3>' +
+      '<div class="kj-wrap"><div class="formrows">' +
+      '<div class="fr"><span class="lab">通路の形</span><div class="seg" id="ks"><button type="button" data-v="路線" class="on">ほかの家も面する道</button><button type="button" data-v="専用">旗竿（自分だけの通路）</button></div></div>' +
+      '<div class="fr"><label class="lab" for="kw">いちばん狭い幅</label><div class="unit-input"><input id="kw" type="number" step="0.05" min="0" inputmode="decimal" placeholder="0.9"><span>m</span></div><div class="hint">塀・側溝・電柱を含めて、いちばん狭い所</div></div>' +
+      '<div class="fr"><label class="lab" for="kl" id="kll">道路までの長さ</label><div class="unit-input"><input id="kl" type="number" step="1" min="0" inputmode="decimal" placeholder="15"><span>m</span></div></div>' +
+      '<div class="fr" id="kthrufr"><span class="lab">通り抜け</span><label class="check"><input id="kthru" type="checkbox"><span>道の両端が道路につながっている（2方向に逃げられる）</span></label></div>' +
+      '<div class="fr"><label class="lab" for="kt">建て方</label><select id="kt"><option value="">決めない</option><option value="建替え">前からある建物の建替え</option><option value="新しい敷地">敷地を分ける・新しく建てる</option></select></div>' +
+      '<div class="fr"><label class="lab" for="ku">用途</label><select id="ku"><option value="一戸建て">一戸建て</option><option value="それ以外">長屋・共同住宅など</option></select></div>' +
+      '</div><div class="kj-fig" id="kjfig"></div></div>' +
+      '<div class="kj-sum" id="kjsum"></div><div class="kj-list" id="kjlist"></div>' + unv + srcs(kj.src);
+  }
+  function cond() {
+    var num = function (id) { var v = $(id).value; return v === "" ? null : parseFloat(v); };
+    var on = document.querySelector("#ks button.on");
+    return { w: num("kw"), len: num("kl"), shape: on ? on.dataset.v : null, site: $("kt").value || null, use: $("ku").value, through: $("kthru").checked };
+  }
+  function kijunRender() {
+    if (!KJ || !$("kjlist")) return;
+    var c = cond(), senyo = c.shape === "専用";
+    $("kll").textContent = senyo ? "通路の長さ" : "道路までの長さ";
+    $("kthrufr").hidden = senyo;
+    if (senyo) c.through = false;
+    $("kjfig").innerHTML = Z.passage({ shape: c.shape, w: c.w, len: c.len, through: c.through }) +
+      '<div class="cap">入れた数字で描いた図です（縮尺は目安）。' + (senyo ? "" : "黄色の点線は、道の中心から2mの線です（幅4m未満の道では、ここまで下げて道路のように整える基準が多い）。") + "</div>";
+    var touched = c.w != null || c.len != null;
+    var order = { ok: 0, cond: 1, no: 2, other: 3 }, LABEL = { ok: "合いそう", cond: "条件つき", no: "合わない", other: "場面がちがう" }, LV = { ok: "ok", cond: "caution", no: "alert", other: "info" };
+    var rows = KJ.kijun.map(function (k) { return { k: k, r: S.fitKijun(k, c) }; });
+    rows.sort(function (a, b) { return order[a.r.fit] - order[b.r.fit]; });
+    var cnt = { ok: 0, cond: 0, no: 0, other: 0 };
+    rows.forEach(function (x) { cnt[x.r.fit]++; });
+    $("kjsum").innerHTML = touched
+      ? "<span><b>" + cnt.ok + "</b>合いそう</span><span><b>" + cnt.cond + "</b>条件つき</span><span><b>" + cnt.no + "</b>合わない</span><span>ほかの場面の基準 " + cnt.other + "</span><span class=\"muted\">目安です。最後は窓口で確かめます</span>"
+      : "<span>幅や長さを入れると、合いそうな基準が上に並びます。基準は全部で " + KJ.kijun.length + " あります。</span>";
+    $("kjlist").innerHTML = rows.map(function (x) {
+      var k = x.k, r = x.r, real = k.shape === "路線" || k.shape === "専用";
+      var mini = real ? Z.passage({ shape: k.shape, w: k.w && k.w[0] ? k.w[0] : null, len: k.len || k.dist || null, small: true,
+        wText: k.w && k.w[0] ? "幅" + k.w[0] + "m" + (k.w[1] != null ? "〜" : "以上") : "幅は窓口で",
+        lenText: k.len ? k.len + "m以下" : k.dist ? "道路まで" + k.dist + "m" : "" }) : "";
+      return '<details class="kj' + (touched || r.fit === "other" ? " fit-" + r.fit : "") + '"><summary>' +
+        '<span class="kj-code">' + esc(k.code) + "</span>" +
+        '<span class="kj-title">' + esc(k.title) + "</span>" +
+        (touched ? '<span class="kj-st lv-' + LV[r.fit] + '">' + LABEL[r.fit] + "</span>" : "") +
+        '<span class="kj-meta">' + kindTag(k) + metaOf(k).map(function (s) { return "<span>" + esc(s) + "</span>"; }).join("") + "</span>" +
+        "</summary>" +
+        (touched && r.why.length ? '<div class="kj-why">' + li(r.why) + "</div>" : "") +
+        '<div class="kj-body' + (mini ? "" : " nofig") + '">' + (mini ? '<div class="mini">' + mini + "</div>" : "") + "<div>" +
+        '<dl class="kv">' + (k.w ? row("通路の幅", (k.w[0] ? k.w[0] + "m以上" : "") + (k.w[1] != null ? k.w[1] + "m未満" : "") + (k.wOther ? "（一戸建て以外は" + k.wOther + "m以上）" : "")) : "") +
+        (k.len ? row("通路の長さ", k.len + "m以下") : "") + (k.dist ? row("道路までの距離", k.dist + "m以内。" + (k.distFree || "")) : "") +
+        (k.floors ? row("階数", k.floors) : "") + (k.kozo ? row("構造", k.kozo) : "") + (k.yoto ? row("用途・規模", k.yoto) : "") + "</dl>" +
+        li(k.need) + li(k.other) + (k.only ? '<p class="note caution">' + esc(k.only) + "</p>" : "") +
+        '<div class="src">' + esc(k.page ? "資料の " + k.page : "") + "</div></div></div></details>";
+    }).join("");
+  }
+  document.addEventListener("input", function (e) { if (e.target.closest && e.target.closest(".kj-wrap")) kijunRender(); });
+  document.addEventListener("change", function (e) { if (e.target.closest && e.target.closest(".kj-wrap")) kijunRender(); });
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("#ks button");
+    if (!b) return;
+    document.querySelectorAll("#ks button").forEach(function (x) { x.classList.toggle("on", x === b); });
+    kijunRender();
+  });
+
+  // ---- 結果 ----
+  // ---- いまの状況から見る欄を決める ----
+  function triField(id, lab, opts) {
+    return '<div class="fr" id="' + id + 'fr"><label class="lab" for="' + id + '">' + lab + '</label><select id="' + id + '">' + opts.map(function (x) { return '<option value="' + esc(x[0]) + '">' + esc(x[1]) + "</option>"; }).join("") + "</select></div>";
+  }
+  function triageHtml() {
+    return '<section id="s0"><h2><span class="no">00</span>いまの状況から、見る欄を決める</h2>' +
+      '<div class="tri"><div class="formrows">' +
+      triField("tr", "前の道", [["不明", "わからない"], ["道路", "建築基準法の道路（公道・位置指定道路など）"], ["2項", "2項道路（幅4m未満で役所が指定した道）"], ["非道路", "建築基準法の道路ではない"]]) +
+      triField("tc", "接している長さ", [["不明", "わからない"], ["2m以上", "2m以上"], ["2m未満", "2m未満"]]) +
+      triField("twd", "道の幅", [["不明", "わからない"], ["4m以上", "4m以上"], ["4m未満", "4m未満"]]) +
+      triField("tz", "市街化調整区域", [["いいえ", "ちがう"], ["はい", "そうだ"], ["不明", "わからない"]]) +
+      '</div><div class="tri-out" id="triout"></div></div></section>';
+  }
+  var triGo = null;
+  function triageRender() {
+    if (!$("tr")) return;
+    var road = $("tr").value;
+    $("twdfr").style.display = road === "非道路" ? "" : "none";
+    var r = S.triage({ road: road, contact: $("tc").value, width: $("twd").value, chosei: $("tz").value });
+    triGo = r;
+    var name = { s1: "01 受け持つ役所へ", s2: "02 認定の欄へ", s6: "確認表へ", kj: "基準をしぼる欄へ" }[r.go];
+    if (r.go === "kj" && !$("kj")) { r.go = "s3"; name = "03 許可の欄へ"; }
+    var target = $(r.go);
+    $("triout").innerHTML = '<div class="t">' + esc(r.t) + '</div><p>' + esc(r.d) + "</p>" + r.notes.map(function (n) { return '<p class="who-s">' + esc(n) + "</p>"; }).join("") +
+      (target && target.offsetParent !== null ? '<p><button class="btn" type="button" id="trigo">' + esc(name) + "</button></p>" : "") +
+      '<p class="who-s">形から見た入口の目安です。建てられるかを決めるものではありません。</p>';
+  }
+  document.addEventListener("change", function (e) { if (e.target.closest && e.target.closest(".tri")) triageRender(); });
+  document.addEventListener("click", function (e) {
+    if (!e.target || e.target.id !== "trigo" || !triGo) return;
+    if (triGo.shape) { var b = document.querySelector('#ks button[data-v="' + triGo.shape + '"]'); if (b) b.click(); }
+    var t = $(triGo.go); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  // ---- この市のリンク（配る版のうち、ネットに置く版だけで使う） ----
+  var SHARE = true;
+  function remember(res) {
+    try { history.replaceState(null, "", "?q=" + encodeURIComponent(res.pref + res.city)); } catch (e) { /* 開き方によっては書きかえられない */ }
+  }
+  document.addEventListener("click", function (e) {
+    if (!e.target || e.target.id !== "copylink") return;
+    var done = function (t) { e.target.textContent = t; };
+    try { navigator.clipboard.writeText(location.href).then(function () { done("コピーしました"); }, function () { done("コピーできませんでした"); }); }
+    catch (err) { done("コピーできませんでした"); }
+  });
+
+  function render(res) {
+    var o = $("out"), msg = $("msg");
+    msg.innerHTML = "";
+    KJ = null;   // 前に出した役所の基準を残さない（kijunHtml で入れなおす）
+    if (!res.ok) {
+      if (res.find && res.find.outside) o.innerHTML = '<p class="note caution">' + esc(res.find.outside) + "は、まだ対象にしていません（いまの対象：" + esc(S.prefs().join("・")) + "）。</p>";
+      else o.innerHTML = '<p class="note caution">市区町村が見つかりませんでした。一覧から選ぶか、名前を確かめてください（いまの対象：' + esc(S.prefs().join("・")) + "）。</p>";
+      return;
+    }
+    if (res.find.others.length) {
+      msg.innerHTML = "同じ名前がほかにもあります：" + res.find.others.map(function (m) {
+        return '<button class="btn" type="button" data-p="' + esc(m.pref) + '" data-c="' + esc(m.name) + '">' + esc(m.pref + m.name) + "</button>";
+      }).join("");
+      msg.querySelectorAll("button").forEach(function (b) { b.onclick = function () { show(b.dataset.p, b.dataset.c); }; });
+    }
+    var g = res.gyoseicho || {}, n = g.nintei || {}, k = g.kyoka || {}, r = res.rentan, kj = k.kijun;
+    var hasKj = !!(kj && kj.kijun && kj.kijun.length);
+    var limited = /限定特定行政庁/.test(g.name || "");
+    var whoText = limited ? "小さな建物の43条2項1号「認定」だけを市が受け持つ役所（限定特定行政庁）です。2号「許可」は県が受け持ちます。" :
+      res.selfRun ? "自分で認定・許可を受け持つ役所（特定行政庁）です。" : "認定・許可は、" + (g.name || "―") + " が受け持ちます。";
+    var mw = hasKj ? minWidth(kj) : null;
+    var nH = hasKj ? kj.kijun.filter(function (x) { return x.kind === "包括"; }).length : 0, nK = hasKj ? kj.kijun.length - nH : 0;
+    var h = "";
+    h += '<div class="res-head"><div class="eyebrow">' + esc(res.pref) + "</div>";
+    h += '<div class="city">' + esc(res.city) + "</div>";
+    h += '<div class="who-s">' + esc(whoText) + "</div>";
+    if (SHARE && /^https?:$/.test(location.protocol) && navigator.clipboard) h += '<p class="who-s"><button class="btn" type="button" id="copylink">この市のリンクをコピー</button></p>';
+    h += '<div class="jump"><a href="#s0">00 状況から</a><a href="#s1">01 受け持つ役所</a><a href="#s2">02 認定</a><a href="#s3">03 許可</a>' + (hasKj ? '<a href="#kj">基準をしぼる</a>' : "") + '<a href="#s4">04 50戸連たん</a><a class="for-staff" href="#s6">06 確認表</a></div></div>';
+
+    h += '<div class="figures">';
+    h += '<div class="figure"><div class="k">受け持つ役所</div><div class="v txt">' + esc(g.name || "不明") + '</div><div class="s">' + (limited ? "許可は県" : res.selfRun ? "特定行政庁" : "建築の許可") + "</div></div>";
+    h += '<div class="figure"><div class="k">許可の基準</div><div class="v">' +
+      (hasKj ? nH + "<small>包括</small> " + nK + "<small>個別</small>" : kj ? '<span class="txt">本文は非公開</span>' : '<span class="txt">' + (k.houkatsu ? "包括同意あり" : k.houkatsu === false ? "1件ずつ審査" : "確かめられず") + "</span>") +
+      '</div><div class="s">' + esc(hasKj ? (kj.doc || "").replace(/^建築基準法/, "").slice(0, 30) : "基準ごとの分け方はまだ") + "</div></div>";
+    h += '<div class="figure main"><div class="k">いちばん狭い通路の基準</div><div class="v">' + (mw ? mw.w + "<small>m以上</small>" : '<span class="txt">―</span>') + '</div><div class="s">' + (mw ? esc(mw.codes.slice(0, 3).join("・")) + "（" + (mw.kinds.indexOf("包括") >= 0 ? "包括同意あり" : "個別に審査会") + "）" : "基準ごとの数字はまだ") + "</div></div>";
+    h += '<div class="figure"><div class="k">50戸連たん</div><div class="v txt' + (r && r.applies ? " lv-ok" : "") + '">' + (!r ? "確かめられず" : r.applies ? "制度あり" : r.applies === false ? "11号の区域なし" : "確かめられず") + '</div><div class="s">' + esc(res.rentanBy && res.rentanBy !== g.name ? "開発許可は " + res.rentanBy : "市街化調整区域の決まり") + "</div></div>";
+    h += "</div>";
+
+    h += triageHtml();
+    h += '<section id="s1"><h2><span class="no">01</span>受け持つ役所</h2>';
+    h += "<p>" + esc(res.pref + res.city) + " は、" + esc(whoText) + "</p>";
+    if (res.roadmap && res.roadmap.u) h += '<p class="who-s">道路の種別（建築基準法の道路か）を調べる：<a href="' + esc(res.roadmap.u) + '" target="_blank" rel="noopener">' + esc(res.roadmap.t || res.roadmap.u) + "</a></p>";
+    else h += '<p class="who-s">道路の種別を調べる公式の地図は見つかりませんでした。役所の窓口で確かめます。</p>';
+    h += "</section>";
+
+    h += '<section id="s2"><h2><span class="no">02</span>43条2項1号「認定」</h2>';
+    h += "<p>" + esc(n.summary || "公開資料で確かめられませんでした（役所で確認）") + "</p>" + li(n.points) + srcs(n.src) + "</section>";
+
+    h += '<section id="s3"><h2><span class="no">03</span>43条2項2号「許可」（以前の43条ただし書）</h2>';
+    h += '<p><span class="lv-' + (k.houkatsu ? "ok" : "caution") + '">' + (k.houkatsu ? "包括同意基準あり" : k.houkatsu === false ? "包括同意基準は見つからず（1件ごとに審査会）" : "包括同意基準は確かめられず") + "</span>　" + esc(k.summary || "") + "</p>";
+    if (kj) h += kijunHtml(kj);
+    h += '<details class="more"><summary>この役所の許可の要点（文章でまとめたもの）</summary><dl class="kv">' + row("通路の幅", k.tsuro) + row("旗竿地・専用の通路", k.hatazao) + row("建てられる用途・規模", k.yoto) +
+      row("通路の持ち主などの承諾", k.consent) + row("協定書の様式", k.template) + row("前に許可を受けた通路", k.reuse) + row("建築審査会", k.shinsakai) + "</dl>" + srcs(k.src) + "</details>";
+    h += "</section>";
+
+    h += '<section id="s4"><h2><span class="no">04</span>市街化調整区域の50戸連たん</h2>';
+    if (!r) h += "<p>確かめられませんでした。開発許可の担当窓口で確認してください。</p>";
+    else {
+      h += '<p><span class="lv-' + (r.applies ? "ok" : "info") + '">' + (r.applies ? "制度あり" : r.applies === false ? "34条11号の区域なし（下の説明を読む）" : "確かめられず") + "</span>　" + esc(r.summary || "") + "</p>";
+      if (res.rentanBy && res.rentanBy !== g.name) h += '<p class="who-s">開発許可は ' + esc(res.rentanBy) + " が受け持ちます。</p>";
+      h += srcs(r.src);
+    }
+    h += "</section>";
+
+    if (g.unverified && g.unverified.length) h += '<section id="s5"><h2><span class="no">05</span>公開資料で確かめられなかったこと</h2>' + li(g.unverified) + "</section>";
+
+    h += '<section class="for-staff" id="s6"><h2><span class="no">06</span>担当者向け：役所に行く前の確認表</h2><div class="staff-box"><div class="t">チェックリスト（' + esc(res.pref + res.city) + "・受け持ち " + esc(g.name || "―") + '）</div><ul class="checklist">' +
+      ["道路の種別（建築基準法の道路か・どの号か）を、役所の地図と窓口で確かめた",
+        "通路の現況の幅を、いちばん狭い所で測った（塀・側溝・電柱を含めて）",
+        "道路までの長さと、通路の両端が道路につながるか（通り抜け）を確かめた",
+        "通路の土地の持ち主（登記）を全員調べ、承諾・協定が要る人を書き出した",
+        "その通路で、前に認定・許可を受けた建物があるか（台帳・過去の申請）を聞いた",
+        "建てたい建物の用途・規模・階数・構造（防火・準耐火など）が基準に入るか確かめた",
+        "市街化調整区域なら、開発許可の担当窓口で建てられる条件を確かめた",
+        "建築士と、事前相談に持っていく図面（配置・通路の幅・周りの空地）を決めた"]
+        .map(function (t) { return '<li><label class="check"><input type="checkbox"><span>' + esc(t) + "</span></label></li>"; }).join("") +
+      '</ul><p><button class="btn" type="button" onclick="window.print()">確認表を印刷</button></p></div></section>';
+    o.innerHTML = h;
+    kijunRender();
+    triageRender();
+    remember(res);
+    $("checked").textContent = res.checked || "―";
+  }
+  function show(pref, name) {
+    $("pref").value = pref; fillCity(); $("city").value = pref + "|" + name; $("q").value = "";
+    render(S.lookup(name, pref));
+  }
+  function go() {
+    var res = S.lookup($("q").value, $("pref").value || null);
+    if (!res.ok && $("pref").value && !res.find.outside) res = S.lookup($("q").value);   // 選んである都道府県に無ければ、対象ぜんぶから探す
+    if (res.ok) { $("pref").value = res.pref; fillCity(); $("city").value = res.pref + "|" + res.city; }
+    render(res);
+  }
+  $("go").onclick = function () {
+    if ($("q").value.trim()) go();
+    else if ($("city").value) { var v = $("city").value.split("|"); show(v[0], v[1]); }
+    else render({ ok: false, find: {} });
+  };
+  $("q").addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+  $("pref").onchange = function () { fillCity(); };
+  $("city").onchange = function () { var v = $("city").value; if (v) { var a = v.split("|"); show(a[0], a[1]); } };
+
+  $("cases").innerHTML = Z.overview().map(function (c) { return "<div>" + c.g + '<div class="t">' + esc(c.t) + '</div><div class="d">' + esc(c.d) + "</div></div>"; }).join("");
+  $("pref").innerHTML = '<option value="">すべて</option>' + S.prefs().map(function (x) { return "<option>" + esc(x) + "</option>"; }).join("");
+  $("area").textContent = S.prefs().join("・");
+  fillCity();
+  var d = S.data(); if (d) $("checked").textContent = d.checked;
+  var qs = new URLSearchParams(location.search).get("q");
+  if (qs) { $("q").value = qs; go(); $("q").value = ""; }
+  else $("out").innerHTML = '<p class="empty">都道府県と市区町村を選ぶか、住所を入れて「調べる」を押してください。</p>';
+})();
+</script>
+</body>
+</html>

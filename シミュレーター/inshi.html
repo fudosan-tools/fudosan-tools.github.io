@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>印紙代の計算</title>
+<link rel="stylesheet" href="../共通/common.css">
+<style>
+[hidden] { display: none !important; }
+.iline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.iline input[type=number] { width: 9em; }
+.u { color: var(--ink-2); font-size: 13px; }
+td.wrap { white-space: normal; text-align: left; }
+th { text-align: left; }
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="inshi"></nav>
+<main class="page">
+<div class="page-head">
+  <div class="eyebrow">お金の計算</div>
+  <h1>印紙代の計算</h1>
+  <p class="lead">売買・ローン・工事・領収書・賃貸の書類について、貼る印紙の額を出します。金額は書類に書かれた額で決まります。</p>
+</div>
+<p class="note caution">概算です。書類の中身によって種類が変わることがあります。迷うときは、税務署の相談窓口に書類を見せて確かめてください。</p>
+
+<h2><span class="no">01</span>書類</h2>
+<div class="formrows">
+  <div class="fr"><label class="lab" for="doc">書類の種類</label><select id="doc">
+    <optgroup label="売買"><option value="sale" selected>不動産の売買契約書</option><option value="exchange">不動産の交換契約書（高いほうの価額）</option><option value="change">売買価格を変える契約書</option></optgroup>
+    <optgroup label="ローン・工事"><option value="loan">金銭消費貸借契約書（ローン）</option><option value="work">建設工事の請負契約書</option><option value="workOther">工事以外の請負契約書（設計だけなど）</option></optgroup>
+    <optgroup label="賃貸"><option value="bldgLease">建物の賃貸借契約書</option><option value="land">土地の賃貸借・地上権の契約書（権利金など）</option><option value="receiptOther">敷金・保証金の預り証（返すお金）</option></optgroup>
+    <optgroup label="領収書"><option value="receipt">領収書（代金・手付・礼金など）</option></optgroup>
+  </select></div>
+  <div class="fr" id="rAmt"><label class="lab" for="amt" id="amtLab">書類の金額</label><div class="iline"><input type="number" id="amt" min="0" step="any" value="3000"><span class="u">万円</span></div></div>
+  <div class="fr" id="rBefore" hidden><label class="lab" for="before">前の金額</label><div class="iline"><input type="number" id="before" min="0" step="any" value="3000"><span class="u">万円</span></div></div>
+  <div class="fr" id="rAfter" hidden><label class="lab" for="after">変更後の金額</label><div class="iline"><input type="number" id="after" min="0" step="any" value="3500"><span class="u">万円</span></div></div>
+  <div class="fr"><label class="lab" for="date">作る日</label><div class="iline"><input type="date" id="date"><span class="u">軽減は2027年3月31日までに作る書類</span></div></div>
+  <div class="fr" id="rCopies"><label class="lab" for="copies">通数</label><div class="iline"><input type="number" id="copies" min="1" step="1" value="2"><span class="u">通（売主用と買主用など）</span></div></div>
+  <div class="fr" id="rElec"><span class="lab">電子契約</span><label class="check"><input type="checkbox" id="elec"><span>紙を作らず、電子で契約する</span></label></div>
+  <div class="fr" id="rBiz" hidden><span class="lab">営業かどうか</span><label class="check"><input type="checkbox" id="priv"><span>個人が、事業でなく私的に売った代金の領収書（住んでいた家を売ったなど）</span></label></div>
+</div>
+
+<h2><span class="no">02</span>結果</h2>
+<div id="out"></div>
+
+<h2>金額の決まりごと</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>場面</th><th>どう考えるか</th></tr></thead><tbody>
+<tr><td class="wrap">消費税</td><td class="wrap">売買・請負・領収書は「うち消費税○円」や税込と税抜の両方が書いてあれば、消費税を除いた額で見ます。「税込」とだけ書くと税込の額です。免税事業者は消費税と書いても金額に入ります。</td></tr>
+<tr><td class="wrap">土地と建物を別に書く</td><td class="wrap">どちらも同じ第1号なので合計します。</td></tr>
+<tr><td class="wrap">手付金の額</td><td class="wrap">契約の金額ではないので、売買契約書の金額にはなりません。</td></tr>
+<tr><td class="wrap">最低と最高が書いてある</td><td class="wrap">最低の額で見ます。</td></tr>
+<tr><td class="wrap">贈与</td><td class="wrap">評価額を書いても金額にはならず、金額なしの200円です。</td></tr>
+<tr><td class="wrap">2通作る</td><td class="wrap">2通とも課税です。「写し」と書いても、相手の署名や押印があれば課税です。署名の無いコピーは課税されません。</td></tr>
+<tr><td class="wrap">貼り忘れ</td><td class="wrap">本来の額と合わせて3倍の過怠税です。調査を知る前に自分から申し出れば1.1倍です。消印が無いと、その印紙の額面分がかかります。</td></tr>
+<tr><td class="wrap">電子契約のあと紙で増額</td><td class="wrap">前の電子契約は「文書」でないので、増えた分ではなく変更後の金額で見ます。</td></tr>
+<tr><td class="wrap">媒介契約書・重要事項説明書</td><td class="wrap">国税庁が名指しで書いた資料を見つけられませんでした。税務署で確かめてください。</td></tr>
+</tbody></table></div>
+<p class="muted small">根拠：<a href="https://www.nta.go.jp/publication/pamph/inshi/tebiki/pdf/08.pdf">印紙税額の一覧表</a>／<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/inshi/7108.htm">国税庁 No.7108（軽減）</a>／<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/inshi/7124.htm">No.7124（消費税）</a>／<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/inshi/7123.htm">No.7123（変更）</a>／<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/inshi/7120.htm">No.7120（写し）</a>／<a href="https://www.nta.go.jp/law/shitsugi/inshi/19/39.htm">建物の賃貸借契約書の質疑応答</a>／<a href="https://www.nta.go.jp/law/shitsugi/inshi/06/21.htm">過怠税</a>。2026年11月2日に確認。</p>
+</main>
+<script src="../共通/common.js"></script>
+<script src="zei_calc.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id), num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+  const fmt = v => Math.round(v).toLocaleString() + "円";
+  const d0 = new Date();
+  $("date").value = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, "0")}-${String(d0.getDate()).padStart(2, "0")}`;
+  function run() {
+    const doc = $("doc").value, date = $("date").value;
+    const isChange = doc === "change", isLease = doc === "bldgLease", isReceipt = doc === "receipt" || doc === "receiptOther";
+    $("rAmt").hidden = isChange || isLease; $("rBefore").hidden = !isChange; $("rAfter").hidden = !isChange;
+    $("rBiz").hidden = !isReceipt; $("rElec").hidden = isLease; $("rCopies").hidden = isLease;
+    $("amtLab").textContent = doc === "land" ? "返さない権利金など" : isReceipt ? "受け取った金額" : "書類の金額";
+    let h = "";
+    if (isLease) {
+      h = `<div class="figures"><div class="figure main"><div class="k">建物の賃貸借契約書</div><div class="v">0円</div><div class="s">賃貸借のことだけなら課税されません</div></div></div>
+        <p class="small">権利金や敷金を「受領した」と契約書に書くと、借主が持つ分は領収書（第17号）として課税されます。受け取った金額で「領収書」か「預り証」を選んで計算してください。期間に関係なく据え置いて返す建設協力金などは、金銭の借入れ（第1号の3）になることがあります。</p>`;
+    } else if (isChange) {
+      const r = ZEI.stampChange({ before: num("before") * 1e4, after: num("after") * 1e4, date });
+      const n = Math.max(1, Math.floor(num("copies")) || 1);
+      h = `<div class="figures"><div class="figure main"><div class="k">印紙の合計（${n}通）</div><div class="v">${fmt(r.each * n)}</div><div class="s">1通 ${fmt(r.each)}${r.diff ? `／記載金額 ${fmt(r.diff)}` : ""}</div></div></div><p class="small">${r.note}。前の契約書が特定できることが条件です。</p>`;
+      if ($("elec").checked) h = `<div class="figures"><div class="figure main"><div class="k">印紙</div><div class="v">0円</div><div class="s">電子の書類は課税されません</div></div></div>`;
+    } else {
+      const r = ZEI.stamp({ doc, amount: num("amt") * 1e4, date, copies: num("copies"), electronic: $("elec").checked, business: !(isReceipt && $("priv").checked) });
+      if (r.electronic) h = `<div class="figures"><div class="figure main"><div class="k">印紙</div><div class="v">0円</div><div class="s">電子の書類は課税されません</div></div></div><p class="small">メールで届いたものを印刷しても写しと同じです。ただし、紙に署名して取り交わすと課税されます。</p>`;
+      else if (r.notBusiness) h = `<div class="figures"><div class="figure main"><div class="k">印紙</div><div class="v">0円</div><div class="s">営業に関しない受取書は非課税</div></div></div><p class="small">会社の領収書は営業です。また、家を貸している人の家賃・権利金・敷金の受取書は、会社員でも営業の扱いです。</p>`;
+      else {
+        h = `<div class="figures"><div class="figure main"><div class="k">印紙の合計（${r.copies}通）</div><div class="v">${fmt(r.total)}</div><div class="s">1通 ${fmt(r.each)}（${r.no}）</div></div>`;
+        if (r.reduced) h += `<div class="figure"><div class="k">軽減</div><div class="v">${fmt(r.normalEach - r.each)}<small>/通</small></div><div class="s">本則は1通 ${fmt(r.normalEach)}</div></div>`;
+        h += `</div>`;
+        if (r.noAmount) h += `<p class="small">金額を書いていない書類として計算しました。</p>`;
+        else if (r.each === 0) h += `<p class="small">この金額は非課税です。</p>`;
+        if (doc === "sale" && date > ZEI.LIMIT_STAMP) h += `<p class="note caution">2027年4月1日以後の日付なので、本則で計算しています。軽減が延びるかはまだ決まっていません（国土交通省が延長を求めている段階）。</p>`;
+        if (doc === "land") h += `<p class="small">賃料・敷金・保証金は金額に入りません。軽減はありません。</p>`;
+        if (doc === "loan") h += `<p class="small">ローンの契約書に軽減はありません。電子契約なら印紙は要りません。</p>`;
+        if (doc === "receipt") h += `<p class="small">手付も売上代金に入ります。売上代金とそれ以外が分けられないときは、全部を売上代金で見ます。</p>`;
+      }
+    }
+    $("out").innerHTML = h;
+  }
+  document.querySelectorAll("input,select").forEach(e => e.addEventListener("input", run));
+  run();
+})();
+</script>
+</body>
+</html>

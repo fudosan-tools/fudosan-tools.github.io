@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>住宅ローン返済シミュレーター</title>
+<link rel="stylesheet" href="../共通/common.css">
+<script src="../共通/common.js"></script>
+<script src="loan_rates.js"></script>
+<style>
+/* このページだけで使う小さな部品（共通にないもの） */
+.top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 24px; align-items: start; }
+.top > .panel > h2:first-child { margin-top: 0; }
+.stack > .panel + .panel { margin-top: 24px; }
+.formrows .fr .unit-input input { max-width: 12em; }
+.formrows .fr select { max-width: 22em; }
+input:disabled { color: var(--muted); background: var(--paper); }
+.out { font-size: 14px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.out b { font-size: 18px; }
+.tall { max-height: 440px; overflow-y: auto; }
+.tall th { position: sticky; top: 0; z-index: 1; }
+td.l, th.l { text-align: left; }
+td.wrap { white-space: normal; min-width: 12em; text-align: left; }
+.chart { width: 100%; min-height: 220px; }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+.legend span::before { content: ""; display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--c); vertical-align: middle; margin-right: 6px; }
+.legend span.dash::before { border-top-style: dashed; }
+/* 返済比率のものさし（色の帯は3つの平らな区切り。グラデーションは使わない） */
+.gauge { display: flex; height: 10px; border: 1px solid var(--rule-strong); position: relative; margin: 10px 0 2px; }
+.gauge > span { display: block; height: 100%; }
+.gauge > .g1 { background: var(--ok-weak); width: 41.67%; }
+.gauge > .g2 { background: var(--caution-weak); width: 16.66%; border-left: 1px solid var(--rule-strong); }
+.gauge > .g3 { background: var(--alert-weak); flex: 1; border-left: 1px solid var(--rule-strong); }
+.gauge > i { position: absolute; top: -5px; width: 2px; height: 18px; background: var(--ink); }
+.gauge-l { position: relative; height: 16px; font-size: 11px; color: var(--muted); }
+.gauge-l span { position: absolute; top: 0; transform: translateX(-50%); }
+.gauge-l span:first-child { transform: none; }
+.gauge-l span:last-child { transform: translateX(-100%); }
+.lv-ok { color: var(--ok); } .lv-warn { color: var(--caution); } .lv-bad { color: var(--alert); }
+.checklist { list-style: none; padding: 0; margin: 0; columns: 2 22em; column-gap: 32px; }
+.checklist li { break-inside: avoid; border-bottom: 1px solid var(--rule); }
+.checklist .check { min-height: 36px; }
+.checklist .check small { display: block; color: var(--muted); font-size: 12px; }
+.staff-box h3 { margin-top: 16px; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.src td { font-size: 13px; }
+/* 08章 金融機関の種類と金利の例 */
+.segscroll { overflow-x: auto; margin: 12px 0; padding-bottom: 2px; }
+.segscroll .seg button { min-height: 36px; white-space: nowrap; }
+@media (min-width: 641px) { .segscroll { overflow: visible; } .segscroll .seg { flex-wrap: wrap; border: 0; overflow: visible; } .segscroll .seg button { border: 1px solid var(--rule-strong); margin: 0 -1px -1px 0; } }
+#bankTable td { white-space: nowrap; }
+#bankTable td.nm { white-space: normal; min-width: 13em; max-width: 22em; }
+#bankTable td.fee { white-space: normal; min-width: 10em; max-width: 16em; font-size: 13px; text-align: left; }
+#bankTable .rv { font-size: 15px; font-variant-numeric: tabular-nums; }
+#bankTable .rv.na { color: var(--muted); }
+.ratebtn { display: block; margin: 4px 0 0 auto; font-size: 12px; padding: 6px 8px; min-height: 32px; }
+.ratebtn.done { border-color: var(--accent); color: var(--accent); }
+details.more { margin-top: 4px; font-size: 12.5px; color: var(--ink-2); }
+details.more > summary { cursor: pointer; color: var(--accent); }
+details.more p { margin: 4px 0; }
+.catcell { white-space: normal !important; min-width: 12em; text-align: left !important; font-size: 13px; }
+.flag { color: var(--caution); font-size: 12px; display: block; }
+#rateFrom { display: block; color: var(--ink); }
+#rateFrom:empty { display: none; }
+@media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
+@media print {
+  .tall { max-height: none; overflow: visible; }
+  html.print-checklist .page > *:not(.print-target) { display: none !important; }
+  html.print-checklist .print-target { display: block !important; }
+  html.print-checklist .print-skip { display: none !important; }
+  .ratebtn, .segscroll { display: none !important; }
+  .checklist { columns: 2; }
+}
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="loan"></nav>
+
+<main class="page">
+<div class="page-head">
+  <div class="eyebrow">お金の計算</div>
+  <h1>住宅ローン返済シミュレーター</h1>
+  <p class="lead">借りるお金・金利・年数を入れると、毎月の返済額と利息の合計を計算します。金利が上がったときとのちがい、年収に対する返済の重さ、買うときにかかるお金（諸費用）の目安も出します。</p>
+  <p class="note caution">これは仮の計算です。実際に借りられる額・金利・返済額は、不動産会社や金融機関で必ず確認してください。</p>
+</div>
+
+<div class="top">
+  <section class="panel">
+    <h2><span class="no">01</span>借りる条件</h2>
+    <div class="formrows">
+      <div class="fr"><label class="lab" for="price">物件の価格</label><span class="unit-input"><input type="number" id="price" data-s min="0" step="10" value="3500"><span>万円</span></span></div>
+      <div class="fr"><label class="lab" for="floorArea">広さ（床面積）</label>
+        <span class="unit-input"><input type="number" id="floorArea" data-s min="0" step="0.1" value="70" aria-label="床面積（㎡）"><span>㎡</span><input type="number" id="floorTsubo" min="0" step="0.01" aria-label="床面積（坪）"><span>坪</span></span>
+        <span class="hint">どちらに入れても、もう片方が変わります（1坪＝3.30578㎡）。<span id="unitOut"></span></span></div>
+      <div class="fr"><label class="lab" for="down">頭金</label><span class="unit-input"><input type="number" id="down" data-s min="0" step="10" value="300"><span>万円</span></span><span class="hint">自分で先に払うお金</span></div>
+      <div class="fr"><span class="lab">諸費用</span><label class="check"><input type="checkbox" id="addCosts" data-s><span>諸費用（06章）もローンで借りる</span></label></div>
+      <div class="fr"><span class="lab">借りるお金</span><b id="loanOut">—</b></div>
+      <div class="fr"><label class="lab" for="rate">金利</label><span class="unit-input"><span>年</span><input type="number" id="rate" data-s min="0" max="20" step="0.05" value="1.2"><span>%</span></span>
+        <span class="hint">自動では取ってきません。銀行から聞いた金利を入れてください（初めの値の理由は07章。金融機関ごとの金利の例は08章）<span id="rateFrom" role="status"></span></span></div>
+      <div class="fr"><label class="lab" for="years">返す年数</label><span class="unit-input"><input type="number" id="years" data-s min="1" max="50" step="1" value="35"><span>年</span></span></div>
+      <div class="fr"><label class="lab" for="method">返し方</label>
+        <select id="method" data-s>
+          <option value="equal">元利均等（毎月の返済額が同じ）</option>
+          <option value="principal">元金均等（はじめ多く、だんだん減る）</option>
+        </select></div>
+      <div class="fr"><label class="lab" for="bonusPct">ボーナスで返す割合</label><span class="unit-input"><input type="number" id="bonusPct" data-s min="0" max="50" step="5" value="0"><span>%（借入額の）</span></span>
+        <span class="hint">年2回として計算します。多くの銀行は借入額の40〜50%までです。</span></div>
+    </div>
+  </section>
+
+  <div class="stack">
+    <section class="panel">
+      <h2><span class="no">02</span>結果</h2>
+      <div class="figures" id="kpis"></div>
+      <p class="note caution">これは仮の計算です。実際に借りられる額・金利・返済額は、不動産会社や金融機関で必ず確認してください。銀行の計算は、円未満の扱いなどで少しちがうことがあります。</p>
+    </section>
+    <section class="panel">
+      <h3 style="margin-top:0">ローン残高の動き（年末）</h3>
+      <div id="chart" class="chart"></div>
+      <div class="legend"><span style="--c:var(--accent)">金利がそのまま</span><span class="dash" style="--c:var(--caution)">金利が上がる場合（03章）</span></div>
+      <h3>残高の概要</h3>
+      <div class="tablewrap"><table id="balTable"></table></div>
+    </section>
+  </div>
+</div>
+
+<section>
+  <h2><span class="no">03</span>金利が上がったら（変動金利）</h2>
+  <p class="small" style="color:var(--ink-2)">変動金利は、世の中の金利に合わせて途中で変わります。「何年ごとに・どれだけ上がるか」を入れて、上がらない場合とくらべます。</p>
+  <div class="cols">
+    <div class="formrows">
+      <div class="fr"><label class="lab" for="stepYears">何年ごとに上がる</label><span class="unit-input"><input type="number" id="stepYears" data-s min="1" max="35" step="1" value="5"><span>年ごと</span></span></div>
+      <div class="fr"><label class="lab" for="stepRate">1回に上がる幅</label><span class="unit-input"><input type="number" id="stepRate" data-s min="-2" max="3" step="0.05" value="0.25"><span>%</span></span></div>
+      <div class="fr"><label class="lab" for="maxRate">金利の上限</label><span class="unit-input"><input type="number" id="maxRate" data-s min="0" max="20" step="0.1" value="3.0"><span>%（ここで止まる）</span></span></div>
+      <div class="fr"><span class="lab">5年・125%ルール</span><label class="check"><input type="checkbox" id="rule125" data-s><span>あり（返済額の見直しは5年に1回、上がっても前の1.25倍まで。払いきれない利息は最後にまとめて払う）</span></label>
+        <span class="hint">このルールがあるかは銀行・商品でちがいます。契約書で確認してください。元金均等では使いません。</span></div>
+    </div>
+    <div>
+      <div class="tablewrap"><table id="cmpTable"></table></div>
+      <p class="note" id="cmpNote"></p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">04</span>借りる人の条件と返済の重さ</h2>
+  <p class="small" style="color:var(--ink-2)">銀行は、年収・働き方・年齢・健康・ほかの借入などを見て、貸すかどうかと金額を決めます（これを「審査」といいます）。ここで出すのは<b>審査の目安</b>です。基準は銀行ごとにちがい、公表されていないことも多いです。</p>
+  <div class="cols">
+    <div>
+      <h3>あなたのこと</h3>
+      <div class="formrows">
+        <div class="fr"><label class="lab" for="income">年収</label><span class="unit-input"><input type="number" id="income" data-s min="0" step="10" value="600"><span>万円</span></span><span class="hint">税金をひく前。夫婦などで合わせて借りるなら合計</span></div>
+        <div class="fr"><label class="lab" for="employ">働き方</label>
+          <select id="employ" data-s>
+            <option value="seishain">会社員（正社員）</option>
+            <option value="koumuin">公務員</option>
+            <option value="jieigyo">自営業・会社の経営者</option>
+            <option value="keiyaku">契約社員</option>
+            <option value="haken">派遣社員</option>
+            <option value="part">パート・アルバイト</option>
+            <option value="other">年金・そのほか</option>
+          </select></div>
+        <div class="fr"><label class="lab" for="tenure">今の勤め先で働いた年数</label><span class="unit-input"><input type="number" id="tenure" data-s min="0" max="60" step="0.5" value="5"><span>年</span></span><span class="hint">自営業なら、今の仕事を始めてからの年数</span></div>
+        <div class="fr"><label class="lab" for="age">今の年齢</label><span class="unit-input"><input type="number" id="age" data-s min="18" max="90" step="1" value="35"><span>歳</span></span><span class="hint" id="ageOut"></span></div>
+        <div class="fr"><label class="lab" for="health">健康（団信）</label>
+          <select id="health" data-s>
+            <option value="ok">団信に入れると思う</option>
+            <option value="unsure">持病・通院があり、わからない</option>
+            <option value="hard">入れないかもしれない</option>
+          </select>
+          <span class="hint">団信（団体信用生命保険）＝借りた人が亡くなったときなどに、残りのローンを保険で払ってくれるしくみ</span></div>
+        <div class="fr"><label class="lab" for="ownCash">用意できる自己資金</label><span class="unit-input"><input type="number" id="ownCash" data-s min="0" step="10" value="600"><span>万円</span></span><span class="hint">預金・親からの援助など、現金で出せるお金</span></div>
+      </div>
+      <h3>ほかの借入（月々の返済額）</h3>
+      <p class="muted" style="margin:0 0 6px">金額は「万円」で入れます。例：月4,000円なら 0.4。今の住まいの家賃は入れません。</p>
+      <div class="formrows">
+        <div class="fr"><label class="lab" for="olCar">車のローン</label><span class="unit-input"><input type="number" id="olCar" data-s min="0" step="0.1" value="0"><span>万円/月</span></span></div>
+        <div class="fr"><label class="lab" for="olCard">カードローン・キャッシング</label><span class="unit-input"><input type="number" id="olCard" data-s min="0" step="0.1" value="0"><span>万円/月</span></span></div>
+        <div class="fr"><label class="lab" for="olRevo">カードのリボ払い・分割払い</label><span class="unit-input"><input type="number" id="olRevo" data-s min="0" step="0.1" value="0"><span>万円/月</span></span></div>
+        <div class="fr"><label class="lab" for="olPhone">携帯電話・スマホ本体の分割払い</label><span class="unit-input"><input type="number" id="olPhone" data-s min="0" step="0.1" value="0"><span>万円/月</span></span><span class="hint">毎月の電話料金といっしょに払っている「本体代」の分。下の説明を見てください</span></div>
+        <div class="fr"><label class="lab" for="olSchol">奨学金</label><span class="unit-input"><input type="number" id="olSchol" data-s min="0" step="0.1" value="0"><span>万円/月</span></span></div>
+        <div class="fr"><label class="lab" for="olHouse">ほかの住宅ローン</label><span class="unit-input"><input type="number" id="olHouse" data-s min="0" step="0.1" value="0"><span>万円/月</span></span></div>
+        <div class="fr"><label class="lab" for="olOther">そのほか（教育ローンなど）</label><span class="unit-input"><input type="number" id="olOther" data-s min="0" step="0.1" value="0"><span>万円/月</span></span></div>
+        <div class="fr"><span class="lab">合計</span><b id="olOut">—</b></div>
+      </div>
+      <div class="note caution">
+        <b>小さな借入も「借入」に入ることがあります。</b>携帯電話・スマホ本体の代金を分割で払っているときは、クレジットの契約（割賦＝かっぷ。分割払いの契約のこと）になっています。携帯会社はその契約の前と後に、信用情報機関（CIC など。ローンやクレジットの記録を集めている会社）に情報を照会・登録しています。期日までに払えないと「支払いが遅れた」ことが登録され、ローンやクレジットカードの申し込みを断られることがあります。
+        CIC では、契約の内容や支払いの記録を「契約しているあいだと、終わってから5年間」持っています。奨学金（日本学生支援機構）も、3か月以上の延滞は信用情報機関に登録され、記録は返し終わってから5年後に消えます。
+        フラット35は、返済の重さ（返済比率）の計算に「商品の分割払いやリボ払い」もふくめるとしています。
+        <br>心あたりがあるときは、申し込みの前に担当者に伝えてください。自分の記録は CIC などで本人が確かめられます（情報開示）。
+      </div>
+    </div>
+    <div>
+      <h3>審査の目安</h3>
+      <div class="formrows">
+        <div class="fr"><label class="lab" for="screenRate">審査に使う金利</label><span class="unit-input"><input type="number" id="screenRate" data-s min="0" max="15" step="0.1" value="3.5"><span>%</span></span>
+          <span class="hint">実際の金利で審査する銀行が多いですが、もっと高い「審査金利」で計算する銀行もあります。3.5%は一般的な目安で、銀行は数字を公表していないことが多いです</span></div>
+        <div class="fr"><label class="lab" for="limitSel">返済比率の上限</label>
+          <select id="limitSel" data-s>
+            <option value="auto">フラット35の基準（年収400万円未満30%・以上35%）</option>
+            <option value="40">40%</option>
+            <option value="35">35%</option>
+            <option value="30">30%</option>
+            <option value="25">25%（家計にゆとり）</option>
+          </select></div>
+      </div>
+      <div id="ratioBox"></div>
+      <div id="attrBox"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">05</span>年ごとの表</h2>
+  <div class="tablewrap tall"><table id="yearTable"></table></div>
+</section>
+
+<section>
+  <h2><span class="no">06</span>買うときにかかるお金（諸費用）の目安</h2>
+  <p class="small" style="color:var(--ink-2)">「計算」は法律・税のルールどおりの計算（軽減の条件を満たすかは要確認）、「目安」はよくある金額です。評価額は、固定資産税の通知書や評価証明書の金額を入れると正確になります。</p>
+  <div class="cols">
+    <div class="formrows">
+      <div class="fr"><label class="lab" for="kind">物件の種類</label><select id="kind" data-s><option value="used">中古（売主は個人など）</option><option value="new">新築（売主は会社）</option></select></div>
+      <div class="fr"><span class="lab">住む家か</span><label class="check"><input type="checkbox" id="own" data-s checked><span>自分が住む家（住宅の税の軽減を使う。床面積50㎡以上などの条件あり）</span></label></div>
+      <div class="fr"><span class="lab">仲介</span><label class="check"><input type="checkbox" id="broker" data-s checked><span>不動産会社の仲介で買う（仲介手数料がかかる）</span></label></div>
+      <div class="fr"><span class="lab">800万円以下の特例</span><label class="check"><input type="checkbox" id="special800" data-s><span>800万円以下の物件で、仲介の前に「特例の報酬（上限33万円）」に合意した</span></label></div>
+      <div class="fr"><label class="lab" for="vat">建物の消費税</label><span class="unit-input"><input type="number" id="vat" data-s min="0" step="1" value="0"><span>万円</span></span><span class="hint">価格にふくまれる分（新築など）。中古で売主が個人なら0</span></div>
+      <div class="fr"><span class="lab">評価額</span><label class="check"><input type="checkbox" id="autoEval" data-s checked><span>ざっくり自動で入れる（土地＝価格の35%、建物＝価格の25%）</span></label></div>
+      <div class="fr"><label class="lab" for="landEval">土地の評価額</label><span class="unit-input"><input type="number" id="landEval" data-s min="0" step="10" value="1225"><span>万円</span></span></div>
+      <div class="fr"><label class="lab" for="bldgEval">建物の評価額</label><span class="unit-input"><input type="number" id="bldgEval" data-s min="0" step="10" value="875"><span>万円</span></span></div>
+      <div class="fr"><label class="lab" for="landArea">土地の面積</label><span class="unit-input"><input type="number" id="landArea" data-s min="0" step="0.1" value="0" aria-label="土地の面積（㎡）"><span>㎡</span><input type="number" id="landTsubo" min="0" step="0.01" aria-label="土地の面積（坪）"><span>坪</span></span><span class="hint">マンションは持分。わからなければ0（税が高めに出ます）</span></div>
+      <div class="fr"><label class="lab" for="era">建った時期</label>
+        <select id="era" data-s>
+          <option value="12000000">1997年4月以降（1,200万円控除）</option>
+          <option value="10000000">1989年4月〜1997年3月（1,000万円）</option>
+          <option value="4500000">1985年7月〜1989年3月（450万円）</option>
+          <option value="4200000">1981年7月〜1985年6月（420万円）</option>
+          <option value="3500000">1976年1月〜1981年6月（350万円）※耐震の証明が必要</option>
+          <option value="2300000">1973年1月〜1975年12月（230万円）※同上</option>
+          <option value="1500000">1964年1月〜1972年12月（150万円）※同上</option>
+          <option value="0">それより前・わからない（控除なしで計算）</option>
+        </select><span class="hint">不動産取得税の控除が変わります</span></div>
+    </div>
+    <div class="formrows">
+      <div class="fr"><label class="lab" for="feePct">ローンの手数料</label><span class="unit-input"><input type="number" id="feePct" data-s min="0" max="5" step="0.1" value="2.2"><span>%（借入額の）</span></span><span class="hint">定額型なら0にして「その他」へ</span></div>
+      <div class="fr"><label class="lab" for="guarPct">保証料</label><span class="unit-input"><input type="number" id="guarPct" data-s min="0" max="5" step="0.1" value="0"><span>%（借入額の）</span></span><span class="hint">手数料型なら0</span></div>
+      <div class="fr"><label class="lab" for="insurance">火災・地震保険</label><span class="unit-input"><input type="number" id="insurance" data-s min="0" step="1" value="20"><span>万円</span></span></div>
+      <div class="fr"><label class="lab" for="scrivener">司法書士への報酬</label><span class="unit-input"><input type="number" id="scrivener" data-s min="0" step="1" value="12"><span>万円</span></span></div>
+      <div class="fr"><label class="lab" for="others">その他</label><span class="unit-input"><input type="number" id="others" data-s min="0" step="1" value="10"><span>万円</span></span><span class="hint">固定資産税の日割り精算・引っ越しなど</span></div>
+    </div>
+  </div>
+  <div class="tablewrap" style="margin-top:16px"><table id="costTable"></table></div>
+  <p class="note">仲介手数料は「上限」です（これより安いこともあります）。税は2026年10月時点の軽減ルールで計算しています。軽減には期限と条件があるので、契約前に税務署・都道府県税事務所・司法書士に確認してください。</p>
+</section>
+
+<section>
+  <h2><span class="no">07</span>この計算の数字はどこから来ているか</h2>
+  <div class="note alert"><b>金利は自動で取ってきていません。</b>このページは、あなたが入れた金利で計算するだけです。インターネットから最新の金利を読みこむしくみはありません。実際の金利は、借りる金融機関で確かめてください。金融機関ごとの金利の例（2026年10月に調べた数字）は08章にあります。</div>
+  <h3>初めに入っている金利（年1.2%）の理由</h3>
+  <p class="small">三菱UFJ銀行の公式ページで、2026年10月に借りる場合の変動金利（優遇後）が年1.195%（店頭表示金利 年3.375%から年2.18%引き下げ）と出ていたので、それを丸めた数字です（2026年10月21日に確認）。人によって優遇の幅はちがい、毎月変わるので、あくまで「入れておいた例」です。</p>
+  <h3>「店頭金利」と「優遇後の金利」のちがい</h3>
+  <div class="tablewrap"><table>
+    <tr><th>ことば</th><th class="l">意味</th><th class="l">例（三菱UFJ銀行・2026年10月1日現在の公式ページ）</th></tr>
+    <tr><td>店頭金利（基準金利・店頭表示金利）</td><td class="wrap">銀行が「もとの金利」として出している金利。この金利のまま借りる人はあまりいません</td><td class="wrap">変動 年3.375%／固定10年 年6.53%</td></tr>
+    <tr><td>優遇後の金利（適用金利）</td><td class="wrap">店頭金利から「引き下げ（優遇）」をした、実際にかかる金利。引き下げの幅は、審査の結果や、給与の振込・カードの契約などの条件で変わります</td><td class="wrap">変動 年1.195%（年2.18%引き下げ）／固定10年 年3.75%（当初10年）</td></tr>
+  </table></div>
+  <p class="muted">広告の「年○%〜」は、いちばん条件のよい人の金利です。自分に何%がつくかは、審査のあとで決まります。</p>
+
+  <h3>公式に公表されている金利の見方</h3>
+  <div class="tablewrap"><table class="src">
+    <tr><th>どこ</th><th class="l">何がわかるか</th><th class="l">調べた数字（調べた日 2026年10月21日）</th></tr>
+    <tr><td>住宅金融支援機構<br>フラット35の毎月の金利</td><td class="wrap">全期間固定金利の「フラット35」の、取り扱う金融機関の金利の幅と、いちばん多い金利（最頻金利）。毎月はじめに出ます。<br><a href="https://www.simulation.jhf.go.jp/flat35/kinri/index.php/rates/top">公式ページ</a></td><td class="wrap">2026年10月：返す期間21〜35年・融資率9割以下（新機構団信付き）は年3.830%〜年5.840%、最頻 年3.830%。20年以下の最頻 年3.510%</td></tr>
+    <tr><td>日本銀行<br>貸出約定平均金利</td><td class="wrap">銀行が新しく貸したお金の平均の金利（毎月）。住宅ローンは「長期（1年以上）」にふくまれますが、会社への貸出もまざっているので、住宅ローンの金利そのものではありません。世の中の金利が上がっているか下がっているかを見るのに使います。<br><a href="https://www.boj.or.jp/statistics/dl/loan/yaku/index.htm">公式ページ</a></td><td class="wrap">住宅ローンの金利としては使えないため、数字はのせていません</td></tr>
+    <tr><td>各銀行の公式ページ</td><td class="wrap">変動金利・固定金利（○年固定）の店頭金利と、優遇後の金利。毎月見直す銀行が多いです。比べるときは、同じ月の数字で、手数料・保証料・団信の上乗せもふくめて比べます</td><td class="wrap">例：三菱UFJ銀行（2026年10月1日現在） 変動 年1.195%、固定10年 年3.75%。<a href="https://www.bk.mufg.jp/kariru/jutaku/yuuguu/index.html">公式ページ</a></td></tr>
+  </table></div>
+
+  <h3>審査の目安の出どころ</h3>
+  <div class="tablewrap"><table class="src">
+    <tr><th>項目</th><th class="l">わかっていること</th><th class="l">出典</th></tr>
+    <tr><td>どこを見るか</td><td class="wrap">9割以上の金融機関が、完済時の年齢（98.4%）・借入時の年齢（96.2%）・健康状態（96.1%）・年収（94.2%）・勤続年数（93.9%）・担保の評価（91.0%）・返済比率（90.9%）を見ています。ほかの借入や返済の記録を見る機関は72.5%</td><td class="wrap">国土交通省「令和7年度 民間住宅ローンの実態に関する調査」（令和8年3月）<a href="https://www.mlit.go.jp/report/press/house02_hh_000246.html">公式ページ</a></td></tr>
+    <tr><td>返済比率</td><td class="wrap">フラット35は年収400万円未満30%以下、400万円以上35%以下。ほかの金融機関で「一律の上限」を答えたところでは「40%以内」がいちばん多い（81機関）、次に35%以内（57）、30%以内（43）</td><td class="wrap"><a href="https://www.flat35.com/loan/lineup/flat35/conditions/index.html">フラット35の利用条件</a>／国土交通省 同調査（<a href="https://www.mlit.go.jp/jutakukentiku/house/content/002004971.pdf">正誤表で直したあとの数字</a>）</td></tr>
+    <tr><td>審査に使う金利</td><td class="wrap">「実際の貸出金利」で審査する機関がいちばん多く、次に「審査金利（別に決めた金利）」。審査金利の水準は公表されていないことが多く、このページの3.5%は一般的な目安です</td><td class="wrap">住宅金融支援機構「2025年度 住宅ローン貸出動向調査」<a href="https://www.jhf.go.jp/files/topics/4957_ext_99_2.pdf">PDF</a></td></tr>
+    <tr><td>年齢</td><td class="wrap">完済時の年齢の条件は「80歳未満」と答えた機関がいちばん多い（732機関）。例：三菱UFJ銀行は借入時18歳以上70歳の誕生日まで・完済時80歳の誕生日まで。フラット35は申込時70歳未満、借りる期間は「80歳−申込時の年齢」と35年の短いほう</td><td class="wrap">国土交通省 同調査／三菱UFJ銀行・フラット35の公式ページ</td></tr>
+    <tr><td>働き方・勤続年数</td><td class="wrap">働き方を見る機関のうち、「派遣社員は対象外」357、「契約社員は対象外」286、「自営業者は対象外」7。勤続年数は「1年以上」がいちばん多い（661）、「3年以上」121</td><td class="wrap">国土交通省 同調査</td></tr>
+    <tr><td>健康（団信）</td><td class="wrap">「団信への加入が必要」866機関、「選べる」88、「不要」4。フラット35は、健康などの理由で団信に入らなくても使えます</td><td class="wrap">国土交通省 同調査／フラット35の利用条件</td></tr>
+    <tr><td>信用情報</td><td class="wrap">CIC は、契約の内容と支払いの記録を「契約期間中と終了後5年間」持っています。携帯電話の分割払いは契約の前後に照会・登録され、遅れると登録されます（ドコモの例）。奨学金は延滞3か月以上で登録、返し終わって5年後に削除</td><td class="wrap"><a href="https://www.cic.co.jp/guide/credit-information/possession/">CIC</a>／<a href="https://www.docomo.ne.jp/support/payment_installment/">NTTドコモ</a>／<a href="https://www.jasso.go.jp/shogakukin/entai/kojinjoho/index.html">日本学生支援機構</a></td></tr>
+  </table></div>
+</section>
+
+<section id="bankSec">
+  <h2><span class="no">08</span>金融機関の種類と金利の例</h2>
+  <p class="small">住宅ローンは、大きな銀行・ネット銀行・地元の銀行・信用金庫・ろうきん・JA など、いろいろな所で借りられます。種類によって、金利だけでなく「だれが借りられるか」「店に行くか」「手数料のかかり方」がちがいます。ここでは、実在する金融機関の公式ページで2026年10月の金利を調べた例をのせています（調べた日：<span id="bankChecked">2026年10月21日</span>）。</p>
+  <p class="note caution"><b>ここに出ている金利は、いちばん条件がよい人の金利です。審査の結果で上がることがあります。実際は不動産会社や金融機関に確認してください。</b>金利は毎月変わります。</p>
+  <p class="note alert"><b>地方銀行・第二地方銀行・信用金庫・信用組合・JA は、「住んでいる所・働いている所（買う家の場所も）が、その金融機関の地域の中であること」が条件になることが多いです。</b>地域の外だと、金利が低くても借りられません。ろうきんも地域（中央ろうきんは関東1都7県）が決まっています。</p>
+
+  <h3>種類でしぼりこむ</h3>
+  <div class="segscroll no-print"><div class="seg" id="bankSeg" role="group" aria-label="金融機関の種類でしぼりこむ"></div></div>
+
+  <h3>種類ごとのちがい</h3>
+  <div class="tablewrap"><table id="catTable"></table></div>
+  <div class="tablewrap" style="margin-top:12px"><table id="catTable2"></table></div>
+
+  <h3>金利の表（2026年10月）</h3>
+  <p class="muted">「この金利で計算」を押すと、01章の金利の欄にその数字が入り、計算しなおします。変動金利はあとで上がることがあり、固定10年は11年目からの金利がまだ決まっていません（このページでは同じ金利のまま計算します。上がった場合は03章で見られます）。表は横に動かせます。▲は「引き下げ」の意味です。</p>
+  <div class="tablewrap"><table id="bankTable"></table></div>
+  <p class="muted" id="bankCount"></p>
+
+  <h3>比べるときに気をつけること</h3>
+  <ul class="small">
+    <li><b>手数料の型をそろえて比べる。</b>「借入額の2.2%」（3,000万円なら66万円）を先に払う型と、「保証料（ローンの保証会社に払うお金）」を払う型、金利に上乗せする型があります。金利が低くても、手数料をふくめると逆転することがあります（手数料は06章に入れられます）。</li>
+    <li><b>団信（借りた人が亡くなったときなどにローンが0になる保険）の種類で金利が変わる。</b>がん・3大疾病などの保障を足すと、年0.1〜0.3%ほど上がることが多いです。</li>
+    <li><b>店頭金利（もとの金利）がちがう所がある。</b>変動金利は店頭金利が上がると同じだけ上がるので、店頭金利の高い・低いも見ておきます。</li>
+    <li><b>同じ月の数字で比べる。</b>金利は毎月見直されます。借りる月（引き渡しの月）の金利がかかる所が多いです。</li>
+  </ul>
+
+  <h3>そのほかの制度</h3>
+  <ul class="small" id="bankExtra">
+    <li><b>財形住宅融資</b>：会社で財形貯蓄を1年以上続け、残高が50万円以上ある人が使える国の機関の融資です。2026年10月〜12月の申込みは5年固定 年2.93%（団信付き。5年ごとに金利を見直し）。財形の残高の10倍・最高4,000万円まで。（<a href="https://www.jhf.go.jp/files/topics/5387_ext_99_11.pdf">住宅金融支援機構</a>／<a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000105724.html">厚生労働省</a>）</li>
+    <li><b>フラット35の金利の引き下げ</b>：省エネの家（フラット35S）や、子育て中・若い夫婦（子育てプラス）は、最初の5年の金利が下がります（予算がなくなりしだい終わり）。（<a href="https://www.flat35.com/loan/lineup/flat35s/index.html">フラット35S</a>／<a href="https://www.flat35.com/loan/lineup/flat35kosodate-plus/">子育てプラス</a>）</li>
+    <li><b>自治体の利子補給</b>（市や区が利息の一部を払ってくれる制度）：家を買う人ならだれでも使える制度は、首都圏ではほとんど見つかりませんでした。東京都の「個人住宅利子補給助成」（令和8年度）は、木造の家が密集した地域で燃えにくい家に建て替える人だけが対象で、募集は5戸です。（<a href="https://www.metro.tokyo.lg.jp/information/press/2026/05/2026051305">東京都</a>）住んでいる市区のホームページも確認してください。</li>
+  </ul>
+</section>
+
+<section class="for-staff print-target" id="bankStaffSec">
+  <h3>担当者向け：金融機関を選ぶ前にお客様に聞くこと</h3>
+  <div class="staff-box">
+    <div class="t">チェックリスト（金融機関えらび）</div>
+    <p class="muted" style="margin:0">お客様名：＿＿＿＿＿＿＿＿＿＿　確認日：＿＿＿＿年＿＿月＿＿日　担当：＿＿＿＿＿＿</p>
+    <h3>地域と勤め先</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>いま住んでいる所（都道府県・市区町村）<small>地方銀行・信金・JAは地域の中かどうかで使えるかが決まる</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>勤め先の所在地（本社ではなく働いている場所）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>買う家の所在地が、候補の金融機関の地域の中か</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>会社員・公務員か、自営業・会社の役員か、契約・派遣か<small>自営業・転職したばかりならフラット35や地元の金融機関も候補</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>勤め先に労働組合があるか（ろうきんの会員か）・生協の組合員か</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>会社で財形貯蓄をしているか（1年以上・残高50万円以上）</span></label></li>
+    </ul>
+    <h3>口座とお付き合い</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>給与の振込口座（どこの金融機関か）と、移せるか<small>給与振込で金利が下がる所が多い</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>地元の銀行・信金・JAとの付き合い（口座・事業の借入・農地など）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>使っているスマホ・電気・ネット回線の会社<small>ネット銀行で金利が下がることがある（au・ソフトバンクなど）</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>店で相談したいか、ネットで全部済ませたいか</span></label></li>
+    </ul>
+    <h3>ローンの組み方</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>変動・固定のどちらがよいか（金利が上がっても家計が持つか。03章）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>手数料を先に払えるか（借入額の2.2%型か、保証料型か、金利上乗せ型か）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>健康状態と、団信の種類（一般・がん・3大疾病・ワイド団信）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>注文住宅か（つなぎ融資が要るか）・引き渡しの日（急ぐか）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>家が省エネ住宅（ZEHなど）・長期優良住宅か<small>金利が下がる商品がある（フラット35Sなど）</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>子どもの人数・年齢（フラット35の子育てプラス）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>事前審査を出す金融機関（種類のちがう所を2〜3か所）</span></label></li>
+    </ul>
+    <div class="btns no-print">
+      <button class="btn" type="button" id="printBank">このチェックリストを印刷する</button>
+      <button class="btn" type="button" id="clearBank">チェックを全部外す</button>
+    </div>
+  </div>
+</section>
+
+<section class="for-client">
+  <h2><span class="no">09</span>担当者に聞いてみてください</h2>
+  <ul class="small">
+    <li>自分の働き方・勤続年数で、どの金融機関が借りやすいか</li>
+    <li>優遇後の金利が何%になりそうか（事前審査を受けるとわかります）</li>
+    <li>スマホの分割払いやカードのリボ払いなど、今ある借入をどう書けばよいか</li>
+    <li>持病があるときの団信の選び方</li>
+    <li>自分の住んでいる所・勤め先で使える金融機関はどこか（08章）</li>
+  </ul>
+</section>
+
+<section class="for-staff print-target" id="staffSec">
+  <h2><span class="no">09</span>担当者向け：事前審査の前に確認すること</h2>
+  <div class="staff-box">
+    <div class="t">チェックリスト（お客様と一緒に確認）</div>
+    <p class="muted" style="margin:0">お客様名：＿＿＿＿＿＿＿＿＿＿　確認日：＿＿＿＿年＿＿月＿＿日　担当：＿＿＿＿＿＿</p>
+    <h3>収入と働き方</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>源泉徴収票（会社員・公務員。直近1〜2年分）<small>合算する人の分も</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>確定申告書（自営業・副業・不動産収入がある人。直近2〜3年分）<small>「所得」（経費を引いたあと）で見られることが多い</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>雇用形態（正社員・契約・派遣・パート）と勤続年数</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>転職の予定・最近の転職・育休や時短の予定</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>収入を合算する人（配偶者・親子）と、その人の働き方</span></label></li>
+    </ul>
+    <h3>ほかの借入と信用情報</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>車のローン・カードローン・キャッシングの残高と月々の返済</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>クレジットカードのリボ払い・分割払い</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>携帯電話・スマホ本体の分割払い（家族の分を本人名義で契約していないかも）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>奨学金の残りと月々の返済</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>過去の支払いの遅れ（携帯料金・カード・奨学金など）<small>心配ならCICなどで本人開示をすすめる</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>使っていないカードのキャッシング枠</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>連帯保証人になっているもの</span></label></li>
+    </ul>
+    <h3>年齢・健康・お金の用意</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>年齢と完済時の年齢（多くは80歳未満）・退職の予定</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>健康状態（持病・通院・服薬）と団信に入れそうか</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>自己資金の額（頭金・諸費用をどこまで現金で払うか）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>親からの援助の有無と金額<small>贈与税の特例の条件は税務署・税理士で確認</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>今の住まいの家賃・持ち家の売却や残りのローン</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>本人確認書類・健康保険証・住民票など、金融機関が求める書類</span></label></li>
+    </ul>
+    <h3>物件とローン</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>希望の金利タイプ（変動・固定）と返す年数</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>物件の資料（マイソク・登記事項証明書・図面）<small>担保の評価に使う</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>建築確認の日付・違反建築や既存不適格がないか<small>担保の評価や借りられるかに影響することがある</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>事前審査を出す金融機関（2〜3か所）と、それぞれの必要書類</span></label></li>
+    </ul>
+    <div class="btns no-print">
+      <button class="btn" type="button" id="printCheck">このチェックリストを印刷する</button>
+      <button class="btn" type="button" id="clearCheck">チェックを全部外す</button>
+    </div>
+  </div>
+</section>
+
+<p class="no-print" style="text-align:right;margin-top:24px"><button class="btn" id="resetBtn" type="button">入力を最初の状態にもどす</button></p>
+
+<div class="disclaimer">
+  <p><b>これは仮の計算です。実際に借りられる額・金利・返済額は、不動産会社や金融機関で必ず確認してください。</b>審査の基準は金融機関ごとにちがい、ここに書いた目安と合わないことがあります。税は税務署・都道府県税事務所・司法書士・税理士に、契約の内容は宅地建物取引士にご確認ください。</p>
+  <p>使ったデータの出典（調べた日 2026年10月21日）</p>
+  <ul>
+    <li>金利：<a href="https://www.simulation.jhf.go.jp/flat35/kinri/index.php/rates/top">住宅金融支援機構 フラット35の借入金利</a>／<a href="https://www.boj.or.jp/statistics/dl/loan/yaku/index.htm">日本銀行 貸出約定平均金利</a>／<a href="https://www.bk.mufg.jp/kariru/jutaku/yuuguu/index.html">三菱UFJ銀行 住宅ローン金利</a></li>
+    <li>金融機関ごとの金利（08章）：各金融機関の公式ページ・公式PDF・公式サイトの金利データ（各行の「条件と出典」にURL）。比較サイトの数字は使っていません</li>
+    <li>審査の項目：<a href="https://www.mlit.go.jp/report/press/house02_hh_000246.html">国土交通省「令和7年度 民間住宅ローンの実態に関する調査」</a>（<a href="https://www.mlit.go.jp/jutakukentiku/house/content/002004971.pdf">正誤表</a>）／<a href="https://www.jhf.go.jp/files/topics/4957_ext_99_2.pdf">住宅金融支援機構「2025年度 住宅ローン貸出動向調査」</a></li>
+    <li>返済比率の基準（年収400万円未満30%、400万円以上35%）とふくめる借入：<a href="https://www.flat35.com/loan/lineup/flat35/conditions/index.html">フラット35の利用条件</a>。「25%以下が安心」は家計相談でよく使われる一般的な目安で、法律の基準ではありません。</li>
+    <li>信用情報：<a href="https://www.cic.co.jp/guide/credit-information/possession/">CIC 保有している信用情報</a>／<a href="https://www.docomo.ne.jp/support/payment_installment/">NTTドコモ 機種を分割払いで購入する</a>／<a href="https://www.jasso.go.jp/shogakukin/entai/kojinjoho/index.html">日本学生支援機構 個人信用情報機関への登録</a></li>
+    <li>仲介手数料の上限：国土交通省 報酬告示（令和6年 国土交通省告示第949号で改正・2024年7月1日施行）。800万円以下の特例：<a href="https://www.mlit.go.jp/tochi_fudousan_kensetsugyo/const/content/001749923.pdf">国土交通省 資料</a>／<a href="https://www.pref.osaka.lg.jp/o130200/kenshin/houshu/index.html">大阪府</a></li>
+    <li>印紙税（売買契約書の軽減は2027年3月31日まで）：<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/inshi/7108.htm">国税庁 タックスアンサー No.7108</a></li>
+    <li>登録免許税：<a href="https://www.mof.go.jp/tax_policy/summary/property/e08.htm">財務省「登録免許税」</a>（土地の売買1.5%は2029年3月31日まで、住宅用家屋の軽減は2027年3月31日まで）</li>
+    <li>不動産取得税：<a href="https://www.pref.kyoto.jp/zeimu/11600014.html">京都府</a>／<a href="https://www.pref.chiba.lg.jp/zeimu/faq/152.html">千葉県</a></li>
+  </ul>
+  <p>計算のしかた：元利均等は「借入額×月利÷(1−(1+月利)^−回数)」。金利が変わったら、その時の残高と残りの回数で返済額を計算しなおします。「借りられる額の目安」は、（年収×返済比率の上限−ほかの借入の年間返済）を12で割った額を、審査に使う金利・返す年数の元利均等で返せる元金にもどしたものです（ボーナス払いは入れていません）。</p>
+</div>
+</main>
+
+<script>
+// ==CALC-START==
+function annuity(P, r, n) {
+  if (n <= 0) return P;
+  if (Math.abs(r) < 1e-15) return P / n;
+  return P * r / (1 - Math.pow(1 + r, -n));
+}
+// 1本のローンを1回ずつ計算する。o = {principal, years, perYear, method:'equal'|'principal', rateAt(t年), rule125}
+function amortize(o) {
+  const N = Math.round(o.years * o.perYear), rows = [];
+  let bal = o.principal, unpaid = 0, pay = 0, prevRate = null, total = 0;
+  if (!(bal > 0) || !(N > 0)) return { rows: rows, total: 0, interest: 0 };
+  const fixedPrin = o.principal / N;
+  for (let k = 1; k <= N; k++) {
+    const rate = Math.max(0, o.rateAt((k - 1) / o.perYear));
+    const r = rate / 100 / o.perYear;
+    const remain = N - k + 1;
+    const intr = bal * r;
+    let prin, p;
+    if (o.method === 'principal') {
+      prin = (k === N) ? bal : Math.min(fixedPrin, bal);
+      p = prin + intr;
+    } else {
+      if (o.rule125) {
+        if (k === 1) pay = annuity(bal, r, remain);
+        else if ((k - 1) % (5 * o.perYear) === 0) pay = Math.min(annuity(bal + unpaid, r, remain), pay * 1.25);
+      } else if (k === 1 || rate !== prevRate) {
+        pay = annuity(bal, r, remain);
+      }
+      const due = intr + unpaid;
+      if (k === N) { prin = bal; p = bal + due; unpaid = 0; }
+      else if (pay >= due) { prin = pay - due; p = pay; unpaid = 0; if (prin > bal) { prin = bal; p = bal + due; } }
+      else { prin = 0; p = pay; unpaid = due - pay; }
+    }
+    bal -= prin; if (bal < 1e-6) bal = 0;
+    total += p;
+    rows.push({ k: k, rate: rate, pay: p, interest: p - prin, principal: prin, bal: bal, unpaid: unpaid });
+    prevRate = rate;
+  }
+  return { rows: rows, total: total, interest: total - o.principal };
+}
+// 金利の動き。vary = {everyYears, step, max}。なければずっと同じ金利
+function makeRateAt(base, vary) {
+  return function (t) {
+    if (!vary || !(vary.everyYears > 0) || !vary.step) return base;
+    const up = base + vary.step * Math.floor(t / vary.everyYears + 1e-9);
+    if (vary.step > 0) return Math.min(Math.max(base, vary.max), up);
+    return Math.max(0, up);
+  };
+}
+// p = {loan(円), rate(%), years, method, bonusPct, vary, rule125}
+function simulateLoan(p) {
+  const rateAt = makeRateAt(p.rate, p.vary);
+  const bp = Math.min(50, Math.max(0, p.bonusPct || 0));
+  const bonusP = p.loan * bp / 100, monthP = p.loan - bonusP;
+  const r125 = !!p.rule125 && p.method === 'equal';
+  const m = amortize({ principal: monthP, years: p.years, perYear: 12, method: p.method, rateAt: rateAt, rule125: r125 });
+  const b = amortize({ principal: bonusP, years: p.years, perYear: 2, method: p.method, rateAt: rateAt, rule125: r125 });
+  const yearly = [];
+  const sum = (a, f) => a.reduce((s, r) => s + r[f], 0);
+  for (let y = 1; y <= p.years; y++) {
+    const ms = m.rows.slice((y - 1) * 12, y * 12), bs = b.rows.slice((y - 1) * 2, y * 2);
+    const pay = sum(ms, 'pay') + sum(bs, 'pay'), interest = sum(ms, 'interest') + sum(bs, 'interest');
+    const bal = (ms.length ? ms[ms.length - 1].bal : 0) + (bs.length ? bs[bs.length - 1].bal : 0);
+    yearly.push({ year: y, rate: Math.max(0, rateAt(y - 1)), rateEnd: Math.max(0, rateAt(y - 1 + 11 / 12)), pay: pay, interest: interest, principal: pay - interest, bal: bal });
+  }
+  const mr = m.rows;
+  const normal = mr.length > 1 ? mr.slice(0, -1) : mr;
+  const maxMonthly = normal.reduce((s, r) => Math.max(s, r.pay), 0);
+  const last = mr.length ? mr[mr.length - 1].pay : 0;
+  const prevPay = mr.length > 1 ? mr[mr.length - 2].pay : last;
+  return {
+    loan: p.loan, firstMonthly: mr[0] ? mr[0].pay : 0, firstBonus: b.rows[0] ? b.rows[0].pay : 0,
+    maxMonthly: maxMonthly, lump: r125 ? Math.max(0, last - prevPay) : 0,
+    total: m.total + b.total, interest: m.total + b.total - p.loan, yearly: yearly, monthRows: mr
+  };
+}
+// 返済比率（%）と色分け。income は円
+function ratioLevel(ratioPct, incomeYen) {
+  const limit = incomeYen < 4e6 ? 30 : 35;
+  if (ratioPct <= 25) return { lv: 'ok', limit: limit, text: '安心の目安（25%以下）' };
+  if (ratioPct <= limit) return { lv: 'warn', limit: limit, text: '少し重め（25%〜' + limit + '%）' };
+  return { lv: 'bad', limit: limit, text: '注意（' + limit + '%超え。フラット35の基準をこえる）' };
+}
+// 仲介手数料の上限（消費税込み・円）。price は税抜きの売買価格（円）
+function brokerageBase(price) {
+  if (!(price > 0)) return 0;
+  if (price <= 2e6) return price * 0.05;
+  if (price <= 4e6) return price * 0.04 + 2e4;
+  return price * 0.03 + 6e4;
+}
+function brokerageCap(price, special800) {
+  let base = brokerageBase(price);
+  if (special800 && price > 0 && price <= 8e6) base = Math.max(base, 3e5);
+  return Math.floor(base * 1.1);
+}
+// 印紙税の表 [この金額以下, 税額]
+const STAMP_SALE = [[9999, 0], [1e5, 200], [5e5, 200], [1e6, 500], [5e6, 1000], [1e7, 5000], [5e7, 10000], [1e8, 30000], [5e8, 60000], [1e9, 160000], [5e9, 320000], [Infinity, 480000]];
+const STAMP_LOAN = [[9999, 0], [1e5, 200], [5e5, 400], [1e6, 1000], [5e6, 2000], [1e7, 10000], [5e7, 20000], [1e8, 60000], [5e8, 100000], [1e9, 200000], [5e9, 400000], [Infinity, 600000]];
+function stampTax(table, amount) {
+  if (!(amount > 0)) return 0;
+  for (const row of table) if (amount <= row[0]) return row[1];
+  return 0;
+}
+// 登録免許税：課税標準は1,000円未満切り捨て、税額は100円未満切り捨て、最低1,000円
+function regTax(base, ratePct) {
+  if (!(base > 0)) return 0;
+  const b = Math.floor(base / 1000) * 1000;
+  return Math.max(1000, Math.floor(b * ratePct / 100 / 100) * 100);
+}
+// 諸費用の一覧。c は円単位の入力
+function purchaseCosts(c) {
+  const items = [];
+  const priceEx = Math.max(0, c.price - c.vat);
+  if (c.broker) items.push({ name: '仲介手数料（上限・税込）', amt: brokerageCap(priceEx, c.special800), kind: '計算', note: c.special800 && priceEx <= 8e6 ? '800万円以下の特例（事前の合意が必要）' : '価格×3%＋6万円＋消費税（400万円超のとき）' });
+  items.push({ name: '印紙税（売買契約書）', amt: stampTax(STAMP_SALE, c.price), kind: '計算', note: '軽減税率（2027年3月31日までの契約）' });
+  if (c.loan > 0) items.push({ name: '印紙税（ローンの契約書）', amt: stampTax(STAMP_LOAN, c.loan), kind: '計算', note: '電子契約なら不要な銀行もある' });
+  items.push({ name: '登録免許税（土地の名義を移す）', amt: regTax(c.landEval, 1.5), kind: '計算', note: '評価額×1.5%（2029年3月31日までの軽減）' });
+  const bRate = c.kind === 'new' ? (c.own ? 0.15 : 0.4) : (c.own ? 0.3 : 2.0);
+  items.push({ name: c.kind === 'new' ? '登録免許税（建物を初めて登記）' : '登録免許税（建物の名義を移す）', amt: regTax(c.bldgEval, bRate), kind: '計算', note: '評価額×' + bRate + '%' + (c.own ? '（住宅の軽減・2027年3月31日まで）' : '') });
+  if (c.loan > 0) items.push({ name: '登録免許税（抵当権の設定）', amt: regTax(c.loan, c.own ? 0.1 : 0.4), kind: '計算', note: '借入額×' + (c.own ? '0.1%（住宅の軽減）' : '0.4%') });
+  // 不動産取得税
+  const landBase = c.landEval * 0.5;
+  let landTax = landBase * 0.03;
+  if (c.own && landTax > 0) {
+    let red = 45000;
+    if (c.landArea > 0) red = Math.max(red, (landBase / c.landArea) * Math.min(c.floorArea * 2, 200) * 0.03);
+    landTax = Math.max(0, landTax - red);
+  }
+  const ded = c.kind === 'new' ? 12e6 : (c.own ? c.eraDeduction : 0);
+  const bldgTax = Math.max(0, c.bldgEval - ded) * 0.03;
+  items.push({ name: '不動産取得税（土地）', amt: Math.floor(landTax / 100) * 100, kind: '計算', note: '評価額×1/2×3%' + (c.own ? '−住宅用土地の軽減' : '') + '（あとで都道府県から届く）' });
+  items.push({ name: '不動産取得税（建物）', amt: Math.floor(bldgTax / 100) * 100, kind: '計算', note: '(評価額−控除' + Math.round(ded / 1e4) + '万円)×3%' });
+  if (c.loan > 0) {
+    items.push({ name: 'ローンの事務手数料', amt: c.loan * c.feePct / 100, kind: '目安', note: '借入額×' + c.feePct + '%（銀行による）' });
+    if (c.guarPct > 0) items.push({ name: 'ローンの保証料', amt: c.loan * c.guarPct / 100, kind: '目安', note: '借入額×' + c.guarPct + '%' });
+  }
+  items.push({ name: '火災保険・地震保険', amt: c.insurance, kind: '目安', note: '建物・補償・年数でかわる（最長5年契約）' });
+  items.push({ name: '司法書士への報酬', amt: c.scrivener, kind: '目安', note: '登記の手続きの代行' });
+  items.push({ name: 'その他（税の精算・引っ越しなど）', amt: c.others, kind: '目安', note: '' });
+  const total = items.reduce((s, i) => s + i.amt, 0);
+  return { items: items, total: total };
+}
+// ---- 2026-10-21 追加：借りる人の条件（審査の目安） ----
+const TSUBO_M2 = 3.30578;
+// ほかの借入（月々・円）の合計と年間
+function otherLoansTotal(monthlyList) {
+  const m = monthlyList.reduce((s, v) => s + (v > 0 ? v : 0), 0);
+  return { monthly: m, annual: m * 12 };
+}
+// 返済比率の上限（%）。sel が 'auto' ならフラット35の基準
+function ratioLimit(sel, incomeYen) {
+  if (sel === 'auto' || sel == null) return incomeYen < 4e6 ? 30 : 35;
+  const v = parseFloat(sel);
+  return isFinite(v) ? v : 35;
+}
+// 審査に使う金利で計算した返済比率（%）。ボーナス払いは入れない（毎月均等とみなす）
+function screeningRatio(loanYen, screenRatePct, years, otherAnnualYen, incomeYen) {
+  if (!(incomeYen > 0)) return 0;
+  const annual = loanYen > 0 ? annuity(loanYen, screenRatePct / 1200, Math.round(years * 12)) * 12 : 0;
+  return (annual + otherAnnualYen) / incomeYen * 100;
+}
+// 借りられる額の目安（円）：年収×上限−ほかの返済 を、審査金利・年数の元利均等で返せる元金にもどす
+function maxLoanByRatio(incomeYen, limitPct, otherAnnualYen, screenRatePct, years) {
+  const allowAnnual = incomeYen * limitPct / 100 - otherAnnualYen;
+  if (!(allowAnnual > 0)) return 0;
+  const m = allowAnnual / 12, r = screenRatePct / 1200, n = Math.round(years * 12);
+  if (!(n > 0)) return 0;
+  if (Math.abs(r) < 1e-15) return m * n;
+  return m * (1 - Math.pow(1 + r, -n)) / r;
+}
+// 必要な現金（円）：頭金＋（ローンに入れないなら）諸費用
+function cashNeeded(downYen, costsYen, costsInLoan) { return downYen + (costsInLoan ? 0 : costsYen); }
+// 借りる人の条件の注意（{lv:'ok'|'warn'|'bad', text}の配列）
+function attributeNotes(a) {
+  const out = [];
+  const endAge = a.age + a.years;
+  if (a.age >= 70) out.push({ lv: 'bad', text: '今の年齢が70歳以上です。多くの住宅ローンは「借りるときに70歳未満」が条件です（フラット35も申込時70歳未満）。' });
+  if (endAge >= 80) out.push({ lv: 'bad', text: '返し終わるときの年齢が' + endAge + '歳です。多くの金融機関は「完済時80歳未満」です。返す年数を短くするか、親子で返すしくみなどを担当者に相談してください。' });
+  else if (endAge >= 75) out.push({ lv: 'warn', text: '返し終わるときの年齢が' + endAge + '歳です。借りることはできても、定年のあとも返済が続きます。退職金や年金でどう返すかを考えておくと安心です。' });
+  else out.push({ lv: 'ok', text: '返し終わるときの年齢は' + endAge + '歳です（多くの金融機関の条件「80歳未満」の範囲）。' });
+  const E = {
+    seishain: { lv: 'ok', text: '会社員（正社員）は、審査でいちばん多い形です。勤続年数も見られます。' },
+    koumuin: { lv: 'ok', text: '公務員は、収入が安定していると見られることが多いです。' },
+    jieigyo: { lv: 'warn', text: '自営業・経営者は、確定申告の「所得」（経費を引いたあとの金額）で見られることが多く、2〜3年分の申告書を求められるのが一般的です。年収の欄には所得の額を入れると近くなります。' },
+    keiyaku: { lv: 'warn', text: '契約社員は対象外とする金融機関があります（国の調査で、働き方を見る機関のうち286が「契約社員は対象外」と回答）。扱っている金融機関を担当者に聞いてください。' },
+    haken: { lv: 'warn', text: '派遣社員は対象外とする金融機関があります（国の調査で357が「派遣社員は対象外」と回答）。扱っている金融機関を担当者に聞いてください。' },
+    part: { lv: 'warn', text: 'パート・アルバイトの収入だけで借りられる金融機関は限られます。収入を合わせて借りる方法などを担当者に相談してください。' },
+    other: { lv: 'warn', text: '年金などの収入で借りられるかは、金融機関ごとにちがいます。担当者に相談してください。' }
+  };
+  out.push(E[a.employ] || E.other);
+  if (a.tenure < 1) out.push({ lv: 'bad', text: '勤続年数が1年未満です。勤続年数を見る金融機関では「1年以上」がいちばん多い条件です（国の調査）。転職したばかりの人を扱う金融機関もあるので、担当者に相談してください。' });
+  else if (a.tenure < 3) out.push({ lv: 'warn', text: '勤続年数は' + a.tenure + '年です。多くは「1年以上」ですが、「3年以上」とする金融機関もあります。' });
+  if (a.health === 'unsure') out.push({ lv: 'warn', text: '多くの金融機関は団信に入ることが条件です。持病があっても入れる場合や、条件をゆるめた団信（金利が少し上がることが多い）を用意する金融機関もあります。フラット35は団信に入らなくても使えます。' });
+  if (a.health === 'hard') out.push({ lv: 'bad', text: '団信に入れないと、借りられない金融機関が多いです。条件をゆるめた団信や、団信なしで使えるフラット35を担当者に相談してください。' });
+  if (a.cash >= 0 && a.need > 0) {
+    if (a.cash < a.need) out.push({ lv: 'warn', text: '現金で必要なお金（頭金＋ローンに入れない諸費用）に対して、用意できる自己資金が足りません。' });
+    else out.push({ lv: 'ok', text: '頭金と諸費用は、用意できる自己資金でまかなえる計算です。引っ越しのあとにも手元にお金を残しておくと安心です。' });
+  }
+  return out;
+}
+// ---- 08章：金融機関の金利の例（データは loan_rates.js） ----
+const RATE_KINDS = [
+  { key: 'variable', label: '変動金利（いちばん低い金利）', short: '変動' },
+  { key: 'fixed10', label: '固定10年（いちばん低い金利）', short: '固定10年' },
+  { key: 'fixedAll', label: '全期間固定', short: '全期間固定' }
+];
+// 金利の見せ方：4 → "4.00"、1.195 → "1.195"（小数は2けた以上）
+function pctText(v) {
+  if (typeof v !== 'number' || !isFinite(v)) return '—';
+  let t = v.toFixed(3);
+  if (t.endsWith('0')) t = t.slice(0, -1);
+  return t;
+}
+// 種類でしぼりこむ（'all' なら全部）
+function filterRates(items, cat) {
+  if (!Array.isArray(items)) return [];
+  return cat === 'all' || !cat ? items.slice() : items.filter(i => i.cat === cat);
+}
+// 「この金利で計算」で入れる数字と、そのときに出す説明。数字が無ければ null
+function rateChoice(item, kind) {
+  const k = RATE_KINDS.find(x => x.key === kind);
+  if (!item || !k) return null;
+  const v = item[kind];
+  if (typeof v !== 'number' || !isFinite(v) || v <= 0 || v > 20) return null;
+  let msg = '08章の「' + item.name + '」の' + k.label + ' 年' + pctText(v) + '%を入れました。';
+  if (kind === 'variable') msg += '変動金利は、あとで上がることがあります（03章）。';
+  if (kind === 'fixed10') msg += '11年目からの金利はまだ決まっていないので、ここでは最後まで同じ金利で計算しています。';
+  if (item.flag) msg += '注意：' + item.flag + '。';
+  msg += 'いちばん条件がよい人の金利です。';
+  return { rate: v, kind: kind, label: k.label, msg: msg };
+}
+// ==CALC-END==
+
+// ---- 画面 ----
+const KEY = 'sim_loan_v1';
+const $ = id => document.getElementById(id);
+const FD = (typeof window !== 'undefined' && window.FUDOSAN) || {
+  area: (m2, d) => { if (m2 == null || isNaN(m2)) return '—'; d = d == null ? 1 : d; return m2.toFixed(d) + '㎡（' + (m2 / TSUBO_M2).toFixed(1) + '坪）'; },
+  unitPrice: y => (y == null || isNaN(y)) ? '—' : (y / 1e4).toFixed(1) + '万円/㎡（' + (y * TSUBO_M2 / 1e4).toFixed(1) + '万円/坪）'
+};
+const fmtMan = (yen, d) => { if (!isFinite(yen)) return '—'; d = d == null ? 1 : d; return (yen / 1e4).toLocaleString('ja-JP', { minimumFractionDigits: d, maximumFractionDigits: d }) + '万円'; };
+const fmtYen = v => Math.round(v).toLocaleString('ja-JP') + '円';
+const num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+const fields = () => Array.from(document.querySelectorAll('[data-s]'));
+const defaults = {};
+fields().forEach(el => { defaults[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
+
+function save() {
+  const o = {};
+  fields().forEach(el => { o[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
+  try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
+}
+function load() {
+  let o = null;
+  try { o = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { o = null; }
+  if (!o) return;
+  fields().forEach(el => { if (o[el.id] === undefined) return; if (el.type === 'checkbox') el.checked = !!o[el.id]; else el.value = o[el.id]; });
+}
+// ㎡ と 坪 のつながり：[㎡のid, 坪のid]
+const TWINS = [['floorArea', 'floorTsubo'], ['landArea', 'landTsubo']];
+function syncTsubo() {
+  TWINS.forEach(t => { const v = parseFloat($(t[0]).value); $(t[1]).value = isFinite(v) && v > 0 ? (v / TSUBO_M2).toFixed(2) : (v === 0 ? '0' : ''); });
+}
+
+function lineChart(el, series) {
+  const W = Math.max(300, el.clientWidth || 600), H = 240, pl = 52, pr = 12, pt = 12, pb = 28;
+  const n = Math.max(1, ...series.map(s => s.values.length));
+  let max = Math.max(1, ...series.map(s => Math.max(...s.values)));
+  const step = Math.pow(10, Math.floor(Math.log10(max)));
+  max = Math.ceil(max / step) * step;
+  const x = i => pl + (W - pl - pr) * (n === 1 ? 0 : i / (n - 1));
+  const y = v => pt + (H - pt - pb) * (1 - v / max);
+  let g = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = max * i / 4, yy = y(v);
+    g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yy + '" y2="' + yy + '" style="stroke:var(--rule)"/>';
+    g += '<text x="' + (pl - 6) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="11" style="fill:var(--muted)">' + Math.round(v / 1e4).toLocaleString('ja-JP') + '</text>';
+  }
+  const every = n > 20 ? 5 : n > 10 ? 2 : 1;
+  for (let i = 0; i < n; i++) if (i % every === 0) g += '<text x="' + x(i) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" style="fill:var(--muted)">' + i + '</text>';
+  series.forEach(s => {
+    const d = s.values.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1)).join('');
+    g += '<path d="' + d + '" fill="none" style="stroke:' + s.color + '" stroke-width="2"' + (s.dash ? ' stroke-dasharray="6 4"' : '') + '/>';
+  });
+  el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="ローン残高の年ごとの変化（横軸は年、縦軸は万円）">' + g + '</svg><div class="muted" style="text-align:right">横：何年目　縦：残高（万円）</div>';
+}
+
+let lastChart = null;
+function update() {
+  if ($('autoEval').checked) {
+    $('landEval').value = Math.round(num('price') * 0.35);
+    $('bldgEval').value = Math.round(num('price') * 0.25);
+  }
+  $('landEval').disabled = $('bldgEval').disabled = $('autoEval').checked;
+  const price = num('price') * 1e4, down = num('down') * 1e4;
+  let loan = Math.max(0, price - down);
+  const costIn = {
+    price: price, vat: num('vat') * 1e4, broker: $('broker').checked, special800: $('special800').checked,
+    kind: $('kind').value, own: $('own').checked, landEval: num('landEval') * 1e4, bldgEval: num('bldgEval') * 1e4,
+    landArea: num('landArea'), floorArea: num('floorArea'), eraDeduction: parseFloat($('era').value) || 0,
+    feePct: num('feePct'), guarPct: num('guarPct'), insurance: num('insurance') * 1e4, scrivener: num('scrivener') * 1e4, others: num('others') * 1e4, loan: loan
+  };
+  // 諸費用もローンに入れるとき：手数料・印紙は借入額で変わるので何回かまわして近づける
+  let costs = purchaseCosts(costIn);
+  if ($('addCosts').checked) {
+    for (let i = 0; i < 3; i++) { costIn.loan = loan + costs.total; costs = purchaseCosts(costIn); }
+    loan = loan + costs.total; costIn.loan = loan; costs = purchaseCosts(costIn);
+  }
+  $('loanOut').textContent = fmtMan(loan) + (price > 0 ? '（価格の' + (loan / price * 100).toFixed(0) + '%）' : '');
+  const fa = num('floorArea');
+  $('unitOut').textContent = fa > 0 ? '　' + FD.area(fa) + '・価格は ' + FD.unitPrice(price / fa) : '';
+  const years = Math.max(1, Math.min(50, Math.round(num('years'))));
+  const base = { loan: loan, rate: num('rate'), years: years, method: $('method').value, bonusPct: num('bonusPct') };
+  const vary = { everyYears: num('stepYears'), step: num('stepRate'), max: num('maxRate') };
+  const A = simulateLoan(Object.assign({}, base));
+  const B = simulateLoan(Object.assign({}, base, { vary: vary, rule125: $('rule125').checked }));
+  const income = num('income') * 1e4;
+  const OL = otherLoansTotal(['olCar', 'olCard', 'olRevo', 'olPhone', 'olSchol', 'olHouse', 'olOther'].map(id => num(id) * 1e4));
+  const other = OL.annual;
+  $('olOut').textContent = fmtYen(OL.monthly) + '/月（年 ' + fmtMan(OL.annual) + '）';
+  const annual1 = A.yearly.length ? A.yearly[0].pay : 0;
+  const maxAnnualB = B.yearly.reduce((s, r, i) => (i < B.yearly.length - 1 || B.yearly.length === 1) ? Math.max(s, r.pay) : s, 0);
+  const ratio = income > 0 ? (annual1 + other) / income * 100 : 0;
+
+  const k = [
+    ['毎月の返済（1回目）', fmtYen(A.firstMonthly), base.method === 'principal' ? 'だんだん減っていきます' : '金利が同じなら、ずっと同じ', 'main'],
+    ['返すお金の合計', fmtMan(A.total), '金利がそのままの場合', ''],
+    ['そのうち利息', fmtMan(A.interest), '借りたお金の' + (loan > 0 ? (A.interest / loan * 100).toFixed(1) : '0') + '%', ''],
+    ['返済比率', income > 0 ? ratio.toFixed(1) + '%' : '—', '1年の返済（ほかの借入こみ）÷年収', ''],
+    ['借りるお金', fmtMan(loan), '', ''],
+    ['ボーナス月に足す額', fmtYen(A.firstBonus), '年2回', ''],
+    ['1年目の返済の合計', fmtMan(annual1), '', '']
+  ];
+  $('kpis').innerHTML = k.map(a => '<div class="figure ' + a[3] + '"><div class="k">' + a[0] + '</div><div class="v">' + a[1] + '</div><div class="s">' + a[2] + '</div></div>').join('');
+
+  // 残高の概要
+  const pick = [1, 5, 10, 20, 30].filter(y => y < years);
+  let bt = '<tr><th></th>' + pick.map(y => '<th>' + y + '年後</th>').join('') + '<th>' + years + '年後（完済）</th></tr>';
+  bt += '<tr><td>残高</td>' + pick.map(y => '<td>' + fmtMan(A.yearly[y - 1].bal, 0) + '</td>').join('') + '<td>0円</td></tr>';
+  if (vary.step) bt += '<tr><td>上がる場合</td>' + pick.map(y => '<td>' + fmtMan(B.yearly[y - 1].bal, 0) + '</td>').join('') + '<td>0円</td></tr>';
+  $('balTable').innerHTML = bt;
+
+  const lastRate = B.yearly.length ? B.yearly[B.yearly.length - 1].rate : base.rate;
+  $('cmpTable').innerHTML = '<tr><th></th><th>金利そのまま（' + base.rate + '%）</th><th>上がる場合（最後は' + lastRate.toFixed(2) + '%）</th><th>ちがい</th></tr>' +
+    [['毎月の返済（はじめ）', A.firstMonthly, B.firstMonthly, fmtYen],
+     ['毎月の返済（いちばん多いとき）', A.maxMonthly, B.maxMonthly, fmtYen],
+     ['返すお金の合計', A.total, B.total, fmtMan],
+     ['そのうち利息', A.interest, B.interest, fmtMan]].map(r => '<tr><td>' + r[0] + '</td><td>' + r[3](r[1]) + '</td><td>' + r[3](r[2]) + '</td><td>' + (r[2] - r[1] >= 0 ? '+' : '') + r[3](r[2] - r[1]) + '</td></tr>').join('');
+  $('cmpNote').textContent = B.lump > 1 ? '5年ルール・125%ルールのため、最後の回にまとめて払うお金（未払いの利息など）が約' + fmtMan(B.lump) + 'あります。' : (vary.step ? vary.everyYears + '年ごとに' + vary.step + '%ずつ、上限' + vary.max + '%まで動くとして計算しています。' : '「1回に上がる幅」が0なので、同じ結果になります。');
+
+  // 返済比率と審査の目安
+  const ratioB = income > 0 ? (maxAnnualB + other) / income * 100 : 0;
+  const lv = ratioLevel(ratio, income), lvB = ratioLevel(ratioB, income);
+  const limit = ratioLimit($('limitSel').value, income);
+  const sr = num('screenRate');
+  const ratioS = screeningRatio(loan, sr, years, other, income);
+  const maxL = maxLoanByRatio(income, limit, other, sr, years);
+  const lvS = ratioS <= limit ? 'ok' : 'bad';
+  $('ratioBox').innerHTML = income > 0 ?
+    '<div class="out">返済比率（実際の金利 ' + base.rate + '%）：<b class="lv-' + lv.lv + '">' + ratio.toFixed(1) + '%</b>　<span class="lv-' + lv.lv + '">' + lv.text + '</span>' +
+    '<div class="gauge" aria-hidden="true"><span class="g1"></span><span class="g2"></span><span class="g3"></span><i style="left:calc(' + Math.min(60, ratio) / 60 * 100 + '% - 1px)"></i></div><div class="gauge-l"><span style="left:0">0%</span><span style="left:41.67%">25%</span><span style="left:58.33%">35%</span><span style="left:100%">60%</span></div></div>' +
+    '<div class="out">金利が上がる場合のいちばん重い年：<b class="lv-' + lvB.lv + '">' + ratioB.toFixed(1) + '%</b>　<span class="lv-' + lvB.lv + '">' + lvB.text + '</span></div>' +
+    '<div class="out">審査に使う金利 ' + sr + '% で計算した返済比率：<b class="lv-' + lvS + '">' + ratioS.toFixed(1) + '%</b>　（上限 ' + limit + '%' + (lvS === 'ok' ? ' の内側' : ' をこえる') + '）</div>' +
+    '<div class="out">借りられる額の目安（審査金利 ' + sr + '%・上限 ' + limit + '%・' + years + '年）：<b>' + fmtMan(maxL, 0) + '</b>' +
+    (maxL > 0 && loan > maxL ? '<br><span class="lv-bad">借りたいお金（' + fmtMan(loan, 0) + '）が目安をこえています。</span>' : '') + '</div>' +
+    '<p class="note">返済比率＝（このローンとほかの借入の1年の返済）÷年収。審査では、ほかの借入もふくめて見られます。上限や審査に使う金利は金融機関ごとにちがうので、ここは目安です。</p>'
+    : '<p class="note">年収を入れると、返済の重さと、借りられる額の目安を出します。</p>';
+  const need = cashNeeded(down, costs.total, $('addCosts').checked);
+  const notes = attributeNotes({ age: num('age'), years: years, employ: $('employ').value, tenure: num('tenure'), health: $('health').value, cash: num('ownCash') * 1e4, need: need });
+  $('ageOut').textContent = '返し終わるときは ' + (num('age') + years) + '歳';
+  $('attrBox').innerHTML = '<h3>条件についての注意</h3>' +
+    '<div class="out">現金で必要なお金：<b>' + fmtMan(need) + '</b>（頭金 ' + fmtMan(down) + (($('addCosts').checked) ? '' : '＋諸費用 ' + fmtMan(costs.total)) + '）／用意できる自己資金：' + fmtMan(num('ownCash') * 1e4) + '</div>' +
+    notes.map(n => '<p class="note ' + (n.lv === 'ok' ? 'ok' : n.lv === 'warn' ? 'caution' : 'alert') + '">' + n.text + '</p>').join('') +
+    '<p class="note caution">これは仮の計算です。実際に借りられる額・金利・返済額は、不動産会社や金融機関で必ず確認してください。</p>';
+
+  // 年ごとの表
+  let t = '<tr><th>年目</th><th>金利</th><th>1年の返済</th><th>うち利息</th><th>うち元金</th><th>年末の残高</th><th>上がる場合の金利</th><th>上がる場合の返済</th><th>上がる場合の残高</th></tr>';
+  A.yearly.forEach((r, i) => {
+    const b = B.yearly[i];
+    t += '<tr><td>' + r.year + '</td><td>' + r.rate.toFixed(2) + '%</td><td>' + fmtMan(r.pay) + '</td><td>' + fmtMan(r.interest) + '</td><td>' + fmtMan(r.principal) + '</td><td>' + fmtMan(r.bal) + '</td><td>' + b.rate.toFixed(2) + '%</td><td>' + fmtMan(b.pay) + '</td><td>' + fmtMan(b.bal) + '</td></tr>';
+  });
+  $('yearTable').innerHTML = t;
+  lastChart = [{ values: [loan].concat(A.yearly.map(r => r.bal)), color: 'var(--accent)' }];
+  if (vary.step) lastChart.push({ values: [loan].concat(B.yearly.map(r => r.bal)), color: 'var(--caution)', dash: true });
+  drawChart();
+
+  // 諸費用
+  let ct = '<tr><th>なにのお金</th><th>金額</th><th class="l">種類</th><th class="l">メモ</th></tr>';
+  costs.items.forEach(i => { ct += '<tr><td>' + i.name + '</td><td>' + fmtMan(i.amt, 1) + '</td><td class="l"><span class="tag info">' + i.kind + '</span></td><td class="wrap muted">' + i.note + '</td></tr>'; });
+  ct += '<tr class="total"><td>合計</td><td>' + fmtMan(costs.total) + '</td><td colspan="2" class="wrap">価格の約' + (price > 0 ? (costs.total / price * 100).toFixed(1) : '0') + '%（中古は6〜9%、新築は3〜6%くらいになることが多い）</td></tr>';
+  $('costTable').innerHTML = ct;
+  save();
+}
+function drawChart() { if (lastChart) lineChart($('chart'), lastChart); }
+
+document.addEventListener('input', e => {
+  const tw = TWINS.find(t => t[1] === e.target.id);
+  if (tw) { const v = parseFloat(e.target.value); $(tw[0]).value = isFinite(v) ? (v * TSUBO_M2).toFixed(2) : ''; update(); return; }
+  if (e.target.matches('[data-s]')) { if (TWINS.some(t => t[0] === e.target.id)) syncTsubo(); update(); }
+});
+document.addEventListener('change', e => { if (e.target.matches('[data-s]')) update(); });
+$('resetBtn').addEventListener('click', () => {
+  fields().forEach(el => { if (el.type === 'checkbox') el.checked = defaults[el.id]; else el.value = defaults[el.id]; });
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  syncTsubo(); update();
+});
+// 担当者向けチェックリスト：印刷とクリア
+$('printCheck').addEventListener('click', () => {
+  document.querySelectorAll('.print-target').forEach(el => { if (el.id !== 'staffSec') el.classList.add('print-skip'); });
+  document.documentElement.classList.add('print-checklist');
+  window.print();
+});
+window.addEventListener('afterprint', () => document.documentElement.classList.remove('print-checklist'));
+$('clearCheck').addEventListener('click', () => { document.querySelectorAll('#staffSec input[type=checkbox]').forEach(c => { c.checked = false; }); });
+// ---- 08章：金融機関の種類と金利の例 ----
+const escH = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const RATES = (typeof window !== 'undefined' && window.LOAN_RATES) || null;
+let bankCat = 'all';
+try { bankCat = localStorage.getItem('sim_loan_bankcat') || 'all'; } catch (e) {}
+function fmtRate(v) { return (typeof v === 'number' && isFinite(v)) ? pctText(v) + '%' : '—'; }
+function rateCell(item, idx, kind) {
+  const c = rateChoice(item, kind);
+  if (!c) return '<td><span class="rv na">—</span></td>';
+  let h = '<td><span class="rv">' + fmtRate(c.rate) + '</span>';
+  if (kind === 'variable' && typeof item.variableMin === 'number') h += '<br><span class="muted">条件で ' + fmtRate(item.variableMin) + '</span>';
+  h += '<button type="button" class="btn ratebtn" data-ri="' + idx + '" data-k="' + kind + '" aria-label="' + escH(item.name + 'の' + c.label + ' 年' + pctText(c.rate) + '%で計算') + '">この金利で計算</button></td>';
+  return h;
+}
+function renderBanks() {
+  if (!RATES || !$('bankTable')) {
+    if ($('bankTable')) $('bankTable').innerHTML = '<tr><td>金利のデータ（loan_rates.js）を読みこめませんでした。ファイルが同じフォルダにあるか確認してください。</td></tr>';
+    return;
+  }
+  const cats = RATES.cats || [];
+  if (bankCat !== 'all' && !cats.some(c => c.cat === bankCat)) bankCat = 'all';
+  // しぼりこみのボタン
+  let sg = '<button type="button" data-cat="all"' + (bankCat === 'all' ? ' class="on"' : '') + '>すべて</button>';
+  cats.forEach(c => { sg += '<button type="button" data-cat="' + escH(c.cat) + '"' + (bankCat === c.cat ? ' class="on"' : '') + '>' + escH(c.cat) + '</button>'; });
+  $('bankSeg').innerHTML = sg;
+  // 種類ごとのちがい
+  const shown = bankCat === 'all' ? cats : cats.filter(c => c.cat === bankCat);
+  let t1 = '<tr><th>種類</th><th class="l">どんな所か</th><th class="l">向く人</th><th class="l">気をつけること</th></tr>';
+  let t2 = '<tr><th>種類</th><th class="l">住む所・働く所の条件</th><th class="l">店に行くか</th><th class="l">審査</th><th class="l">団信・保証料</th></tr>';
+  shown.forEach(c => {
+    t1 += '<tr><td class="catcell"><b>' + escH(c.cat) + '</b><br><span class="muted">' + escH(c.short) + '</span></td><td class="catcell">' + escH(c.desc) + '</td><td class="catcell">' + escH(c.good) + '</td><td class="catcell">' + escH(c.bad) + '</td></tr>';
+    t2 += '<tr><td class="catcell"><b>' + escH(c.cat) + '</b></td><td class="catcell">' + escH(c.area) + '</td><td class="catcell">' + escH(c.shop) + '</td><td class="catcell">' + escH(c.screen) + '</td><td class="catcell">' + escH(c.dansin) + '</td></tr>';
+  });
+  $('catTable').innerHTML = t1;
+  $('catTable2').innerHTML = t2;
+  // 金利の表
+  const list = filterRates(RATES.items, bankCat);
+  let bt = '<tr><th>金融機関</th><th>変動<br>（いちばん低い）</th><th>変動の<br>店頭金利</th><th>固定10年</th><th>全期間固定</th><th class="l">手数料の型</th></tr>';
+  list.forEach(it => {
+    const idx = RATES.items.indexOf(it);
+    let nm = '<td class="nm"><b>' + escH(it.name) + '</b><br><span class="muted">' + escH(it.cat) + (it.area ? '／' + escH(it.area) : '') + '</span>';
+    if (it.flag) nm += '<span class="flag">' + escH(it.flag) + '</span>';
+    if (it.other) nm += '<span class="muted" style="display:block">' + escH(it.other) + '</span>';
+    nm += '<details class="more"><summary>条件と出典</summary>';
+    if (it.cond) nm += '<p><b>金利が下がる・上がる条件：</b>' + escH(it.cond) + '</p>';
+    if (it.note) nm += '<p><b>メモ：</b>' + escH(it.note) + '</p>';
+    if (it.feeDetail && it.feeDetail !== it.fee) nm += '<p><b>手数料・保証料：</b>' + escH(it.feeDetail) + '</p>';
+    nm += '<p><b>いつの金利か：</b>' + escH(it.asOf) + '　<b>調べた日：</b>' + escH(it.checked) + '</p>';
+    if (it.url) nm += '<p><a href="' + escH(it.url) + '" target="_blank" rel="noopener">公式ページ</a></p>';
+    nm += '</details></td>';
+    bt += '<tr>' + nm + rateCell(it, idx, 'variable') + '<td><span class="rv' + (it.variableBase == null ? ' na' : '') + '">' + fmtRate(it.variableBase) + '</span></td>' +
+      rateCell(it, idx, 'fixed10') + rateCell(it, idx, 'fixedAll') + '<td class="fee">' + escH(it.fee) + '</td></tr>';
+  });
+  $('bankTable').innerHTML = bt;
+  $('bankCount').textContent = list.length + '件を表示（全部で' + RATES.items.length + '件）。「—」は商品が無いか、公式で確かめられなかったものです。';
+}
+function applyBankRate(idx, kind) {
+  const it = RATES && RATES.items[idx];
+  const c = rateChoice(it, kind);
+  if (!c) return false;
+  $('rate').value = String(c.rate);
+  $('rateFrom').textContent = c.msg;
+  update();
+  document.querySelectorAll('#bankTable .ratebtn.done').forEach(b => b.classList.remove('done'));
+  const b = document.querySelector('#bankTable .ratebtn[data-ri="' + idx + '"][data-k="' + kind + '"]');
+  if (b) b.classList.add('done');
+  return true;
+}
+if ($('bankSec')) {
+  $('bankSeg').addEventListener('click', e => {
+    const b = e.target.closest('button[data-cat]');
+    if (!b) return;
+    bankCat = b.getAttribute('data-cat');
+    try { localStorage.setItem('sim_loan_bankcat', bankCat); } catch (e2) {}
+    renderBanks();
+  });
+  $('bankTable').addEventListener('click', e => {
+    const b = e.target.closest('button.ratebtn');
+    if (!b) return;
+    if (applyBankRate(parseInt(b.getAttribute('data-ri'), 10), b.getAttribute('data-k'))) {
+      const r = $('rate');
+      if (r.scrollIntoView) r.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      try { r.focus({ preventScroll: true }); } catch (e2) {}
+    }
+  });
+  // 自分で金利を打ちかえたら「どこの金利か」の説明は消す
+  $('rate').addEventListener('input', () => { $('rateFrom').textContent = ''; document.querySelectorAll('#bankTable .ratebtn.done').forEach(x => x.classList.remove('done')); });
+  // 担当者向けチェックリスト（金融機関えらび）：これだけを印刷
+  $('printBank').addEventListener('click', () => {
+    document.querySelectorAll('.print-target').forEach(el => { if (el.id !== 'bankStaffSec') el.classList.add('print-skip'); });
+    document.documentElement.classList.add('print-checklist');
+    window.print();
+  });
+  $('clearBank').addEventListener('click', () => { document.querySelectorAll('#bankStaffSec input[type=checkbox]').forEach(c => { c.checked = false; }); });
+  renderBanks();
+}
+window.addEventListener('afterprint', () => document.querySelectorAll('.print-skip').forEach(el => el.classList.remove('print-skip')));
+let rt = null;
+window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawChart, 150); });
+load();
+syncTsubo();
+update();
+</script>
+</body>
+</html>

@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>マイソク（販売図面）づくり</title>
+<link rel="stylesheet" href="../共通/common.css">
+<style>
+  /* ---- このページだけの部品（共通に無いもの） ---- */
+  .page-head .lead + .lead { margin-top: 8px; }
+  .steps { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    border-top: 1px solid var(--rule-strong); border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .steps li { padding: 10px 12px 10px 0; color: var(--ink-2); }
+  .steps li + li { padding-left: 12px; border-left: 1px solid var(--rule); }
+  .steps b { display: block; font-size: 11px; letter-spacing: .1em; color: var(--muted); font-weight: 400; }
+
+  .inbox { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 32px; }
+  @media (max-width: 860px) { .inbox { grid-template-columns: 1fr; } }
+  .filebtn { position: relative; display: inline-flex; align-items: center; min-height: 38px; }
+  .filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+  .btn { min-height: 38px; }
+  #src { min-height: 260px; font-size: 13px; line-height: 1.6; font-family: var(--font); }
+  .status { font-size: 13px; color: var(--ink-2); min-height: 1.6em; margin: 6px 0; }
+  details > summary { cursor: pointer; font-size: 13px; color: var(--ink-2); padding: 6px 0; }
+  #pairs table { font-size: 12.5px; }
+  #pairs td { text-align: left; }
+
+  /* 入力欄 */
+  .formgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 480px) { .formgrid { grid-template-columns: minmax(0, 1fr); } .panel { padding: 12px 12px; } }
+  .fgroup h3 { margin: 0 0 8px; font-family: var(--font-head); font-size: 16px; }
+  .formrows .fr { border-left: 3px solid transparent; padding-left: 8px; }
+  .formrows .fr[hidden], .fgroup[hidden], .automark[hidden], #clearAuto[hidden], #pdfAsImage[hidden] { display: none !important; }
+  .formrows .fr.missing { border-left-color: var(--alert); }
+  .formrows .fr.missing input[type=text], .formrows .fr.missing select, .formrows .fr.missing input[type=month], .formrows .fr.missing input[type=date] { border-color: var(--alert); }
+  .formrows .fr.empty input[type=text], .formrows .fr.empty textarea { border-style: dashed; }
+  .formrows .fr > .lab { line-height: 1.5; }
+  .automark { display: block; width: max-content; font-size: 11px; line-height: 1.6; padding: 0 6px; margin-top: 2px; border: 1px solid var(--accent); color: var(--accent); border-radius: 2px; }
+  .automark[hidden] { display: none; }
+  .emptyhint { color: var(--alert); }
+  .fmt { color: var(--ink-2); margin-left: .5em; }
+  .area2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .acc { display: grid; grid-template-columns: 1.2fr 1.2fr .8fr 1fr; gap: 6px; }
+  .acc label { display: flex; flex-direction: column; font-size: 11px; color: var(--muted); gap: 2px; }
+  @media (max-width: 640px) { .acc { grid-template-columns: 1fr 1fr; } }
+  textarea { resize: vertical; }
+  .savestate { font-size: 12px; color: var(--muted); }
+
+  /* 確認の結果 */
+  .chk-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; margin-bottom: 12px; }
+  #chkList { list-style: none; padding: 0; margin: 16px 0 0; }
+  #chkList li { margin: 0; padding: 10px 0 10px 12px; border-bottom: 1px solid var(--rule); font-size: 14px; color: var(--ink); }
+  #chkList li .small { color: var(--ink-2); margin-top: 2px; }
+  #chkList .ref { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .lv { display: inline-block; min-width: 3.2em; text-align: center; font-size: 11px; line-height: 1.6; padding: 0 4px; margin-right: 8px; border: 1px solid currentColor; border-radius: 2px; vertical-align: 1px; }
+  .lv-alert { color: var(--alert); } .lv-caution { color: var(--caution); } .lv-ok { color: var(--ok); } .lv-info { color: var(--muted); }
+  .figure .v.is-alert { color: var(--alert); }
+  .tatami { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 12px; max-width: 640px; }
+
+  /* 図面の操作 */
+  .imgrow { display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+  .imgrow img { width: 64px; height: 48px; object-fit: cover; border: 1px solid var(--rule); background: #fff; }
+  .imgrow select { max-width: 220px; }
+  .sheet-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 20px; }
+
+  /* ---- A4の販売図面（紙なので、画面の色の切りかえにかかわらず白地に黒） ---- */
+  .sheet-wrap { position: relative; overflow: hidden; border: 1px solid var(--rule-strong); background: #e9e7e1; }
+  .sheet {
+    --s-ink: #161616; --s-ink2: #4a4a4a; --s-rule: #b8b8b8; --s-acc: #2a4570; --s-head: #f1efea;
+    width: 194mm; height: 280mm; margin: 0 auto; background: #fff; color: var(--s-ink); transform-origin: 0 0;
+    padding: 7mm 7mm 5mm; display: grid; grid-template-rows: auto 86mm minmax(0, 1fr) 38mm auto auto; gap: 3mm;
+    font-family: var(--font); font-size: 8.6pt; line-height: 1.45; overflow: hidden; position: relative;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .sheet .miss .scr { color: #a3402a; }
+  .sheet .miss .prt { display: none; }
+  .sh-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6mm; align-items: end; border-bottom: 0.7mm solid var(--s-acc); padding-bottom: 2.5mm; }
+  .sh-type { font-size: 8pt; letter-spacing: .12em; color: var(--s-ink2); display: flex; gap: 4mm; }
+  .sh-taiyo-s { letter-spacing: 0; }
+  .sh-name { font-family: var(--font-head); font-weight: 700; font-size: 19pt; line-height: 1.3; margin-top: 1mm; }
+  .sh-catch { margin: 1.5mm 0 0; font-size: 9pt; color: var(--s-ink2); }
+  .sh-price { text-align: right; min-width: 52mm; }
+  .sh-price .k { font-size: 8pt; color: var(--s-ink2); }
+  .sh-price .v { font-size: 26pt; font-weight: 700; line-height: 1.1; color: var(--s-acc); letter-spacing: -.01em; }
+  .sh-price .v small { font-size: 11pt; margin-left: 1mm; color: var(--s-ink); font-weight: 600; }
+  .sh-price .s { font-size: 7.6pt; color: var(--s-ink2); margin-top: 1mm; }
+  .sh-body { display: grid; grid-template-columns: 1.35fr 1fr; gap: 3mm; min-height: 0; }
+  .sh-plan { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+  .sh-photos { display: grid; grid-template-rows: 1fr 1fr; gap: 3mm; min-height: 0; }
+  .sheet .box { position: relative; border: 0.25mm solid var(--s-rule); overflow: hidden; min-height: 0; background: #fff; }
+  .sheet .cap { font-size: 8pt; padding-top: 1mm; color: var(--s-ink2); }
+  .sheet img.fill { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .sheet img.contain { object-fit: contain; }
+  .sh-photos img.fill { object-fit: cover; }
+  .ph-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    color: #9a978f; font-size: 9pt; background: #fafaf8; }
+  .ph-empty span { font-size: 7pt; }
+  .sh-table { min-height: 0; overflow: hidden; }
+  .sh-table table { width: 100%; border-collapse: collapse; font-size: 1em; table-layout: fixed; }
+  .sh-table th, .sh-table td { border: 0.25mm solid var(--s-rule); padding: 0.9mm 1.6mm; text-align: left; vertical-align: top; color: var(--s-ink); line-height: 1.4; }
+  .sh-table th { width: 24mm; background: var(--s-head); font-weight: 400; font-size: .92em; color: var(--s-ink2); }
+  .sh-table td:first-child { padding-left: 1.6mm; }
+  .sh-low { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; min-height: 0; }
+  .sh-map .box { height: 100%; }
+  .sh-map .tile { position: absolute; width: 256px; height: 256px; max-width: none; }
+  .sh-map .pin { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 2px solid #a3402a; border-radius: 50%; background: rgba(255,255,255,.4); }
+  .sh-map .attr { position: absolute; right: 0; bottom: 0; background: rgba(255,255,255,.85); font-size: 6pt; padding: 0 1mm; color: #333; }
+  .sh-notes { border: 0.25mm solid var(--s-rule); padding: 1.5mm 2mm; overflow: hidden; min-height: 0; font-size: 8.2pt; }
+  .sh-notes .t { font-size: .9em; color: var(--s-ink2); border-bottom: 0.2mm solid var(--s-rule); margin-top: 1mm; }
+  .sh-notes .t:first-child { margin-top: 0; }
+  .sh-notes p { margin: .6mm 0 0; }
+  .sh-table.overflow::after, .sh-notes.overflow::after { content: "入りきらない文字があります。短くしてください。"; display: block; color: #a3402a; font-size: 7pt; }
+  .sh-obi { display: grid; grid-template-columns: 26mm minmax(0, 1fr) auto; border-top: 0.8mm solid var(--s-acc); border-bottom: 0.25mm solid var(--s-rule); min-height: 20mm; align-items: stretch; }
+  .sh-obi .taiyo { border-right: 0.25mm solid var(--s-rule); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1mm; }
+  .sh-obi .taiyo span { font-size: 7pt; color: var(--s-ink2); }
+  .sh-obi .taiyo b { font-size: 14pt; color: var(--s-acc); line-height: 1.2; }
+  .sh-obi .taiyo i { font-style: normal; font-size: 7pt; }
+  .sh-obi .co { padding: 1.5mm 3mm; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+  .sh-obi .cn { font-family: var(--font-head); font-size: 12.5pt; font-weight: 700; }
+  .sh-obi .cs { font-size: 7.4pt; color: var(--s-ink2); }
+  .sh-obi .tel { padding: 1.5mm 2mm; display: flex; flex-direction: column; justify-content: center; text-align: right; }
+  .sh-obi .tn { font-size: 14pt; font-weight: 700; letter-spacing: .02em; }
+  .sh-foot { font-size: 6.6pt; color: var(--s-ink2); display: flex; flex-wrap: wrap; gap: 0 4mm; }
+
+  /* お客様向け：見方 */
+  .howto dt { font-weight: 600; margin-top: 14px; }
+  .howto dd { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; }
+  .howto table td, .howto table th { text-align: left; }
+
+  /* 印刷：押したボタンで、図面だけ／チェックリストだけを出す */
+  @page { size: A4 portrait; margin: 8mm; }
+  @media print {
+    body[data-print] .page > *, body[data-print] .toolnav { display: none !important; }
+    body[data-print="sheet"] #sec-sheet { display: block !important; }
+    body[data-print="sheet"] #sec-sheet > *:not(#sheetWrap) { display: none !important; }
+    body[data-print="sheet"] .sheet-wrap { border: 0; height: auto !important; overflow: visible; background: none; }
+    body[data-print="sheet"] .sheet { transform: none !important; margin: 0; }
+    body[data-print="sheet"] .sheet .miss .scr { display: none; }
+    body[data-print="sheet"] .sheet .miss .prt { display: inline; }
+    body[data-print="sheet"] .sh-table.overflow::after, body[data-print="sheet"] .sh-notes.overflow::after { display: none; }
+    body[data-print="sheet"] .ph-empty { background: #fff; color: #bbb; }
+    body[data-print="sheet"] .ph-empty span { display: none; }
+    body[data-print="check"] #sec-staff { display: block !important; }
+    body[data-print="check"] #sec-staff > h2, body[data-print="check"] #sec-staff .cols > *:not(#staffCheck) { display: none !important; }
+    body[data-print="check"] #sec-staff .cols { display: block; }
+    body[data-print="check"] #staffCheck .no-print { display: none !important; }
+    body[data-print="check"] #staffCheck { border: 0; }
+  }
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="maisoku"></nav>
+<main class="page">
+  <div class="page-head">
+    <div class="eyebrow">試作版　資料づくり</div>
+    <h1>マイソク（販売図面）づくり</h1>
+    <p class="lead">物件資料（PDF・コピーした文）を入れると、価格・面積・駅からの分数などの項目を自動で取り出します。取り出した項目は手で直せて、広告のルールに合っているかを確かめ、A4の販売図面にして印刷・PDF保存できます。</p>
+    <ol class="steps">
+      <li><b>01</b>資料を入れる</li>
+      <li><b>02</b>項目を確かめて直す</li>
+      <li><b>03</b>広告のルールを確かめる</li>
+      <li><b>04</b>図面にして印刷する</li>
+    </ol>
+  </div>
+
+  <!-- 01 資料を入れる -->
+  <section id="sec-in">
+    <h2><span class="no">01</span>物件資料を入れる</h2>
+    <div class="note alert">
+      <b>他社の物件資料を読みこむときの注意</b><br>
+      ・ここで取り出すのは「価格・面積・築年月」などの<b>事実の情報</b>です。図面は、その情報から<b>自分で作りなおします</b>。他社が作った図面・写真・間取り図をそのまま貼ったりコピーしたりすると、著作権（作った人の権利）の問題になることがあります。<br>
+      ・他社が預かっている物件を広告に出すには、<b>売主（貸主）や元付けの会社（売主から直接たのまれている会社）の承諾</b>が必要です。承諾の無い物件や、すでに売れた物件を出すと「おとり広告」になります。<br>
+      ・入れた資料は<b>このブラウザの中だけ</b>で読み、外へは送りません。PDFを読む部品（pdf.js）だけはインターネットから取ってきます。「住所から地図を出す」を押したときだけ、住所を国土地理院へ送ります。
+    </div>
+    <div class="inbox">
+      <div>
+        <h3>ファイルから</h3>
+        <div class="btnrow">
+          <span class="btn filebtn">PDF・画像を選ぶ<input type="file" id="file" accept=".pdf,application/pdf,image/*" multiple aria-label="PDFか画像のファイルを選ぶ"></span>
+          <button type="button" class="btn" id="pdfAsImage" hidden>PDFの1ページ目を画像として使う</button>
+        </div>
+        <p class="status" id="fileStatus"></p>
+        <p class="small muted">文字が入ったPDFなら、文字を取り出して右の枠に入れます。スキャンした紙や写真（画像）は、この試作では文字を読まず、間取り図・写真として図面に貼るのに使います。</p>
+        <h3>読み取りのしかた</h3>
+        <label class="check"><input type="checkbox" id="onlyEmpty" checked><span>空の欄にだけ入れる（手で直した欄は書きかえない）</span></label>
+        <p class="small muted">「専有面積 65.12㎡」「徒歩7分」「築年月 平成10年3月」「RC造」のような決まった言い回しを探して読みます。全角の数字は半角に、和暦は西暦に、坪は㎡になおします。</p>
+        <details class="for-staff">
+          <summary>読み取りのくわしい結果（見つけた見出し）</summary>
+          <div id="pairs" class="tablewrap"></div>
+        </details>
+      </div>
+      <div>
+        <h3>文を貼りつけて</h3>
+        <textarea id="src" placeholder="レインズの物件詳細、ポータルの物件ページ、PDFの文字、メモなどをコピーして、ここに貼りつけます。&#10;&#10;例）&#10;価格：3,980万円&#10;専有面積：65.12㎡&#10;架空線「あおば台」駅 徒歩7分&#10;築年月：平成10年3月" aria-label="物件資料の文"></textarea>
+        <div class="btnrow">
+          <button type="button" class="btn primary" id="readBtn">読み取って入れる</button>
+          <button type="button" class="btn" id="sampleBtn">見本の文を入れる</button>
+          <button type="button" class="btn" id="resetBtn">入力をすべて空にする</button>
+        </div>
+        <p class="status" id="readStatus" aria-live="polite"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 項目 -->
+  <section id="sec-form">
+    <h2><span class="no">02</span>項目を確かめて直す</h2>
+    <p class="small">どの欄も手で直せます。面積は ㎡ と 坪 のどちらに入れても、もう片方が変わります。<span class="note-inline">左に朱の線がある欄は、広告に出すときに必要なのに空の項目です。</span></p>
+    <div class="btnrow"><span class="small" id="autoCount"></span><button type="button" class="btn" id="clearAuto" hidden>目印をすべて外す（確かめた）</button><span class="savestate" id="saveState"></span></div>
+    <div id="form" class="formgrid"></div>
+  </section>
+
+  <!-- 03 確認 -->
+  <section id="sec-check">
+    <h2><span class="no">03</span>広告のルールを確かめる</h2>
+    <div class="chk-head">
+      <p class="small" style="margin:0">不動産の広告のルール（不動産の表示に関する公正競争規約・同施行規則）にそって、あやしい所を知らせます。最後に決めるのは会社の宅地建物取引士です。</p>
+      <div class="seg" id="medium" role="group" aria-label="出す先">
+        <button type="button" data-m="paper">紙のチラシ・図面</button><button type="button" data-m="net">インターネット</button>
+      </div>
+    </div>
+    <p class="for-client small muted">これは広告を作る人のための確認です。見る側としては、「書いていない項目」を担当者に聞く手がかりにしてください。</p>
+    <div class="figures" id="chkFigures"></div>
+    <ul id="chkList"></ul>
+    <h3>畳数の確かめ（1畳＝1.62㎡以上）</h3>
+    <p class="small muted">部屋の広さ（壁の中心で測った面積）と畳数を入れると、決まりに合うかを計算します。</p>
+    <div class="tatami">
+      <div class="field"><span class="lab">部屋の広さ</span><div class="unit-input"><input type="text" inputmode="decimal" id="tmM2" aria-label="部屋の広さ（㎡）"><span>㎡</span></div></div>
+      <div class="field"><span class="lab">（坪でも入れられます）</span><div class="unit-input"><input type="text" inputmode="decimal" id="tmTsubo" aria-label="部屋の広さ（坪）"><span>坪</span></div></div>
+      <div class="field"><span class="lab">畳数</span><div class="unit-input"><input type="text" inputmode="decimal" id="tmJo" aria-label="畳数"><span>畳</span></div></div>
+    </div>
+    <p class="note" id="tmOut">部屋の広さと畳数を入れてください。</p>
+  </section>
+
+  <!-- 04 図面 -->
+  <section id="sec-sheet">
+    <h2><span class="no">04</span>A4の販売図面</h2>
+    <div class="sheet-tools no-print">
+      <div class="panel">
+        <h3>図面に使う画像</h3>
+        <div class="btnrow"><span class="btn filebtn">画像を足す<input type="file" id="imgFile" accept="image/*" multiple aria-label="画像を足す"></span></div>
+        <div id="imgList"></div>
+        <p class="small muted" id="imgState"></p>
+        <p class="small muted">写真は「取引する物件そのもの」を使う決まりです。他社が撮った写真・作った間取り図は、許可が無ければ使えません。</p>
+      </div>
+      <div class="panel">
+        <h3>地図</h3>
+        <div class="btnrow">
+          <button type="button" class="btn" id="mapBtn">住所から地図を出す（国土地理院）</button>
+          <div class="seg" id="mapZoom" role="group" aria-label="地図の広さ"><button type="button" data-z="15">広く</button><button type="button" data-z="16">ふつう</button><button type="button" data-z="17">くわしく</button></div>
+          <button type="button" class="btn" id="mapClear">地図を外す</button>
+        </div>
+        <p class="status" id="mapStatus"></p>
+        <p class="small muted">所在地だけを国土地理院の住所検索に送り、地理院タイル（国の地図）を出します。位置は町名までの目安です。使い道を「地図」にした画像があれば、そちらを優先して貼ります（手で貼る場合）。</p>
+        <div class="btnrow"><button type="button" class="btn primary" id="printSheet">図面を印刷する（PDF保存もできます）</button></div>
+        <p class="small muted">印刷の画面で「PDFに保存」を選ぶとPDFになります。用紙はA4・縦、倍率は100%にしてください。「背景のグラフィック」を入れると色の線もきれいに出ます。</p>
+      </div>
+    </div>
+    <div class="sheet-wrap" id="sheetWrap"><div class="sheet" id="sheet"></div></div>
+    <p class="small muted no-print">画面では「未入力」と朱で出る所は、印刷では「—」になります。</p>
+  </section>
+
+  <!-- 05 担当者向け -->
+  <section id="sec-staff" class="for-staff">
+    <h2><span class="no">05</span>担当者向け：帯と、図面を出す前の確認</h2>
+    <div class="cols">
+      <div>
+        <h3>帯（図面の一番下に出す会社の情報）</h3>
+        <p class="small muted">このブラウザに保存され、次の図面にも使われます。空のままでも図面は作れますが、お客様に渡す図面・広告には必要です。</p>
+        <div class="formrows">
+          <div class="fr"><label class="lab" for="o_company">会社名</label><input type="text" id="o_company" data-obi="company"></div>
+          <div class="fr"><label class="lab" for="o_office">事務所の所在地</label><input type="text" id="o_office" data-obi="office"></div>
+          <div class="fr"><label class="lab" for="o_phone">電話番号</label><input type="text" id="o_phone" data-obi="phone" inputmode="tel"></div>
+          <div class="fr"><label class="lab" for="o_license">免許証番号</label><input type="text" id="o_license" data-obi="license" placeholder="例：〇〇県知事(1)第00000号"></div>
+          <div class="fr"><label class="lab" for="o_assoc">所属団体・公取協</label><input type="text" id="o_assoc" data-obi="assoc" placeholder="例：（公社）〇〇宅地建物取引業協会会員・（公社）首都圏不動産公正取引協議会加盟"></div>
+          <div class="fr"><label class="lab" for="o_person">担当者</label><input type="text" id="o_person" data-obi="person"></div>
+        </div>
+      </div>
+      <div class="staff-box" id="staffCheck">
+        <div class="t">図面を出す前の確認チェックリスト</div>
+        <label class="check"><input type="checkbox"><span>売主（貸主）または元付けの会社から、広告に出す<b>承諾</b>をもらった（日付・相手・方法を控えた。レインズの「広告可」の表示だけで判断しない）</span></label>
+        <label class="check"><input type="checkbox"><span>いまも取引できる物件か、出す直前に元付けの会社へ確かめた（成約済み・申込みが入っている物件を出すと<b>おとり広告</b>）</span></label>
+        <label class="check"><input type="checkbox"><span>写真・間取り図は、自分で撮った／作ったもの、または使う許可をもらったもの。<b>他社の図面をそのまま使っていない</b>（著作権）</span></label>
+        <label class="check"><input type="checkbox"><span>写真はその物件のもの。居住中の写真に表札・家族の写真・郵便物などが写っていない</span></label>
+        <label class="check"><input type="checkbox"><span>価格・面積・築年月・管理費・修繕積立金を、<b>根拠の資料</b>（登記事項証明書、重要事項調査報告書、管理規約、建築確認・検査済証など）と見くらべた</span></label>
+        <label class="check"><input type="checkbox"><span>重要事項説明・契約の内容と<b>食いちがい</b>が無い（面積の測り方〔壁芯・登記〕、用途地域、接道、私道負担）</span></label>
+        <label class="check"><input type="checkbox"><span>徒歩分数は道路距離を測って、80mで1分・端数切り上げで出した（起点は物件、着点は駅の出入口）</span></label>
+        <label class="check"><input type="checkbox"><span>「新築」「最高」「格安」などの言葉を、条件を満たさずに使っていない。値下げ前の価格と並べていない</span></label>
+        <label class="check"><input type="checkbox"><span>取引態様と、帯の会社名・所在地・電話・免許証番号・所属団体を入れた</span></label>
+        <label class="check"><input type="checkbox"><span>紙なら「取引条件の有効期限」、インターネットなら「情報公開日・次回の更新予定日」を入れた</span></label>
+        <label class="check"><input type="checkbox"><span>修繕積立金の値上げ予定・一時金、管理費の滞納、大規模修繕の予定を管理会社に確かめた</span></label>
+        <label class="check"><input type="checkbox"><span>（戸建・土地）再建築できるか、セットバック・私道の通行や掘削の承諾を確かめた</span></label>
+        <label class="check"><input type="checkbox"><span>告げるべき事がら（雨もり・設備の不具合・事件や事故など）を売主（貸主）に確かめ、扱いを決めた</span></label>
+        <div class="btnrow no-print"><button type="button" class="btn" id="printCheck">このチェックリストを印刷する</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 お客様向け -->
+  <section id="sec-client" class="for-client">
+    <h2><span class="no">06</span>マイソクの見方</h2>
+    <dl class="howto">
+      <dt>取引態様：仲介手数料がかかるかどうかの目印</dt>
+      <dd>
+        <div class="tablewrap"><table>
+          <thead><tr><th>書き方</th><th>どういう意味か</th><th>仲介手数料</th></tr></thead>
+          <tbody>
+            <tr><td>売主・貸主</td><td>広告を出した会社が、持ち主そのもの</td><td>かかりません</td></tr>
+            <tr><td>代理</td><td>持ち主の代わりに、会社が売る・貸す</td><td>かかることがあります（担当者に聞いてください）</td></tr>
+            <tr><td>媒介（仲介）</td><td>会社が、持ち主とあなたの間に入る</td><td>かかります。売買の上限は「価格（税抜）×3%＋6万円」＋消費税（400万円をこえる場合）、賃貸の上限は賃料の1か月分＋消費税（貸主と借主の合計）</td></tr>
+          </tbody>
+        </table></div>
+      </dd>
+      <dt>管理費と修繕積立金（マンション）</dt>
+      <dd>管理費は、毎月の掃除・管理人・共用部分の電気代などに使うお金です。修繕積立金は、外壁や屋上などを十数年ごとに大きく直すために積み立てるお金です。安すぎると、あとで値上げされたり、まとまったお金（一時金）を集められたりすることがあります。<br><span id="shuzenGuide"></span></dd>
+      <dt>徒歩の分数</dt>
+      <dd>道路に沿った距離80mを1分として計算し、1分に満たない端数は1分に切り上げる決まりです。信号待ちや坂道は入っていないので、実際はもう少しかかることがあります。</dd>
+      <dt>面積</dt>
+      <dd>マンションの広告の面積は、壁の中心で測った「壁芯（へきしん）」が多く、登記簿の面積（壁の内側で測る）はそれより少し小さくなります。住宅ローンの減税などで面積が条件になるときは、登記簿の面積で見ます。1坪は3.30578㎡、1畳は1.62㎡以上の広さです。</dd>
+      <dt>「新築」の意味</dt>
+      <dd>完成してから1年未満で、まだ誰も住んだことがない家だけを「新築」と書けます。</dd>
+    </dl>
+  </section>
+
+  <div class="disclaimer">
+    <b>この道具について</b>
+    <ul>
+      <li>読み取りは「決まった言い回し」を探すしくみなので、まちがえたり、取れなかったりします。自動で入れた項目は、必ず元の資料と見くらべてください。</li>
+      <li>広告のルールの確認は、あやしい所を知らせる目安です。広告に出してよいかを最後に決めるのは、会社の宅地建物取引士です。迷ったときは、地区の不動産公正取引協議会に相談できます。</li>
+      <li>価格・面積・法令の制限などの正しさは、登記事項証明書・重要事項調査報告書・役所の窓口で確かめてください。</li>
+      <li>出典：不動産公正取引協議会連合会「不動産の表示に関する公正競争規約・同施行規則」（2022年9月1日施行）と別表3・5・7・9（<a href="https://www.rftc.jp/koseikyosokiyaku/" target="_blank" rel="noopener">rftc.jp</a>）、宅地建物取引業法 第32条〜第34条（<a href="https://laws.e-gov.go.jp/law/327AC1000000176" target="_blank" rel="noopener">e-Gov法令検索</a>）、国土交通省「マンションの修繕積立金に関するガイドライン」（2024年6月改訂）、国土地理院 住所検索・地理院タイル。調べた日：2026年10月21日。</li>
+    </ul>
+  </div>
+</main>
+<script src="../共通/common.js"></script>
+<script src="parse.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

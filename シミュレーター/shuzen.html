@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>修繕・リフォーム費の目安</title>
+<link rel="stylesheet" href="../共通/common.css">
+<style>
+/* このページだけで足した部品（共通に無いもの） */
+body { padding-bottom: 72px; }
+.hide { display: none !important; }
+.pair { display: flex; gap: 10px; flex-wrap: wrap; }
+.pair .unit-input { flex: 1 1 120px; }
+.pair .unit-input input { min-width: 0; }
+.formrows .fr > select { max-width: 22em; }
+.lab-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+.mode-seg { margin: 0 0 16px; }
+.mode-seg button { padding: 8px 14px; min-height: 36px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.btns .btn { min-height: 36px; }
+.btn.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+/* 工事リスト */
+.cat { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 22px 0 0; padding-bottom: 4px;
+  border-bottom: 1px solid var(--rule-strong); font-size: 14px; font-weight: 600; }
+.cat small { font-weight: 400; color: var(--ink-2); font-size: 13px; }
+.it { padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.it.off { color: var(--ink-2); }
+.it.off .it-b, .it.off .nt { opacity: .6; }
+.it.excl { opacity: .5; }
+.it-h { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: flex-start; }
+.it-h label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; flex: 1 1 240px; min-width: 0; cursor: pointer; }
+.it-h label input { margin-top: 4px; flex: none; }
+.it-b { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin-top: 6px; font-size: 13px; color: var(--ink-2); }
+.it-b input { width: 6em; padding: 4px 6px; font-size: 14px; }
+.it-b .grp { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+.it-b .sub { margin-left: auto; font-size: 14px; color: var(--ink); white-space: nowrap; }
+.it .alt { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.it .nt { font-size: 12px; color: var(--muted); margin-top: 4px; }
+/* 不具合のチェック */
+#symList { columns: 2 340px; column-gap: 40px; }
+.symgrp { break-inside: avoid; }
+.symg { margin: 18px 0 0; padding-bottom: 4px; border-bottom: 1px solid var(--rule-strong); font-size: 14px; font-weight: 600; }
+.sym { border-bottom: 1px solid var(--rule); min-height: 36px; font-size: 14px; }
+.sym span small { display: block; color: var(--muted); font-size: 12px; }
+.sym span small.added { color: var(--accent); }
+/* 合計 */
+.total-v { font-size: 28px; font-weight: 600; color: var(--accent); line-height: 1.3; margin: 2px 0; }
+.chart { margin-top: 12px; }
+.chart svg { display: block; }
+/* チェックリスト */
+.checklist h3 { margin-top: 18px; }
+.checklist .check { border-bottom: 1px solid var(--rule); min-height: 36px; font-size: 14px; }
+.checklist .check span small { display: block; color: var(--muted); font-size: 12px; }
+/* 下に固定した合計（紙の帯のように控えめに） */
+.sumbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; background: var(--paper); border-top: 1px solid var(--rule-strong); font-size: 13px; color: var(--ink-2); }
+.sumbar .in { max-width: 1120px; margin: 0 auto; padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: baseline; }
+.sumbar b { font-size: 16px; color: var(--accent); font-weight: 600; }
+@media (max-width: 640px) {
+  .it-b .sub { margin-left: 0; width: 100%; }
+  .total-v { font-size: 22px; }
+}
+@media print {
+  body { padding-bottom: 0; }
+  .sumbar, .btns, .mode-seg { display: none !important; }
+  body.print-check main.page > *:not(#checklist) { display: none !important; }
+  body.print-check #checklist { display: block !important; }
+}
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="shuzen"></nav>
+
+<main class="page">
+<div class="page-head">
+  <div class="eyebrow">修繕・リフォーム</div>
+  <h1>修繕費・リフォーム費の目安</h1>
+  <p class="lead">「坪7万円くらい」とよく言われますが、古い部屋の水回りや配管まで直すと、40㎡（約12坪）でも数百万円になることがあります。ここでは<b>直す場所を1つずつ積み上げて</b>、「安い場合〜高い場合」の幅で計算します。単価は自分で直せます（地域・時期で変わるため）。</p>
+  <p class="note caution for-client">この金額は見積もりではありません。実際の金額は、リフォーム会社に現地を見てもらい、見積もりを取って確かめてください。2社以上にたのむと、くらべやすくなります。</p>
+</div>
+
+<section>
+  <h2><span class="no">01</span>家のこと</h2>
+  <div class="seg mode-seg" role="group" aria-label="家の種類">
+    <button type="button" id="modeM">マンションの部屋（専有部分）</button>
+    <button type="button" id="modeH">戸建（一戸建て）</button>
+  </div>
+  <div class="panel">
+  <div class="formrows">
+    <div class="fr"><span class="lab">広さ</span><div class="pair"><span class="unit-input"><input type="number" id="areaM2" min="5" max="1000" step="0.1" aria-label="広さ（㎡）"><span>㎡</span></span><span class="unit-input"><input type="number" id="areaTsubo" min="1" max="300" step="0.01" aria-label="広さ（坪）"><span>坪</span></span></div><span class="hint">1坪＝3.30578㎡。どちらに入れても、もう片方が変わります</span></div>
+    <div class="fr"><span class="lab">建った年</span><div class="pair"><span class="unit-input"><input type="number" id="built" min="1950" max="2030" step="1" aria-label="建った年（西暦）"><span>年</span></span><span class="unit-input"><span>築</span><input type="number" id="age" min="0" max="80" step="1" aria-label="築年数"><span>年</span></span></div></div>
+    <div class="fr"><span class="lab">構造（建物の骨組み）</span><select id="struct"></select></div>
+    <div class="fr"><span class="lab">間取り</span><select id="layout">
+      <option>1R</option><option>1K</option><option>1DK</option><option>1LDK</option><option>2DK</option><option>2LDK</option><option>3LDK</option><option>4LDK</option>
+    </select></div>
+    <div class="fr"><span class="lab">設備のグレード</span><select id="grade">
+      <option value="low">おさえめ（安い品）</option><option value="std">標準</option><option value="high">こだわり（高い品）</option>
+    </select><span class="hint" id="gradeNote"></span></div>
+    <div class="fr" id="storiesWrap"><span class="lab">階数（戸建）</span><select id="stories"><option value="1">平屋</option><option value="2">2階建て</option><option value="3">3階建て</option></select></div>
+  </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">02</span>築年数から見た「替えどき」</h2>
+  <div id="alerts"></div>
+  <ul id="sugList"></ul>
+  <div class="btns"><button class="btn primary" type="button" id="applySug">おすすめを工事リストに入れる</button></div>
+  <p class="muted">年数は一般的な目安です。前の持ち主がすでに交換していることもあるので、売主・管理会社に「いつ何を替えたか（修繕の履歴）」を聞いてください。</p>
+</section>
+
+<section id="symCard">
+  <h2><span class="no">03</span>いま困っていること・不具合（チェックすると工事のリストに入ります）</h2>
+  <p class="muted">見つけた不具合や、売主から聞いたことにチェックを入れてください。直すのに必要な工事を、下の「工事のリスト」に自動で入れます。チェックを外すと、ここで入れた工事だけを外します。金額の多くは公的な基準が無い<b>一般的な目安</b>なので、幅を広くとっています。</p>
+  <div id="symList"></div>
+  <div id="symOut"></div>
+</section>
+
+<section>
+  <h2><span class="no">04</span>工事のリスト（チェックで入れる・外す）</h2>
+  <p class="muted">よくある組み合わせから選んで、あとで1つずつ直せます。単価は「標準グレード・消費税ぬき」の下限〜上限です。グレードの倍率は小計に自動でかかります。</p>
+  <div class="btns" id="presets"></div>
+  <div class="lab-row">
+    <span class="small">面積の項目の数量と単価を</span>
+    <div class="seg" role="group" aria-label="単価の入れ方" id="unitSeg">
+      <button type="button" data-u="m2">㎡で入れる</button><button type="button" data-u="tsubo">坪で入れる</button>
+    </div>
+  </div>
+  <div id="items"></div>
+  <div class="btns"><button class="btn" type="button" id="resetItems">このリストの数量・単価を最初にもどす</button></div>
+</section>
+
+<section>
+  <div class="cols">
+    <div>
+      <h2><span class="no">05</span>経費と税</h2>
+      <div class="row">
+        <div class="field"><span class="lab">設計・現場管理費 下限（%）</span><input type="number" id="mgmtLo" min="0" max="30" step="0.5"></div>
+        <div class="field"><span class="lab">上限（%）</span><input type="number" id="mgmtHi" min="0" max="30" step="0.5"></div>
+      </div>
+      <div class="row">
+        <div class="field"><span class="lab">諸経費（運搬・駐車・保険など）下限（%）</span><input type="number" id="miscLo" min="0" max="30" step="0.5"></div>
+        <div class="field"><span class="lab">上限（%）</span><input type="number" id="miscHi" min="0" max="30" step="0.5"></div>
+      </div>
+      <div class="field"><span class="lab">消費税（%）</span><input type="number" id="tax" min="0" max="20" step="1"></div>
+      <div class="row">
+        <div class="field"><span class="lab">くらべる「坪あたりの目安」（万円/坪）</span><input type="number" id="tsuboPrice" min="0" max="100" step="0.5"></div>
+        <div class="field"><span class="lab">同じ目安を㎡あたりで（万円/㎡）</span><input type="number" id="tsuboPriceM2" min="0" max="30" step="0.01"></div>
+      </div>
+    </div>
+    <div>
+      <h2><span class="no">06</span>合計の目安</h2>
+      <div class="panel">
+      <div class="muted">工事費の合計（経費・消費税こみ）</div>
+      <div class="total-v" id="totalBig">—</div>
+      <div id="totalSub" class="small"></div>
+      </div>
+      <div class="tablewrap" style="margin-top:10px"><table id="catTable"></table></div>
+      <div id="asbOut"></div>
+      <p class="note for-client">この金額は見積もりではありません。リフォーム会社に現地（床下・天井の点検口、配管）を見てもらってから、見積もりを取ってください。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">07</span>「坪7万円」とくらべると</h2>
+  <div id="cmp"></div>
+  <div id="cmpChart" class="chart"></div>
+  <div id="catChart" class="chart"></div>
+</section>
+
+<section id="tsumiCard">
+  <h2><span class="no">08</span>マンション全体の「修繕積立金」は足りているか（共用部分）</h2>
+  <p class="muted">上の工事は「自分の部屋の中」のお金です。外壁・屋上・廊下・エレベーターなど<b>みんなの部分（共用部分）</b>は、毎月の修繕積立金で直します。国土交通省のガイドラインの目安とくらべます。</p>
+  <div class="cols">
+    <div>
+      <div class="field"><span class="lab">建物の階数</span><select id="tFloors"><option value="lt20">20階未満</option><option value="ge20">20階以上（タワーマンション）</option></select></div>
+      <div class="field"><span class="lab">建物全体の延べ床面積（わからなければ戸数×70㎡くらい）</span><select id="tSize">
+        <option value="0">5,000㎡（約1,513坪）未満（〜70戸くらい）</option><option value="1">5,000〜10,000㎡（約1,513〜3,025坪）</option><option value="2">10,000〜20,000㎡（約3,025〜6,050坪）</option><option value="3">20,000㎡（約6,050坪）以上</option>
+      </select></div>
+      <div class="field"><span class="lab">今の修繕積立金（この部屋・月額・円）</span><input type="number" id="tCurrent" min="0" step="100"></div>
+    </div>
+    <div>
+      <div class="field"><span class="lab">機械式駐車場</span><select id="tPark">
+        <option value="none">ない・または駐車場代で修繕をまかなっている</option>
+        <option value="2dan">2段（ピット1段）昇降式</option><option value="3dan_p2">3段（ピット2段）昇降式</option>
+        <option value="3dan_yoko">3段（ピット1段）昇降横行式</option><option value="4dan_yoko">4段（ピット2段）昇降横行式</option>
+        <option value="ev">エレベーター方式（垂直循環）</option><option value="other">その他</option>
+      </select></div>
+      <div class="row">
+        <div class="field"><span class="lab">台数</span><input type="number" id="tParkCount" min="0" step="1"></div>
+        <div class="field"><span class="lab">全部の部屋の広さの合計（㎡）</span><input type="number" id="tTotalPrivate" min="1" step="10"></div>
+        <div class="field"><span class="lab">同じ合計（坪）</span><input type="number" id="tTotalPrivateT" min="1" step="1"></div>
+      </div>
+    </div>
+  </div>
+  <div id="tsumiOut"></div>
+</section>
+
+<section>
+  <h2><span class="no">09</span>交換・修理の目安の年数と、配管の材質</h2>
+  <div class="tablewrap"><table>
+    <tr><th>場所</th><th style="text-align:left">目安</th><th style="text-align:left">根拠・メモ</th></tr>
+    <tr><td>ガス給湯器</td><td style="text-align:left">約10年（〜15年）</td><td style="text-align:left">メーカーが決める「設計上の標準使用期間」は10年（日本ガス石油機器工業会・各メーカー）</td></tr>
+    <tr><td>ユニットバス</td><td style="text-align:left">約20〜25年</td><td style="text-align:left">業界の一般的な目安。防水・配管の傷みで早まることも</td></tr>
+    <tr><td>キッチン・トイレ・洗面</td><td style="text-align:left">約15〜25年</td><td style="text-align:left">業界の一般的な目安（便器は長持ち、部品は約10年）</td></tr>
+    <tr><td>壁紙（クロス）・床</td><td style="text-align:left">クロス10〜15年、床15〜25年</td><td style="text-align:left">業界の一般的な目安</td></tr>
+    <tr><td>外壁塗装・屋根塗装（戸建）</td><td style="text-align:left">約10〜15年</td><td style="text-align:left">塗料の種類で変わる。業界の一般的な目安</td></tr>
+    <tr><td>屋根のカバー・葺き替え（戸建）</td><td style="text-align:left">約25〜30年（スレート）</td><td style="text-align:left">業界の一般的な目安</td></tr>
+    <tr><td>シロアリの予防</td><td style="text-align:left">約5年ごと</td><td style="text-align:left">薬の効き目・保証が5年のことが多い</td></tr>
+    <tr><td>給水管（〜1975年ごろ）</td><td style="text-align:left">亜鉛めっき鋼管の可能性</td><td style="text-align:left">中がさびて赤い水・水もれが起きやすい。いまは使われていない管。替えどき</td></tr>
+    <tr><td>給水管（1976〜1989年ごろ）</td><td style="text-align:left">硬質塩化ビニルライニング鋼管（管の中を塩ビで守った鉄の管）</td><td style="text-align:left">1972年に規格ができ、広く使われた。継ぎ目（ねじの部分）がさびやすい。さびを防ぐ継手（管端防食継手）は1986年に発売、1989年に国の仕様に入った</td></tr>
+    <tr><td>給水管（1990年代）</td><td style="text-align:left">さび対策つきの継手、または樹脂管・ステンレス管</td><td style="text-align:left">さびない管がだんだん広まった時期。どちらかは図面で確認</td></tr>
+    <tr><td>給湯管（〜1990年代）</td><td style="text-align:left">銅管が多い</td><td style="text-align:left">小さな穴（ピンホール）で水もれすることがある</td></tr>
+    <tr><td>給水・給湯管（2000年ごろ〜）</td><td style="text-align:left">樹脂管（架橋ポリエチレン管・ポリブテン管）</td><td style="text-align:left">さびない。さや管ヘッダー方式が多い</td></tr>
+    <tr><td>排水管（〜1980年代半ば）</td><td style="text-align:left">鋼管・鋳鉄管が残っていることがある</td><td style="text-align:left">配管用炭素鋼鋼管や亜鉛めっき鋼管の残存に注意（福岡市の資料）</td></tr>
+    <tr><td>耐震（旧耐震）</td><td style="text-align:left">1981年5月31日までに建築確認</td><td style="text-align:left">1981年6月1日から新しい耐震基準。完成年ではなく「建築確認の日」で決まる。木造は2000年にも基準が強化された</td></tr>
+    <tr><td>石綿（アスベスト）</td><td style="text-align:left">2006年9月1日より前に着工した建物</td><td style="text-align:left">石綿をふくむ建材が使われている可能性がある。解体・改修の前に事前調査が必要（下の確認表を参照）</td></tr>
+  </table></div>
+  <p class="muted">年代は「おおよそ」です。同じ年でも建物によってちがうので、図面・管理会社・点検口で実物を確認してください。</p>
+</section>
+
+<section class="for-staff checklist" id="checklist">
+  <h2><span class="no">10</span>中古を買う前の確認（担当者向け）</h2>
+  <div class="staff-box">
+    <div class="t">確認表　物件名：＿＿＿＿＿＿＿＿＿＿　確認日：＿＿＿＿＿＿</div>
+    <h3>管理規約・使用細則（マンション）</h3>
+    <label class="check"><input type="checkbox"><span>床の遮音等級（例：L-45）と、使える床材の決まり<small>フローリングにできるか。遮音タイプの床材が必要か</small></span></label>
+    <label class="check"><input type="checkbox"><span>水回り（キッチン・おふろ・トイレ）の位置を動かせるか<small>床下の高さ・排水の傾き・規約の決まり</small></span></label>
+    <label class="check"><input type="checkbox"><span>工事できる曜日・時間、届け出の期限、近所へのお知らせの決まり</span></label>
+    <label class="check"><input type="checkbox"><span>専有部分と共用部分の境目<small>窓・玄関ドア・バルコニー・縦の配管は共用部分のことが多い（標準管理規約 第7条・第22条）</small></span></label>
+    <label class="check"><input type="checkbox"><span>電気の容量（契約アンペアを上げられるか）、IH・ガスの決まり</span></label>
+    <h3>お金と計画</h3>
+    <label class="check"><input type="checkbox"><span>長期修繕計画（いつ作り直したか・計画期間が30年以上か・次の大規模修繕の時期）</span></label>
+    <label class="check"><input type="checkbox"><span>修繕積立金の残高、毎月の額、値上げの予定（段階増額かどうか）</span></label>
+    <label class="check"><input type="checkbox"><span>一時金・借入の予定、管理費や積立金の滞納（建物全体と売主の分）</span></label>
+    <h3>これまでの工事の記録</h3>
+    <label class="check"><input type="checkbox"><span>過去の大規模修繕の年と内容（外壁・屋上の防水・鉄部の塗装）</span></label>
+    <label class="check"><input type="checkbox"><span>給排水管の更新の記録（共用部分）<small>取り替えたか、管の中をきれいにして塗る工事（更生）か。次の予定</small></span></label>
+    <label class="check"><input type="checkbox"><span>給排水管の更新の記録（専有部分）<small>売主に聞く。リフォームの書類・図面があれば借りる</small></span></label>
+    <label class="check"><input type="checkbox"><span>耐震診断・耐震改修の有無<small>1981年5月31日までに建築確認を受けた建物（確認済証の日付で確かめる）</small></span></label>
+    <label class="check"><input type="checkbox"><span>建物状況調査（インスペクション）をしたか、その結果</span></label>
+    <h3>工事の前に</h3>
+    <label class="check"><input type="checkbox"><span>管理組合（理事長）への工事の申請と、書面の承認<small>標準管理規約 第17条。承認までの日数も確かめる</small></span></label>
+    <label class="check"><input type="checkbox"><span>石綿（アスベスト）の事前調査<small>解体・改修の工事は大きさにかかわらず調査が必要。2023年10月からは資格のある人（建築物石綿含有建材調査者など）が調査。改修工事の請負代金が税込100万円以上なら、結果を国と自治体に報告（2022年4月から）。2006年9月1日以降に着工したと書類でわかる建物は、その確認でよい</small></span></label>
+    <label class="check"><input type="checkbox"><span>リフォーム会社の現地調査（床下・天井裏・点検口で配管の材質を見る）と、2社以上の見積もり</span></label>
+    <label class="check"><input type="checkbox"><span>補助金・減税の対象になる工事か（省エネ・耐震・バリアフリー）、申し込みの時期</span></label>
+    <h3>戸建のとき</h3>
+    <label class="check"><input type="checkbox"><span>雨もり・シロアリの点検記録、屋根・外壁の前回の工事の年</span></label>
+    <label class="check"><input type="checkbox"><span>建て替え・増築ができるか（道路に2m以上接しているか・建ぺい率・容積率）<small>「建築・ボリューム」のページで目安を出せます</small></span></label>
+    <label class="check"><input type="checkbox"><span>下水か浄化槽か、境界の杭と越境の有無</span></label>
+  </div>
+  <div class="btns"><button type="button" class="btn" id="printCheck">この確認表を印刷する</button></div>
+</section>
+
+<div class="disclaimer">
+  <p>これは目安です。実際の金額は、リフォーム会社の現地調査と見積もりで決まります。管理組合への確認、建築士・専門家への相談もお願いします。単価は地域・時期・建物の状態で大きく変わります。</p>
+  <p>使ったデータの出典</p>
+  <ul>
+    <li>修繕積立金の目安（円/㎡・月、機械式駐車場の加算、段階増額の0.6倍〜1.1倍）：国土交通省「<a href="https://www.mlit.go.jp/jutakukentiku/house/content/001747009.pdf">マンションの修繕積立金に関するガイドライン</a>」令和6年6月改定（本文の表で確認）</li>
+    <li>専有部分の工事の承認（第17条）・窓ガラス等の改良（第22条）：国土交通省「マンション標準管理規約」（各マンションの管理規約・使用細則が優先）</li>
+    <li>給水管の材質と継手の年代：<a href="https://www.city.sendai.jp/mansion/kurashi/machi/sumai/bunjo/seminar/documents/koushishiryou_1.pdf">仙台市 マンション管理基礎セミナー資料（2023年）</a>、福岡市 マンション管理の資料</li>
+    <li>石綿の事前調査・報告：<a href="https://www.ishiwata.mhlw.go.jp/">厚生労働省 石綿総合情報ポータルサイト</a>、<a href="https://www.env.go.jp/press/110648-print.html">環境省 報道発表（報告制度の開始）</a></li>
+    <li>給湯器の標準使用期間10年：<a href="https://jgka.or.jp/">日本ガス石油機器工業会</a>、メーカー（ノーリツ・パロマ）の資料</li>
+    <li>スケルトンリフォームの価格帯（マンション60〜70㎡で約600〜1,000万円など）：<a href="https://suumo.jp/remodel/soba/rm_skeleton/">SUUMO リフォーム費用相場</a></li>
+    <li>屋根・外壁の単価：見積もりサイトの公開相場（30坪で外壁＋屋根の塗装 約80〜200万円。<a href="https://curama.jp/magazine/2711/">くらしのマーケット</a>・<a href="https://meetsmore.com/services/outdoor-wall-painting/media/93293">ミツモア</a>）、屋根の工事は<a href="https://crexgroup.com/ja/reform/roof-reform/roof-reform-cost/">クレックス</a>の公開相場をもとに幅を設定</li>
+    <li>耐震補強の平均（約163〜167万円）：日本木造住宅耐震補強事業者協同組合（木耐協）の調査を紹介した記事（<a href="https://www.resonabank.co.jp/kojin/column/reform/column_0005.html">りそな銀行コラム</a>）</li>
+    <li>上のどれにも当てはまらない単価は「業界の一般的な目安」として、幅を広めにしています。</li>
+  </ul>
+</div>
+</main>
+
+<div class="sumbar no-print" id="bar"><div class="in"><span>工事費の目安</span><b id="barTotal">—</b><span id="barCmp"></span></div></div>
+
+<script src="../共通/common.js"></script>
+<script>
+// ==CALC-START==
+const TSUBO = 3.30578;
+const toTsubo = m2 => m2 / TSUBO;
+const toM2 = t => t * TSUBO;
+const LAYOUTS = {
+  '1R': { doors: 1, storage: 1, windows: 2 }, '1K': { doors: 2, storage: 1, windows: 2 }, '1DK': { doors: 3, storage: 1, windows: 3 },
+  '1LDK': { doors: 3, storage: 2, windows: 3 }, '2DK': { doors: 4, storage: 2, windows: 4 }, '2LDK': { doors: 5, storage: 3, windows: 5 },
+  '3LDK': { doors: 6, storage: 4, windows: 6 }, '4LDK': { doors: 7, storage: 5, windows: 8 }
+};
+// グレードの倍率：eq=設備・材料、lab=工事・配管、sk=まるごと一式
+const GRADES = {
+  low: { label: 'おさえめ', eq: 0.75, lab: 0.9, sk: 0.85 },
+  std: { label: '標準', eq: 1, lab: 1, sk: 1 },
+  high: { label: 'こだわり', eq: 1.5, lab: 1.15, sk: 1.3 }
+};
+const CATS = { chosa: '調査・診断', kasetsu: '準備・解体・ゴミ', mizu: '水回り', setsubi: '配管・電気・設備', naisou: '内装（床・壁・ドア）', mado: '窓・玄関', soto: '外まわり（屋根・外壁）', kouzou: '構造・断熱・シロアリ', ikkatsu: 'まるごと（スケルトン）' };
+// 家の形から数量を出すための値
+function derive(s) {
+  const area = Math.max(0, s.area || 0);
+  const stories = s.mode === 'h' ? Math.max(1, s.stories || 2) : 1;
+  const floor1 = area / stories;
+  const wall = s.mode === 'h' ? 4 * Math.sqrt(floor1) * 2.7 * stories * 1.1 * 0.85 : 0; // 外壁の面積（窓をひく）
+  const roof = s.mode === 'h' ? floor1 * 1.15 : 0;
+  const lay = LAYOUTS[s.layout] || LAYOUTS['2LDK'];
+  return { area: area, stories: stories, floor1: floor1, wall: wall, roof: roof, lay: lay, mode: s.mode };
+}
+const v = (x, mode) => (x !== null && typeof x === 'object') ? x[mode] : x;
+// 単価は万円・消費税ぬき・標準グレード
+const ITEMS = [
+  { id: 'yojo', modes: 'mh', cat: 'kasetsu', name: { m: '養生（共用の廊下・エレベーターの保護）・運び入れ', h: '養生・仮設（仮トイレ・電気など）' }, unit: '式', q: d => 1, lo: { m: 3, h: 5 }, hi: { m: 8, h: 15 }, g: 'lab', sk: false, note: '' },
+  { id: 'kanri', modes: 'm', cat: 'kasetsu', name: '管理組合への工事の申請・近所へのあいさつ・書類', unit: '式', q: d => 1, lo: 1, hi: 5, g: 'none', sk: false, note: '標準管理規約では、まわりに影響する工事は理事長の書面の承認が必要（第17条）。工事できる曜日・時間も決まっていることが多い。' },
+  { id: 'asb', modes: 'mh', cat: 'chosa', name: '石綿（アスベスト）の事前調査（資格のある人による書類・目で見る調査）', unit: '式', q: d => 1, lo: 3, hi: 15, g: 'none', sk: false, note: '解体・改修の工事は、大きさにかかわらず事前調査が必要（2023年10月からは有資格者）。建材を取って調べる分析は1検体ごとに別料金のことが多い。石綿が見つかれば、取り除く工事が別にかかる。' },
+  { id: 'kaitai_mizu', modes: 'mh', cat: 'kasetsu', name: '水回りの解体・撤去・ゴミの処分（産廃）', unit: '式', q: d => 1, lo: 12, hi: 30, g: 'lab', sk: true, note: '' },
+  { id: 'kaitai_naisou', modes: 'mh', cat: 'kasetsu', name: '床・壁・天井のはがし・ゴミの処分（産廃）', unit: '㎡', q: d => d.area, lo: 0.5, hi: 1.2, g: 'lab', sk: true, note: '数量は床面積。' },
+  { id: 'kitchen', modes: 'mh', cat: 'mizu', name: 'キッチン交換（本体・取り付け・配管つなぎ）', unit: '台', q: d => 1, lo: 50, hi: 110, g: 'eq', sk: true, life: '15〜25年', note: '幅2.55mくらいの標準品。メーカーは2026年8月に約10%値上げ（LIXIL）。' },
+  { id: 'bath', modes: 'mh', cat: 'mizu', name: 'ユニットバス交換（解体・設置・配管つなぎ）', unit: '台', q: d => 1, lo: { m: 60, h: 80 }, hi: { m: 110, h: 140 }, g: 'eq', sk: true, life: '20〜25年', note: { m: '古いマンションは床の段差や梁でサイズが限られ、割高になりやすい。おふろの横に付いた古い湯わかし（バランス釜）をやめるときは、給湯器を置く場所と排気の穴が要り、置けないこともある。', h: '' } },
+  { id: 'zairai', modes: 'mh', cat: 'mizu', name: 'タイルのおふろ（在来工法）からユニットバスにするときの追加（はつり・防水・段差の処理）', unit: '式', q: d => 1, lo: 10, hi: 40, g: 'lab', sk: true, note: { m: '古いマンションに多い。床のコンクリートを削る（はつる）・防水をやり直すため、ユニットバスの交換より高くなる。音が出る工事なので工事の日数・時間の決まりも確認。', h: '土台・柱が水で傷んでいると、補修がさらにふえる。' } },
+  { id: 'toilet', modes: 'mh', cat: 'mizu', name: 'トイレ交換（便器・床・壁紙）', unit: '台', q: d => d.mode === 'h' && d.stories >= 2 ? 2 : 1, lo: 18, hi: 35, g: 'eq', sk: true, life: '15〜25年', note: '便器は長持ち、タンクの中の部品は約10年。' },
+  { id: 'senmen', modes: 'mh', cat: 'mizu', name: '洗面化粧台の交換', unit: '台', q: d => 1, lo: 10, hi: 25, g: 'eq', sk: true, life: '15〜20年', note: '' },
+  { id: 'sentaku', modes: 'mh', cat: 'mizu', name: '洗濯機の置き場（防水パン・水栓・排水）', unit: '式', q: d => 1, lo: 3, hi: 8, g: 'eq', sk: true, note: '' },
+  { id: 'mizu_move', modes: 'mh', cat: 'mizu', name: '水回りの場所を動かすときの追加（配管・換気ダクト・床の上げ下げ）', unit: '式', q: d => 1, lo: 20, hi: 60, g: 'lab', sk: false, note: { m: '排水には傾きが必要なので、床下が低いと動かせない・床を上げることになる。管理規約で禁止のこともある。', h: '' } },
+  { id: 'kyutoki', modes: 'mh', cat: 'setsubi', name: { m: 'ガス給湯器の交換', h: '給湯器の交換（ガス・エコキュート）' }, unit: '台', q: d => 1, lo: { m: 15, h: 15 }, hi: { m: 30, h: 60 }, g: 'eq', sk: false, life: '約10年', note: { m: '置き場所（玄関横・ベランダ）で使える型が決まっていることがある。ふつうのガス給湯器は15〜30万円。', h: 'ガス給湯器は15〜30万円、エコキュートは約38〜60万円（上限側）。' } },
+  { id: 'kyusui', modes: 'm', cat: 'setsubi', name: '給水管・給湯管の交換（部屋の中）', unit: '㎡', q: d => d.area, lo: 0.35, hi: 0.9, g: 'lab', sk: true, life: '材質による（下の表）', note: '床をはがすときに一緒にやると安くすむ（1戸15〜30万円ほど）。配管だけを単独で替えると割高。共用の縦の管は管理組合の工事。' },
+  { id: 'haisui', modes: 'm', cat: 'setsubi', name: '排水管の交換（部屋の中・床下の横の管）', unit: '㎡', q: d => d.area, lo: 0.25, hi: 0.6, g: 'lab', sk: true, life: '30年くらい', note: '縦の共用の排水管は管理組合の工事。古い建物で、排水管が床のコンクリートの下（下の階の天井の中）を通っているときは、自分の部屋からだけでは替えられないことがある。' },
+  { id: 'kyuhaisui_h', modes: 'h', cat: 'setsubi', name: '給水・給湯・排水管の交換（家の中・床下）', unit: '式', q: d => 1, lo: 30, hi: 100, g: 'lab', sk: true, life: '25〜40年（材質による）', note: '敷地の中の外の配管（屋外）は別のことがある。' },
+  { id: 'gasu', modes: 'mh', cat: 'setsubi', name: 'ガス管・ガス栓の移設・交換', unit: '式', q: d => 1, lo: 3, hi: 15, g: 'lab', sk: true, note: 'ガス会社の工事になることがある。' },
+  { id: 'denki', modes: 'mh', cat: 'setsubi', name: '電気配線の引き直し・コンセントを増やす', unit: '㎡', q: d => d.area, lo: 0.4, hi: 1.0, g: 'lab', sk: true, life: '30年くらいで点検', note: '' },
+  { id: 'bunden', modes: 'mh', cat: 'setsubi', name: '分電盤の交換・契約アンペアの見直し', unit: '式', q: d => 1, lo: 5, hi: 15, g: 'lab', sk: true, note: { m: '建物全体で使える電気の量（幹線）が決まっていて、アンペアを上げられないことも。管理組合に確認。', h: '電力会社への申し込みが必要なことがある。' } },
+  { id: 'kanki', modes: 'mh', cat: 'setsubi', name: '換気扇・浴室換気乾燥機・エアコンの配管など', unit: '式', q: d => 1, lo: 5, hi: 20, g: 'eq', sk: true, note: { m: 'コンクリートの壁に新しく穴をあけるのは共用部分にかかるので、原則できない。', h: '' } },
+  { id: 'nijuyuka', modes: 'm', cat: 'naisou', name: '床を二重床（置き床）にする（配管の通り道・遮音）', unit: '㎡', q: d => d.area * 0.8, lo: 1.0, hi: 2.0, g: 'lab', sk: true, note: 'コンクリートに直接はる床（直床）の古い部屋で、配管を通し直すときに必要になることがある。床が上がるので天井が低くなり、玄関などの段差も出る。数量は床面積の8割。' },
+  { id: 'yuka', modes: 'mh', cat: 'naisou', name: '床（フローリング）の張り替え', unit: '㎡', q: d => d.area * 0.8, lo: 1.0, hi: 2.2, g: 'eq', sk: true, life: '15〜25年', note: { m: '多くのマンションは規約で床の遮音等級（例：L-45）が決まっている。遮音タイプの床材が必要。数量は床面積の8割（水回りをのぞく）。', h: '下地の傷みによって高くなる。数量は床面積の8割。' } },
+  { id: 'cross', modes: 'mh', cat: 'naisou', name: '壁・天井のクロス（壁紙）張り替え', unit: '㎡', q: d => d.area * 3.2, lo: 0.12, hi: 0.2, g: 'eq', sk: true, life: '10〜15年', note: '壁と天井の面積は、床面積の約3.2倍として計算。' },
+  { id: 'shitaji', modes: 'mh', cat: 'naisou', name: '壁・天井の下地（ボード）・断熱のやり直し', unit: '㎡', q: d => d.area, lo: 1.0, hi: 2.5, g: 'lab', sk: true, note: '間取りを変える・全面を新しくするとき。' },
+  { id: 'tategu', modes: 'mh', cat: 'naisou', name: '室内ドア（建具）の交換', unit: '箇所', q: d => d.lay.doors + (d.mode === 'h' ? d.stories : 0), lo: 6, hi: 15, g: 'eq', sk: true, life: '20〜30年', note: '数量は間取りからの目安。' },
+  { id: 'shuno', modes: 'mh', cat: 'naisou', name: '収納（クローゼット）をつくる', unit: '箇所', q: d => d.lay.storage, lo: 10, hi: 25, g: 'eq', sk: true, note: '' },
+  { id: 'uchimado', modes: 'mh', cat: 'mado', name: '内窓（二重窓）を付ける', unit: '箇所', q: d => d.lay.windows + (d.mode === 'h' ? 2 * (d.stories - 1) : 0), lo: 6, hi: 16, g: 'eq', sk: false, note: { m: '窓のサッシ・ガラスは共用部分。自分で交換するのは原則できない（管理組合の工事・標準管理規約第22条）。内窓も承認が必要なことが多い。', h: '断熱・結露・防音に効く。国の補助金が出る年もある。' } },
+  { id: 'mado_h', modes: 'h', cat: 'mado', name: '窓の交換（今の枠にかぶせるカバー工法）', unit: '箇所', q: d => d.lay.windows + 2 * (d.stories - 1), lo: 15, hi: 40, g: 'eq', sk: false, note: '' },
+  { id: 'genkan', modes: 'm', cat: 'mado', name: '玄関ドアの交換', unit: '箇所', q: d => 1, lo: 25, hi: 50, g: 'eq', sk: false, note: '玄関ドアも共用部分。原則、管理組合の工事なので、ふつうは入れない。' },
+  { id: 'ashiba', modes: 'h', cat: 'soto', name: '足場（外壁・屋根の工事に必要）', unit: '㎡', q: d => d.wall * 1.25, lo: 0.08, hi: 0.12, g: 'lab', sk: false, note: '外壁・屋根の工事を同時にすると足場が1回ですむ。数量は外壁の面積×1.25。' },
+  { id: 'gaiheki', modes: 'h', cat: 'soto', name: '外壁塗装（洗浄・下地補修・目地のシーリング込み）', unit: '㎡', q: d => d.wall, lo: 0.35, hi: 0.55, g: 'eq', sk: false, life: '10〜15年', note: '外壁の面積は、階数と床面積からの目安（窓をのぞく）。' },
+  { id: 'fuzoku', modes: 'h', cat: 'soto', name: '雨どい・軒天・破風など（付帯部）の塗装', unit: '式', q: d => 1, lo: 12, hi: 25, g: 'lab', sk: false, note: '' },
+  { id: 'yane_paint', modes: 'h', cat: 'soto', name: '屋根の塗装（スレート・金属）', unit: '㎡', q: d => d.roof, lo: 0.28, hi: 0.45, g: 'eq', sk: false, life: '10〜15年', note: '屋根の面積は1階の床面積×1.15の目安。瓦屋根はふつう塗装しない。' },
+  { id: 'yane_cover', modes: 'h', cat: 'soto', name: '屋根カバー工法（上に新しい屋根を重ねる）', unit: '㎡', q: d => d.roof, lo: 0.7, hi: 1.3, g: 'eq', sk: false, life: '25〜30年ごろ', note: '' },
+  { id: 'yane_fuki', modes: 'h', cat: 'soto', name: '屋根の葺き替え（はがして下地から新しく）', unit: '㎡', q: d => d.roof, lo: 1.0, hi: 2.0, g: 'eq', sk: false, note: '古い屋根材に石綿（アスベスト）がふくまれていると、調査・処分のお金がふえる。' },
+  { id: 'shiroari', modes: 'h', cat: 'kouzou', name: 'シロアリの予防・駆除（床下）', unit: '㎡', q: d => d.floor1, lo: 0.1, hi: 0.22, g: 'lab', sk: false, life: '約5年ごと', note: '木造で特に大事。' },
+  { id: 'dannetsu', modes: 'h', cat: 'kouzou', name: '床下・天井に断熱材を足す', unit: '㎡', q: d => d.floor1 * 2, lo: 0.5, hi: 1.2, g: 'lab', sk: false, note: '数量は1階の床＋天井の面積。' },
+  { id: 'taishin_shindan', modes: 'h', cat: 'kouzou', name: '耐震診断', unit: '式', q: d => 1, lo: 8, hi: 30, g: 'none', sk: false, note: '木造の家は、自治体の補助で安く・無料になることが多い。' },
+  { id: 'taishin', modes: 'h', cat: 'kouzou', name: '耐震補強工事（壁・金物・基礎など）', unit: '式', q: d => 1, lo: 110, hi: 260, g: 'lab', sk: false, note: '木耐協の調査では平均約163〜167万円、半分くらいは150万円未満。家の状態で大きく変わる。自治体の補助あり。' },
+  // ---- 不具合から入る工事（2026-10-21 追加。公的な基準が無いものは一般的な目安で幅を広く） ----
+  { id: 'inspection', modes: 'mh', cat: 'chosa', name: '建物状況調査（インスペクション：国の講習を受けた建築士が、傷み・雨もれのあとなどを目で見て調べる）', unit: '式', q: d => 1, lo: 5, hi: { m: 8, h: 15 }, g: 'none', sk: false, note: '中古の売買では、仲介会社が「調査をする人を紹介できるか」を説明する決まりがある（宅地建物取引業法・2018年4月から）。床下・屋根裏に入る調査はオプションのことが多い。' },
+  { id: 'amamori_chosa', modes: 'mh', cat: 'chosa', name: '雨漏りの原因調査（水をかけて確かめる散水調査・赤外線カメラなど）', unit: '式', q: d => 1, lo: 3, hi: 30, g: 'none', sk: false, note: { m: 'マンションの雨漏りは、屋上・外壁・窓まわりなど共用部分が原因のことが多く、ふつうは管理組合が調べて直す。まず管理会社へ。', h: '目で見るだけなら数万円、散水調査は1日がかりで高くなる。原因が1か所とは限らない。' } },
+  { id: 'rousui_chosa', modes: 'mh', cat: 'chosa', name: '水もれの調査（どの管・どこから漏れているか）', unit: '式', q: d => 1, lo: 2, hi: 10, g: 'none', sk: false, note: { m: '下の階にもれたら、すぐ管理会社へ。原因が部屋の中の管なら持ち主の負担。個人賠償責任保険や火災保険の特約で、下の階の修理代が出ることがある。', h: '水道メーターのパイロット（小さな羽根）が、水を使っていないのに回っていれば、どこかで漏れている。' } },
+  { id: 'fuhai', modes: 'mh', cat: 'kouzou', name: { m: '水で傷んだ床の下地・壁の下地のとりかえ', h: '水・シロアリで傷んだ土台・柱・床組みのとりかえ' }, unit: '式', q: d => 1, lo: { m: 5, h: 20 }, hi: { m: 40, h: 150 }, g: 'lab', sk: { m: true, h: false }, note: { m: '床や壁をはがしてみないと広さが分からない。', h: '土台・柱まで腐っていると高くなる。はがしてみて増えることが多いので、見積もりに「追加になる条件」を書いてもらう。' } },
+  { id: 'yukashita', modes: 'mh', cat: 'naisou', name: '床のきしみ・沈みの補修（床の下地の補強・やり直し）', unit: '式', q: d => 1, lo: 3, hi: 30, g: 'lab', sk: true, note: '部分的な補修なら安いが、部屋全体の床組みのやり直しになると高くなる。' },
+  { id: 'amamori_hosyu', modes: 'h', cat: 'soto', name: '雨漏りの部分補修（すきまのシーリング・板金・瓦の差しかえ）', unit: '式', q: d => 1, lo: 5, hi: 50, g: 'lab', sk: false, note: '直したあと、次の大雨で止まったか確かめる。止まらないときの保証（やり直し）があるか聞いておく。' },
+  { id: 'bousui', modes: 'h', cat: 'soto', name: 'ベランダ・陸屋根（平らな屋根）の防水のやり直し', unit: '㎡', q: d => Math.max(5, d.floor1 * 0.15), lo: 0.5, hi: 1.2, g: 'eq', sk: false, life: '10〜15年', note: 'FRP・ウレタン・シートなど。数量は1階の床面積の15%（5㎡以上）とした目安。' },
+  { id: 'kurakku', modes: 'h', cat: 'soto', name: '外壁のひび割れの補修（ひびを削って埋める Uカット・シーリング など）', unit: '式', q: d => 1, lo: 5, hi: 30, g: 'lab', sk: false, note: '幅0.3mmくらいまでの細いひびは塗装で埋まることが多い。それより太いひびは補修してから塗る。' },
+  { id: 'amadoi', modes: 'h', cat: 'soto', name: '雨どいの交換', unit: '式', q: d => 1, lo: 10, hi: 40, g: 'eq', sk: false, note: '高い所は足場が必要。外壁・屋根の工事と一緒にすると足場が1回ですむ。' },
+  { id: 'kiso', modes: 'h', cat: 'kouzou', name: '基礎のひび割れの補修（樹脂を注入する など）', unit: '式', q: d => 1, lo: 5, hi: 50, g: 'lab', sk: false, note: '幅0.5mm以上のひび、斜めのひび、ひびが増えているときは、構造にくわしい建築士に見てもらう。' },
+  { id: 'chinka', modes: 'h', cat: 'kouzou', name: '家の傾きを直す（沈下修正・ジャッキアップ など）', unit: '式', q: d => 1, lo: 150, hi: 800, g: 'lab', sk: false, note: '傾きの原因（地盤の沈み・液状化・基礎の問題）で、工法も値段も大きく変わる。まず地盤と建物の調査を。国の基準では、1mあたり6mm（1000分の6）以上の傾きは「構造に欠陥がある可能性が高い」とされる（住宅紛争処理の参考となる技術的基準）。' },
+  { id: 'gaiju', modes: 'h', cat: 'kouzou', name: 'ネズミ・害虫の駆除と、入り口のすきまふさぎ', unit: '式', q: d => 1, lo: 5, hi: 30, g: 'lab', sk: false, note: 'すきまをふさがないと、またもどってくる。' },
+  { id: 'okugai', modes: 'h', cat: 'setsubi', name: '敷地の中の屋外の給水管・排水管・ます の交換', unit: '式', q: d => 1, lo: 20, hi: 80, g: 'lab', sk: false, note: '古い家は、焼き物（陶器）の排水管や、木の根が入りこんだますがあることも。カメラで管の中を見る調査は別料金のことが多い。' },
+  { id: 'hikikomi', modes: 'h', cat: 'setsubi', name: '水道の引き込み管を太くする（13mm→20mm など）・井戸から水道へ', unit: '式', q: d => 1, lo: 30, hi: 100, g: 'lab', sk: false, note: '工事費とは別に、水道局に払う負担金（加入金・分担金の差額）がかかることが多く、金額は市町村で大きくちがう。道路を掘る工事になると高い。' },
+  { id: 'gesui', modes: 'h', cat: 'setsubi', name: '浄化槽・くみ取りをやめて下水道につなぐ', unit: '式', q: d => 1, lo: 30, hi: 100, g: 'lab', sk: false, note: '下水道が使える区域では、つなぐ義務がある（下水道法 第10条。くみ取り便所は、使えるようになってから3年以内に水洗にする：第11条の3）。古い浄化槽をこわす費用・自治体の補助・受益者負担金も確認。' },
+  { id: 'jokaso', modes: 'h', cat: 'setsubi', name: '浄化槽の入れかえ（トイレだけの単独浄化槽 → 台所・おふろも処理する合併浄化槽）', unit: '式', q: d => 1, lo: 80, hi: 150, g: 'eq', sk: false, note: '下水道が来ない地域で使う。多くの自治体に補助がある。毎年の点検・清掃のお金もかかる。' },
+  { id: 'skeleton', modes: 'mh', cat: 'ikkatsu', name: 'スケルトンリフォーム一式（床・壁・天井・水回り・配管・電気をぜんぶやり直し）', unit: '㎡', q: d => d.area, lo: 12, hi: { m: 22, h: 25 }, g: 'sk', sk: false, note: 'これを入れると「まるごとに含む」の項目は自動で計算から外れます。給湯器・窓・外まわり・耐震・石綿の調査は別。' }
+];
+const PRESETS = {
+  m: [
+    { id: 'mizu', label: '水回りだけ', ids: ['yojo', 'kanri', 'kaitai_mizu', 'kitchen', 'bath', 'toilet', 'senmen', 'kyutoki'] },
+    { id: 'full', label: '水回り＋配管＋内装', ids: ['yojo', 'kanri', 'kaitai_mizu', 'kaitai_naisou', 'kitchen', 'bath', 'toilet', 'senmen', 'kyutoki', 'kyusui', 'haisui', 'denki', 'bunden', 'kanki', 'yuka', 'cross', 'tategu'] },
+    { id: 'old', label: '古い部屋をしっかり（在来浴室・二重床・ガス・石綿調査まで）', ids: ['yojo', 'kanri', 'asb', 'kaitai_mizu', 'kaitai_naisou', 'kitchen', 'bath', 'zairai', 'toilet', 'senmen', 'sentaku', 'kyutoki', 'kyusui', 'haisui', 'gasu', 'denki', 'bunden', 'kanki', 'nijuyuka', 'yuka', 'cross', 'tategu'] },
+    { id: 'skeleton', label: 'スケルトン（全部やり直し）', ids: ['yojo', 'kanri', 'skeleton', 'kyutoki'] },
+    { id: 'hyomen', label: '床と壁紙だけ', ids: ['yojo', 'kanri', 'kaitai_naisou', 'yuka', 'cross'] }
+  ],
+  h: [
+    { id: 'soto', label: '外まわり（外壁・屋根の塗装）', ids: ['yojo', 'ashiba', 'gaiheki', 'fuzoku', 'yane_paint'] },
+    { id: 'mizu', label: '水回りだけ', ids: ['yojo', 'kaitai_mizu', 'kitchen', 'bath', 'toilet', 'senmen', 'kyutoki'] },
+    { id: 'full', label: '中も外もまるごと', ids: ['yojo', 'kaitai_mizu', 'kaitai_naisou', 'kitchen', 'bath', 'toilet', 'senmen', 'kyutoki', 'kyuhaisui_h', 'denki', 'bunden', 'kanki', 'yuka', 'cross', 'tategu', 'ashiba', 'gaiheki', 'fuzoku', 'yane_cover', 'shiroari', 'uchimado'] },
+    { id: 'taishin', label: '耐震・断熱', ids: ['yojo', 'taishin_shindan', 'taishin', 'dannetsu', 'uchimado', 'shiroari'] }
+  ]
+};
+function itemsFor(mode) { return ITEMS.filter(it => it.modes.indexOf(mode) >= 0); }
+// overrides: {id:{on, qty, lo, hi}}（null や undefined は「自動」）。数量・単価はいつも ㎡ の単位で持つ
+function resolveItems(s, overrides) {
+  const d = derive(s);
+  return itemsFor(s.mode).map(it => {
+    const o = (overrides && overrides[it.id]) || {};
+    const autoQ = Math.round(it.q(d) * 10) / 10;
+    return {
+      def: it, id: it.id, on: !!o.on,
+      qty: (o.qty !== null && o.qty !== undefined && o.qty !== '') ? Number(o.qty) : autoQ, autoQty: autoQ,
+      lo: (o.lo !== null && o.lo !== undefined && o.lo !== '') ? Number(o.lo) : v(it.lo, s.mode),
+      hi: (o.hi !== null && o.hi !== undefined && o.hi !== '') ? Number(o.hi) : v(it.hi, s.mode)
+    };
+  });
+}
+// 積み上げの計算（万円）。s = {mode, area, grade, mgmtLo, mgmtHi, miscLo, miscHi, tax, tsuboPrice}
+function estimate(s, list) {
+  const g = GRADES[s.grade] || GRADES.std;
+  const skOn = list.some(x => x.id === 'skeleton' && x.on);
+  let lo = 0, hi = 0;
+  const cats = {}, lines = {};
+  list.forEach(x => {
+    const f = g[x.def.g] || 1;
+    const excluded = skOn && v(x.def.sk, s.mode);
+    const l = x.qty * Math.min(x.lo, x.hi) * f, h = x.qty * Math.max(x.lo, x.hi) * f;
+    lines[x.id] = { lo: l, hi: h, factor: f, excluded: excluded, counted: x.on && !excluded };
+    if (!x.on || excluded) return;
+    lo += l; hi += h;
+    const c = cats[x.def.cat] || (cats[x.def.cat] = { lo: 0, hi: 0 });
+    c.lo += l; c.hi += h;
+  });
+  const mgmt = [lo * s.mgmtLo / 100, hi * s.mgmtHi / 100];
+  const misc = [lo * s.miscLo / 100, hi * s.miscHi / 100];
+  const sub = [lo + mgmt[0] + misc[0], hi + mgmt[1] + misc[1]];
+  const tax = [sub[0] * s.tax / 100, sub[1] * s.tax / 100];
+  const total = [sub[0] + tax[0], sub[1] + tax[1]];
+  const tsubo = toTsubo(s.area);
+  const rough = tsubo * s.tsuboPrice;
+  const mid = (total[0] + total[1]) / 2;
+  return { work: [lo, hi], cats: cats, lines: lines, mgmt: mgmt, misc: misc, sub: sub, tax: tax, total: total, mid: mid, tsubo: tsubo, rough: rough, ratio: rough > 0 ? mid / rough : 0, skOn: skOn };
+}
+// 単価の単位を ㎡ ⇔ 坪 で入れかえる（面積の項目だけ）。view='tsubo' のとき 数量は坪・単価は万円/坪
+function toView(unit, view, qty, price) {
+  if (unit !== '㎡' || view !== 'tsubo') return { qty: qty, price: price, unit: unit };
+  return { qty: qty / TSUBO, price: price * TSUBO, unit: '坪' };
+}
+function fromViewQty(unit, view, q) { return (unit === '㎡' && view === 'tsubo') ? q * TSUBO : q; }
+function fromViewPrice(unit, view, p) { return (unit === '㎡' && view === 'tsubo') ? p / TSUBO : p; }
+// 配管の材質の時代（仙台市のセミナー資料の年表・福岡市の資料から。おおよその区切り）
+function pipeEra(year) {
+  if (year <= 1975) return { lv: 'bad', kyusui: '給水管は「亜鉛めっき鋼管」（いまは使われていない、さびやすい管）の可能性。中がさびて赤い水・水もれが出やすく、替えどきです。', kyuto: '給湯管は銅管などが多い時代。' };
+  if (year <= 1989) return { lv: 'warn', kyusui: '給水管は「硬質塩化ビニルライニング鋼管」が多い時代。管の中は守られていますが、ねじの継ぎ目がさびやすく、築25年ほどで更新が必要な例があります（さびを防ぐ継手が国の仕様に入ったのは1989年）。', kyuto: '給湯管は銅管が多く、小さな穴（ピンホール）で水もれすることがあります。' };
+  if (year <= 1999) return { lv: 'warn', kyusui: 'さび対策つきの継手のライニング鋼管か、さびない樹脂管・ステンレス管が広まってきた時代。どちらかは図面で確認を。', kyuto: '銅管と樹脂管がまざる時代。' };
+  return { lv: 'ok', kyusui: '給水・給湯は樹脂管（架橋ポリエチレン管・ポリブテン管）などのさびない管が多い時代です。', kyuto: '' };
+}
+// 築年数からの提案。nowYear を渡せるようにしてテストしやすくする
+function suggest(s, nowYear) {
+  const age = nowYear - s.built;
+  const out = [], alerts = [];
+  const add = (id, why, lv) => out.push({ id: id, why: why, lv: lv });
+  const wood = s.mode === 'h' && s.struct === 'wood';
+  if (age >= 10) add('kyutoki', '給湯器は約10年が交換の目安（設計上の標準使用期間10年）', age >= 15 ? '強' : '中');
+  if (age >= 15) add('kitchen', 'キッチンは15〜25年が目安', age >= 25 ? '強' : '中');
+  if (age >= 20) add('bath', 'ユニットバスは20〜25年が目安', age >= 25 ? '強' : '中');
+  if (age >= 15) add('toilet', 'トイレは15〜25年が目安', age >= 25 ? '強' : '中');
+  if (age >= 15) add('senmen', '洗面化粧台は15〜20年が目安', age >= 20 ? '強' : '中');
+  if (age >= 10) add('cross', '壁紙は10〜15年が目安', age >= 15 ? '強' : '中');
+  if (age >= 20) add('yuka', '床は15〜25年が目安', age >= 25 ? '強' : '中');
+  const pe = pipeEra(s.built);
+  if (s.mode === 'm') {
+    if (age >= 25 && s.built <= 1999) add('kyusui', pe.kyusui, s.built <= 1989 ? '強' : '中');
+    if (age >= 30) add('haisui', '排水管（部屋の中）は30年くらいで交換を考える時期。' + (s.built <= 1985 ? '1980年代半ばまでは鋼管が残っていることがある。' : ''), '中');
+  } else {
+    if (age >= 25) add('kyuhaisui_h', '給排水管は25〜40年で交換を考える時期。' + pe.kyusui, s.built <= 1989 ? '強' : '中');
+    if (age >= 10) add('gaiheki', '外壁塗装は10〜15年が目安', age >= 15 ? '強' : '中');
+    if (age >= 10) add('fuzoku', '外壁と一緒に付帯部も塗ると足場が1回ですむ', '中');
+    if (age >= 10) add('ashiba', '外壁・屋根の工事には足場が必要', '中');
+    if (age >= 25) add('yane_cover', 'スレート屋根は25〜30年でカバー工法・葺き替えの時期', '中');
+    else if (age >= 10) add('yane_paint', '屋根の塗装は10〜15年が目安', '中');
+    if (wood && age >= 5) add('shiroari', 'シロアリの予防は約5年ごと', '中');
+    if (s.built <= 1981) { add('taishin_shindan', '旧耐震の時代の家。まず耐震診断を', '強'); add('taishin', '旧耐震の家は補強が必要になることが多い', '強'); }
+    else if (wood && s.built <= 2000) add('taishin_shindan', '木造は2000年に基準（柱と土台の金物など）が強化された。2000年5月以前は診断がおすすめ', '中');
+  }
+  if (age >= 30) { add('denki', '30年をこえると配線・コンセントの点検・更新の時期', '中'); add('bunden', '古い分電盤は容量が小さいことがある', '中'); }
+  if (s.built <= 2006) add('asb', '2006年9月1日より前に着工した建物は、石綿をふくむ建材の可能性があり、工事の前に事前調査が必要', '中');
+  if (s.built <= 1981) alerts.push({ lv: 'bad', text: '旧耐震の可能性：1981年5月31日までに「建築確認」を受けた建物は古い耐震基準です。' + (s.mode === 'm' ? 'マンションは管理組合に耐震診断・耐震改修の有無を確認してください。住宅ローン控除・税の軽減の条件にも関係します。' : '耐震診断（自治体の補助あり）をおすすめします。') });
+  if (s.built >= 1981 && s.built <= 1983) alerts.push({ lv: 'warn', text: '1981〜1983年ごろに完成した建物は、建築確認が1981年5月以前（旧耐震）のことがあります。「確認済証」の日付を確認してください。' });
+  if (s.built <= 1999) alerts.push({ lv: pe.lv, text: '配管の材質（' + s.built + '年ごろ）：' + pe.kyusui + (pe.kyuto ? ' ' + pe.kyuto : '') });
+  if (s.mode === 'm' && s.struct === 'wall') alerts.push({ lv: 'warn', text: '壁式構造は、部屋の中にこわせない壁（構造の壁）があり、間取りを大きく変えられないことがあります。' });
+  if (s.built <= 2006) alerts.push({ lv: 'warn', text: '2006年9月1日より前に着工した建物は、石綿（アスベスト）をふくむ建材が使われていることがあります。解体・改修の工事の前には、工事の大きさにかかわらず事前調査が必要で（2023年10月からは資格のある人が調査）、見つかれば取り除くお金がふえます。' });
+  return { age: age, items: out, alerts: alerts };
+}
+// 石綿の事前調査の結果を国・自治体に報告する工事か（2022年4月から。建築物の改修は請負代金の合計が税込100万円以上）
+function asbestosReport(totalTaxIncl) {
+  return { lo: totalTaxIncl[0] >= 100, hi: totalTaxIncl[1] >= 100 };
+}
+// 修繕積立金の目安（国交省ガイドライン 令和6年6月改定。円/㎡・月）
+const GUIDE = {
+  lt20: [{ label: '20階未満・5,000㎡未満', lo: 235, avg: 335, hi: 430 }, { label: '20階未満・5,000〜10,000㎡', lo: 170, avg: 252, hi: 320 }, { label: '20階未満・10,000〜20,000㎡', lo: 200, avg: 271, hi: 330 }, { label: '20階未満・20,000㎡以上', lo: 190, avg: 255, hi: 325 }],
+  ge20: { label: '20階以上', lo: 240, avg: 338, hi: 410 }
+};
+const PARK = { '2dan': 6450, '3dan_p2': 5840, '3dan_yoko': 7210, '4dan_yoko': 6235, ev: 4645, other: 5235 };
+function tsumitateCheck(t) {
+  const g = t.floors === 'ge20' ? GUIDE.ge20 : GUIDE.lt20[Math.min(3, Math.max(0, t.sizeIdx | 0))];
+  const add = (t.park && PARK[t.park] && t.parkCount > 0 && t.totalPrivate > 0) ? PARK[t.park] * t.parkCount / t.totalPrivate : 0;
+  const lo = g.lo + add, avg = g.avg + add, hi = g.hi + add;
+  const per = t.unitArea > 0 ? t.current / t.unitArea : 0;
+  const status = per < lo ? 'low' : per > hi ? 'high' : 'in';
+  return { label: g.label, add: add, lo: lo, avg: avg, hi: hi, per: per, status: status, needLo: lo * t.unitArea, needAvg: avg * t.unitArea, needHi: hi * t.unitArea, ratio: avg > 0 ? per / avg : 0 };
+}
+// 不具合のチェック。adds＝入れる工事、warn＝出す注意（lv: alert 朱 / caution 黄土）
+const SYMPTOMS = [
+  { g: '雨・水もれ', list: [
+    { id: 'amamori', modes: 'mh', label: '雨漏りがある・天井や壁に雨じみがある', hint: '屋根・外壁・窓まわり・ベランダのどこかから水が入っている', adds: { m: ['amamori_chosa', 'fuhai', 'cross'], h: ['amamori_chosa', 'amamori_hosyu', 'fuhai', 'cross'] }, lv: 'alert', warn: { m: 'マンションの雨漏りは共用部分が原因のことが多く、ふつうは管理組合の負担で直します。部屋の中の内装の直しだけが自分の負担になることが多いので、まず管理会社へ。', h: '雨漏りは、放っておくと柱・土台が腐り、シロアリも呼びます。売るとき・買うときは、告知書（物件状況報告書）に書く大事なことがらです。' } },
+    { id: 'bousui', modes: 'mh', label: 'ベランダ・バルコニーの床がはがれている・水たまりができる', hint: '防水の層が古くなっている', adds: { m: [], h: ['bousui'] }, lv: 'caution', warn: { m: 'マンションのバルコニーは共用部分で、防水は管理組合の大規模修繕で直します。自分で工事はできません。', h: '' } },
+    { id: 'rousui', modes: 'mh', label: '水もれ（床がぬれる・下の階にもれた・水道代が急に増えた）', hint: '給水管・給湯管・排水管のどこかが傷んでいる', adds: { m: ['rousui_chosa', 'kyusui', 'haisui', 'fuhai', 'yuka', 'kaitai_naisou'], h: ['rousui_chosa', 'kyuhaisui_h', 'fuhai', 'yuka', 'kaitai_naisou'] }, lv: 'alert', warn: { m: '下の階にもれたときは、すぐ管理会社に連絡。原因が自分の部屋の管なら、下の階の修理代も自分の負担になります（保険で出ることがあります）。', h: '' } }
+  ] },
+  { g: '水回り', list: [
+    { id: 'mizu_old', modes: 'mh', label: 'キッチン・おふろ・トイレ・洗面が古い、こわれている', hint: '15〜25年が交換の目安', adds: ['kaitai_mizu', 'kitchen', 'bath', 'toilet', 'senmen'] },
+    { id: 'zairai', modes: 'mh', label: 'おふろがタイル張り（在来工法）・タイルにひびや すきまがある', hint: '古いマンション・戸建に多い。下に水がしみていることがある', adds: ['kaitai_mizu', 'bath', 'zairai'], lv: 'caution', warn: { m: 'タイルのおふろからユニットバスにするには、床のコンクリートを削る工事が要ることがあり、高くなります。音が出る工事なので、管理規約の工事の時間・日数も確認を。', h: '土台・柱が水で傷んでいることがあります。はがしてみて補修が増えることを見こんでおきましょう。' } },
+    { id: 'akamizu', modes: 'mh', label: '水が赤い・にごる・さびのにおいがする', hint: '古い鉄の管（亜鉛めっき鋼管など）の中がさびている', adds: { m: ['kyusui', 'kaitai_naisou'], h: ['kyuhaisui_h'] }, lv: 'caution', warn: { m: '共用の縦の管が原因のこともあります。管理組合が共用の管を替えた年を確認しましょう。', h: '' } },
+    { id: 'suiatsu', modes: 'h', label: '2階で水の出が弱い・2か所で同時に使うと弱くなる', hint: '道路から入る水道管（引き込み管）が細い（13mm）ことが多い', adds: ['hikikomi'] },
+    { id: 'haisui_bad', modes: 'mh', label: '排水の流れが悪い・下水のにおい・ゴボゴボ音がする', hint: '排水管の汚れ・傾きの不足・こわれ', adds: { m: ['haisui', 'kaitai_naisou'], h: ['kyuhaisui_h', 'okugai'] }, lv: 'caution', warn: { m: 'まず管理組合の排水管の清掃（ふつう年1回）が来ているか確認。共用の縦の管の詰まりなら管理組合の負担です。', h: '' } },
+    { id: 'kyutoki_bad', modes: 'mh', label: 'お湯が出にくい・ぬるい・給湯器が10年以上前のもの', hint: '給湯器の寿命は約10年', adds: ['kyutoki'] }
+  ] },
+  { g: 'インフラ（電気・ガス・水道・下水）', list: [
+    { id: 'denki_small', modes: 'mh', label: 'ブレーカーがよく落ちる・コンセントが足りない・契約が30A以下', hint: '古い家は電気の契約や分電盤が小さい', adds: ['bunden', 'denki'], lv: 'caution', warn: { m: 'マンション全体で使える電気の量（幹線）が決まっていて、契約を上げられないことがあります。管理組合に確認を。', h: '' } },
+    { id: 'roden', modes: 'mh', label: '漏電する・焦げたにおいがする・コンセントやスイッチが熱い', hint: '配線の傷み・つなぎ目のゆるみ', adds: ['denki', 'bunden'], lv: 'alert', warn: { m: '火事の原因になります。すぐ電力会社か電気工事店に点検をたのんでください（電力会社の安全調査は原則無料）。', h: '火事の原因になります。すぐ電力会社か電気工事店に点検をたのんでください（電力会社の安全調査は原則無料）。' } },
+    { id: 'gas', modes: 'mh', label: 'ガス管が古い・ガス漏れ警報が鳴った・ガスの種類を変えたい（プロパン→都市ガス）', hint: '古いガス管は、地中でさびることがある', adds: ['gasu'], lv: 'alert', warn: { m: 'ガスのにおいがしたら、火・電気のスイッチを使わず、窓をあけてガス会社へ。', h: 'ガスのにおいがしたら、火・電気のスイッチを使わず、窓をあけてガス会社へ。プロパンから都市ガスに変えるときは、前の道路に都市ガスの管があるかで費用が大きく変わります。' } },
+    { id: 'gesui', modes: 'h', label: '浄化槽・くみ取り式のトイレ', hint: '下水道が来ていれば、つなぐ義務がある', adds: ['gesui'], lv: 'caution', warn: { h: '市町村の下水道課で「下水道の区域か」「補助があるか」「受益者負担金を払ってあるか」を確認しましょう。下水道が来ない地域なら、合併浄化槽への入れかえ（工事のリストの「浄化槽の入れかえ」）を考えます。' } },
+    { id: 'ido', modes: 'h', label: '井戸水を使っている・水道が引きこまれていない', hint: '水道に切りかえるには引き込み工事と負担金がかかる', adds: ['hikikomi'], lv: 'caution', warn: { h: '住宅ローンや売るときに、水道が無いと不利になることがあります。前の道路に水道管があるか、水道局で確認を。' } }
+  ] },
+  { g: '建物（構造・傾き・外まわり）', list: [
+    { id: 'katamuki', modes: 'mh', label: '床が傾いている・ビー玉が転がる・ドアが勝手に閉まる', hint: '1mあたり6mm以上の傾きは要注意', adds: { m: ['inspection'], h: ['inspection', 'chinka'] }, lv: 'alert', warn: { m: 'マンションで床が傾いているときは、床の下地のつくりの問題のことも、建物全体の問題のこともあります。管理組合に同じ相談がないか確認を。', h: '地盤の沈みが原因なら、家を直す前に地盤の調査が要ります。売るとき・買うときは告知書に書く大事なことがらです。' } },
+    { id: 'kiso', modes: 'h', label: '基礎（コンクリートの土台）にひび割れがある', hint: '細い髪の毛くらいのひびはよくある。太い・斜めのひびは要注意', adds: ['kiso', 'inspection'], lv: 'caution', warn: { h: '幅0.5mm以上のひび・斜めのひび・増えていくひびは、構造にくわしい建築士に見てもらいましょう。' } },
+    { id: 'gaiheki', modes: 'h', label: '外壁にひび・塗装のはがれ・さわると白い粉がつく', hint: '白い粉（チョーキング）は塗り替えのサイン', adds: ['ashiba', 'kurakku', 'gaiheki', 'fuzoku'] },
+    { id: 'yane', modes: 'h', label: '屋根材がずれている・割れている・さびている', hint: '雨漏りの手前のことが多い', adds: ['ashiba', 'yane_cover'] },
+    { id: 'amadoi', modes: 'h', label: '雨どいがこわれている・外れている・あふれる', hint: '', adds: ['amadoi'] },
+    { id: 'shiroari', modes: 'h', label: 'シロアリを見た・羽アリが出た・柱をたたくとスカスカ', hint: '', adds: ['inspection', 'shiroari', 'fuhai'], lv: 'alert', warn: { h: '床下に入って被害の広さを調べてもらいましょう。売るとき・買うときは告知書に書く大事なことがらです。' } },
+    { id: 'nezumi', modes: 'h', label: 'ネズミ・害虫が出る', hint: '', adds: ['gaiju'] }
+  ] },
+  { g: '部屋の中', list: [
+    { id: 'yuka_bad', modes: 'mh', label: '床がきしむ・ふかふかする・沈む', hint: '床の下地が傷んでいる', adds: ['yukashita', 'yuka'] },
+    { id: 'kabi', modes: 'mh', label: '結露・カビがひどい', hint: '断熱が弱い・換気が足りない', adds: { m: ['uchimado', 'kanki', 'cross'], h: ['uchimado', 'kanki', 'dannetsu', 'cross'] }, lv: 'caution', warn: { m: '窓の内側に付ける内窓も、管理組合の承認が要ることが多いです。', h: '' } },
+    { id: 'tategu_bad', modes: 'mh', label: 'ドア・ふすまの開け閉めが悪い', hint: '家じゅうのドアが合わないときは、家の傾きのことも', adds: ['tategu'] },
+    { id: 'kabegami', modes: 'mh', label: '壁紙のはがれ・汚れ・たばこのやに・ペットのにおい', hint: '', adds: ['cross'] },
+    { id: 'asbestos', modes: 'mh', label: '古い建材がある（天井の吹付け・床のビニルタイル・スレート屋根など）', hint: '2006年9月より前に着工した建物は、石綿をふくむことがある', adds: ['asb'], lv: 'caution', warn: { m: '工事の前に、資格のある人の事前調査が必要です（工事の大きさにかかわらず）。', h: '工事の前に、資格のある人の事前調査が必要です（工事の大きさにかかわらず）。' } }
+  ] }
+];
+function symAdds(sym, mode) { const a = sym.adds; return Array.isArray(a) ? a : (a[mode] || []); }
+function symsFor(mode) { return SYMPTOMS.map(g => ({ g: g.g, list: g.list.filter(x => x.modes.indexOf(mode) >= 0) })).filter(g => g.list.length); }
+function symById(id) { for (const g of SYMPTOMS) for (const x of g.list) if (x.id === id) return x; return null; }
+// チェックされた不具合から、入れる工事の一覧（調査以外の工事があれば、養生・管理組合の申請も入れる）
+function symWork(mode, checked) {
+  const ids = [];
+  Object.keys(checked || {}).forEach(k => { if (!checked[k]) return; const sym = symById(k); if (sym && sym.modes.indexOf(mode) >= 0) symAdds(sym, mode).forEach(id => { if (ids.indexOf(id) < 0) ids.push(id); }); });
+  const real = ids.some(id => { const it = ITEMS.find(i => i.id === id); return it && it.cat !== 'chosa'; });
+  if (real) { if (ids.indexOf('yojo') < 0) ids.push('yojo'); if (mode === 'm' && ids.indexOf('kanri') < 0) ids.push('kanri'); }
+  return ids.filter(id => ITEMS.some(i => i.id === id && i.modes.indexOf(mode) >= 0));
+}
+// ==CALC-END==
+
+// ---- 画面 ----
+const KEY = 'sim_shuzen_v1';
+const $ = id => document.getElementById(id);
+const NOW_YEAR = new Date().getFullYear();
+const fm = (x, d) => { if (!isFinite(x)) return '—'; d = d == null ? 0 : d; return x.toLocaleString('ja-JP', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+const man = x => fm(x, x < 100 ? 1 : 0) + '万円';
+const r2 = x => Math.round(x * 100) / 100;
+const LVCLS = { bad: 'alert', warn: 'caution', ok: 'ok' };
+const DEFAULT = {
+  mode: 'm', area: 40, built: 1981, struct: 'rc', layout: '1LDK', grade: 'std', stories: 2,
+  mgmtLo: 3, mgmtHi: 12, miscLo: 5, miscHi: 10, tax: 10, tsuboPrice: 7, view: 'm2',
+  preset: { m: 'full', h: 'full' }, items: { m: null, h: null }, sym: { m: {}, h: {} }, symAdded: { m: {}, h: {} },
+  t: { floors: 'lt20', sizeIdx: 0, current: 8000, park: 'none', parkCount: 0, totalPrivate: 3000 }
+};
+const HOUSE_DEFAULT = { area: 99.2, built: 1995, struct: 'wood', layout: '4LDK' };
+let S = JSON.parse(JSON.stringify(DEFAULT));
+function presetOverrides(mode, pid) {
+  const p = PRESETS[mode].find(x => x.id === pid) || PRESETS[mode][0];
+  const o = {};
+  itemsFor(mode).forEach(it => { o[it.id] = { on: p.ids.indexOf(it.id) >= 0, qty: null, lo: null, hi: null }; });
+  return o;
+}
+function ensureItems() {
+  ['m', 'h'].forEach(m => {
+    if (!S.items[m]) S.items[m] = presetOverrides(m, S.preset[m]);
+    itemsFor(m).forEach(it => { if (!S.items[m][it.id]) S.items[m][it.id] = { on: false, qty: null, lo: null, hi: null }; });
+  });
+  S.sym = S.sym || {}; S.symAdded = S.symAdded || {};
+  ['m', 'h'].forEach(m => { S.sym[m] = S.sym[m] || {}; S.symAdded[m] = S.symAdded[m] || {}; });
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function load() {
+  try {
+    const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (o && typeof o === 'object') { S = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), o); S.t = Object.assign({}, DEFAULT.t, o.t || {}); S.items = Object.assign({ m: null, h: null }, o.items || {}); S.preset = Object.assign({}, DEFAULT.preset, o.preset || {}); }
+  } catch (e) {}
+  if (S.view !== 'tsubo') S.view = 'm2';
+  ensureItems();
+}
+const STRUCTS = { m: [['rc', 'RC造（鉄筋コンクリート）'], ['src', 'SRC造（鉄骨鉄筋コンクリート）'], ['wall', '壁式構造（低い団地など）']], h: [['wood', '木造'], ['steel', '鉄骨造'], ['rc', 'RC造（鉄筋コンクリート）']] };
+
+function renderStatic() {
+  $('modeM').classList.toggle('on', S.mode === 'm');
+  $('modeH').classList.toggle('on', S.mode === 'h');
+  $('struct').innerHTML = STRUCTS[S.mode].map(a => '<option value="' + a[0] + '">' + a[1] + '</option>').join('');
+  if (!STRUCTS[S.mode].some(a => a[0] === S.struct)) S.struct = STRUCTS[S.mode][0][0];
+  $('struct').value = S.struct;
+  $('storiesWrap').classList.toggle('hide', S.mode !== 'h');
+  $('tsumiCard').classList.toggle('hide', S.mode !== 'm');
+  $('areaM2').value = r2(S.area);
+  $('areaTsubo').value = r2(toTsubo(S.area));
+  $('built').value = S.built; $('age').value = NOW_YEAR - S.built;
+  $('layout').value = S.layout; $('grade').value = S.grade; $('stories').value = String(S.stories);
+  ['mgmtLo', 'mgmtHi', 'miscLo', 'miscHi', 'tax', 'tsuboPrice'].forEach(k => { $(k).value = S[k]; });
+  $('tsuboPriceM2').value = r2(S.tsuboPrice / TSUBO);
+  $('tFloors').value = S.t.floors; $('tSize').value = String(S.t.sizeIdx); $('tCurrent').value = S.t.current;
+  $('tPark').value = S.t.park; $('tParkCount').value = S.t.parkCount; $('tTotalPrivate').value = S.t.totalPrivate;
+  $('tTotalPrivateT').value = r2(toTsubo(S.t.totalPrivate));
+  $('presets').innerHTML = PRESETS[S.mode].map(p => '<button type="button" class="btn' + (S.preset[S.mode] === p.id ? ' on' : '') + '" data-preset="' + p.id + '">' + p.label + '</button>').join('');
+  document.querySelectorAll('#unitSeg button').forEach(b => b.classList.toggle('on', b.getAttribute('data-u') === S.view));
+  renderSym();
+  renderItems();
+}
+function renderSym() {
+  const chk = S.sym[S.mode];
+  $('symList').innerHTML = symsFor(S.mode).map(g => '<div class="symgrp"><div class="symg">' + g.g + '</div>' + g.list.map(x =>
+    '<label class="check sym"><input type="checkbox" data-sym="' + x.id + '"' + (chk[x.id] ? ' checked' : '') + '><span>' + x.label +
+    (x.hint ? '<small>' + x.hint + '</small>' : '') + '<small class="added" data-symadd="' + x.id + '"></small></span></label>').join('') + '</div>').join('');
+}
+function updateSym() {
+  const chk = S.sym[S.mode], mode = S.mode;
+  const name = id => { const it = ITEMS.find(i => i.id === id); return it ? nameOf(it).replace(/（.*$/, '') : id; };
+  document.querySelectorAll('[data-symadd]').forEach(el => {
+    const sym = symById(el.getAttribute('data-symadd'));
+    const ids = symAdds(sym, mode);
+    el.textContent = chk[sym.id] ? (ids.length ? '→ 工事のリストに入れたもの：' + ids.map(name).join('、') : '→ 自分で直す工事ではありません（下の注意を見てください）') : '';
+  });
+  const on = Object.keys(chk).filter(k => chk[k] && symById(k) && symById(k).modes.indexOf(mode) >= 0);
+  let html = '';
+  if (on.length) {
+    const ws = on.map(k => { const x = symById(k); const w = x.warn ? v(x.warn, mode) : ''; return w ? '<p class="note ' + (x.lv || 'caution') + '"><b>' + x.label.replace(/・.*$/, '') + '</b>：' + w + '</p>' : ''; }).join('');
+    html += '<p class="small">チェックした不具合：<b>' + on.length + '件</b>。入れた工事：' + symWork(mode, chk).length + '項目（下の「工事のリスト」で数量・単価を直せます）</p>' + ws +
+      '<div class="staff-box for-staff"><div class="t">担当者向け</div><p class="small" style="margin:0">不具合は、売主に<b>告知書（物件状況報告書・付帯設備表）</b>へ書いてもらい、重要事項説明・契約書の「契約不適合責任（引き渡し後に見つかった不具合の責任）」の期間と範囲を確認してください。雨漏り・シロアリ・構造の傷み・給排水管の故障は、標準的な契約書で特に取り上げられる項目です。程度が分からないときは、建物状況調査（インスペクション）や、既存住宅売買瑕疵保険の検査をすすめてください。</p></div>';
+  }
+  $('symOut').innerHTML = html;
+}
+function nameOf(it) { return v(it.name, S.mode); }
+function renderItems() {
+  const list = resolveItems(S, S.items[S.mode]);
+  let html = '';
+  Object.keys(CATS).forEach(cat => {
+    const rows = list.filter(x => x.def.cat === cat);
+    if (!rows.length) return;
+    html += '<div class="cat"><span>' + CATS[cat] + '</span><small data-cat="' + cat + '"></small></div>';
+    rows.forEach(x => {
+      const it = x.def, note = v(it.note, S.mode) || '';
+      const lo = toView(it.unit, S.view, x.qty, x.lo), hi = toView(it.unit, S.view, x.qty, x.hi);
+      html += '<div class="it" data-id="' + it.id + '"><div class="it-h"><label><input type="checkbox" data-f="on"' + (x.on ? ' checked' : '') + '><span>' + nameOf(it) + '</span></label>' +
+        (it.life ? '<span class="tag info">替えどき ' + it.life + '</span>' : '') + '<span class="tag ask hide" data-sug>おすすめ</span><span class="tag info hide" data-ex>まるごとに含む</span></div>' +
+        '<div class="it-b"><span class="grp">数量 <input type="number" min="0" step="any" data-f="qty" value="' + r2(lo.qty) + '"> ' + lo.unit + '</span>' +
+        '<span class="grp">単価 <input type="number" min="0" step="any" data-f="lo" value="' + r2(lo.price) + '">〜<input type="number" min="0" step="any" data-f="hi" value="' + r2(hi.price) + '"> 万円/' + lo.unit + '</span>' +
+        '<span class="sub" data-sub></span></div>' + (it.unit === '㎡' ? '<div class="alt" data-alt></div>' : '') + (note ? '<div class="nt">' + note + '</div>' : '') + '</div>';
+    });
+  });
+  $('items').innerHTML = html;
+}
+// 面積の項目の「もう片方の単位」での表示（例：40.0㎡（12.1坪）・単価 0.60〜1.40万円/㎡（1.98〜4.63万円/坪））
+function altText(x) {
+  return '＝ ' + FUDOSAN.area(x.qty) + '・単価 ' + fm(Math.min(x.lo, x.hi), 2) + '〜' + fm(Math.max(x.lo, x.hi), 2) + '万円/㎡（' + fm(Math.min(x.lo, x.hi) * TSUBO, 2) + '〜' + fm(Math.max(x.lo, x.hi) * TSUBO, 2) + '万円/坪）';
+}
+
+function barSvg(el, rows, maxV, title) {
+  const W = Math.max(280, el.clientWidth || 600), lh = 44, pl = 0, pr = 2, H = rows.length * lh + 4;
+  const x = val => pl + (W - pl - pr) * (maxV > 0 ? Math.min(1, Math.max(0, val / maxV)) : 0);
+  let g = '';
+  rows.forEach((r, i) => {
+    const y = 4 + i * lh;
+    const label = r.point ? man(r.lo) : man(r.lo) + '〜' + man(r.hi);
+    g += '<text x="' + pl + '" y="' + (y + 13) + '" font-size="12" style="fill:var(--ink)">' + r.label + '</text>';
+    g += '<text x="' + (W - pr) + '" y="' + (y + 13) + '" text-anchor="end" font-size="12" style="fill:var(--ink-2)">' + label + '</text>';
+    g += '<rect x="' + pl + '" y="' + (y + 20) + '" width="' + (W - pl - pr) + '" height="14" style="fill:var(--rule)"/>';
+    const fill = r.muted ? 'var(--rule-strong)' : 'var(--accent)';
+    g += '<rect x="' + pl + '" y="' + (y + 20) + '" width="' + Math.max(r.point ? 2 : 1, x(r.lo) - pl).toFixed(1) + '" height="14" style="fill:' + fill + '"/>';
+    if (!r.point) g += '<rect x="' + x(r.lo).toFixed(1) + '" y="' + (y + 20) + '" width="' + Math.max(1, x(r.hi) - x(r.lo)).toFixed(1) + '" height="14" style="fill:' + fill + ';opacity:.3"/>';
+  });
+  el.innerHTML = '<div class="muted" style="margin-top:12px">' + title + '</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="' + title + '">' + g + '</svg>';
+}
+
+function update() {
+  ensureItems();
+  updateSym();
+  const list = resolveItems(S, S.items[S.mode]);
+  const E = estimate(S, list);
+  const sug = suggest(S, NOW_YEAR);
+  const sugIds = {};
+  sug.items.forEach(x => { sugIds[x.id] = x; });
+  list.forEach(x => {
+    const el = document.querySelector('.it[data-id="' + x.id + '"]');
+    if (!el) return;
+    const L = E.lines[x.id];
+    el.classList.toggle('off', !x.on);
+    el.classList.toggle('excl', x.on && L.excluded);
+    el.querySelector('[data-sub]').textContent = (x.on && !L.excluded ? '' : '（入れていない）') + man(L.lo) + '〜' + man(L.hi) + (L.factor !== 1 ? '（×' + L.factor + '）' : '');
+    el.querySelector('[data-sug]').classList.toggle('hide', !sugIds[x.id]);
+    el.querySelector('[data-ex]').classList.toggle('hide', !(E.skOn && x.def.sk));
+    const alt = el.querySelector('[data-alt]');
+    if (alt) alt.textContent = altText(x);
+    const q = el.querySelector('[data-f="qty"]');
+    const o = S.items[S.mode][x.id];
+    if (q && document.activeElement !== q && (o.qty === null || o.qty === undefined)) q.value = r2(toView(x.def.unit, S.view, x.autoQty, 0).qty);
+  });
+  document.querySelectorAll('[data-cat]').forEach(el => { const c = E.cats[el.getAttribute('data-cat')]; el.textContent = c ? man(c.lo) + '〜' + man(c.hi) : '—'; });
+  // 提案
+  $('alerts').innerHTML = sug.alerts.map(a => '<p class="note ' + (LVCLS[a.lv] || '') + '">' + a.text + '</p>').join('');
+  $('sugList').innerHTML = sug.items.length ? sug.items.map(x => { const it = ITEMS.find(i => i.id === x.id); return '<li><span class="tag ' + (x.lv === '強' ? 'must' : 'ask') + '">' + (x.lv === '強' ? '替えどき' : 'そろそろ') + '</span> <b>' + (it ? v(it.name, S.mode) : x.id) + '</b>：' + x.why + '</li>'; }).join('') : '<li>築年数が浅いので、大きな交換はまだ先のことが多いです。</li>';
+  $('gradeNote').textContent = 'グレードの倍率：設備・材料 ×' + GRADES[S.grade].eq + '、工事・配管 ×' + GRADES[S.grade].lab + '、まるごと一式 ×' + GRADES[S.grade].sk + '（標準＝1）';
+  // 合計
+  const perT = x => E.tsubo > 0 ? x / E.tsubo : 0, perM = x => S.area > 0 ? x / S.area : 0;
+  $('totalBig').textContent = man(E.total[0]) + ' 〜 ' + man(E.total[1]);
+  $('totalSub').innerHTML = 'まんなか <b>' + man(E.mid) + '</b>　／　広さ ' + FUDOSAN.area(S.area) + ' あたり 約' + fm(perT(E.mid), 1) + '万円/坪（' + fm(perM(E.mid), 1) + '万円/㎡）';
+  const catRows = Object.keys(CATS).filter(c => E.cats[c]).map(c => '<tr><td>' + CATS[c] + '</td><td>' + man(E.cats[c].lo) + '</td><td>' + man(E.cats[c].hi) + '</td></tr>').join('');
+  $('catTable').innerHTML = '<tr><th>なかみ</th><th>下限</th><th>上限</th></tr>' + catRows +
+    '<tr><td>工事費の計</td><td>' + man(E.work[0]) + '</td><td>' + man(E.work[1]) + '</td></tr>' +
+    '<tr><td>設計・現場管理費</td><td>' + man(E.mgmt[0]) + '</td><td>' + man(E.mgmt[1]) + '</td></tr>' +
+    '<tr><td>諸経費</td><td>' + man(E.misc[0]) + '</td><td>' + man(E.misc[1]) + '</td></tr>' +
+    '<tr><td>消費税</td><td>' + man(E.tax[0]) + '</td><td>' + man(E.tax[1]) + '</td></tr>' +
+    '<tr class="total"><td>合計</td><td>' + man(E.total[0]) + '</td><td>' + man(E.total[1]) + '</td></tr>';
+  const AR = asbestosReport(E.total);
+  $('asbOut').innerHTML = (S.built <= 2006 || AR.hi) ? '<p class="note caution for-staff">石綿（アスベスト）：' + (AR.lo ? 'この工事は税込100万円以上の見込みなので、' : AR.hi ? '高い場合は税込100万円以上になるので、' : '') + (AR.hi ? '事前調査の結果を国（労働基準監督署）と自治体に報告する工事になります（報告は工事会社が行います）。' : '') + '調査そのものは工事の大きさにかかわらず必要です。調査費は「工事のリスト」の石綿の項目で足せます。</p>' : '';
+  // くらべる
+  const diff = E.mid - E.rough;
+  $('cmp').innerHTML = '<div class="tablewrap"><table><tr><th>計算のしかた</th><th>金額</th><th>坪あたり</th><th>㎡あたり</th></tr>' +
+    '<tr><td>ざっくり（' + fm(S.tsuboPrice, 1) + '万円 × ' + fm(E.tsubo, 2) + '坪）</td><td>' + man(E.rough) + '</td><td>' + fm(S.tsuboPrice, 1) + '万円</td><td>' + fm(S.tsuboPrice / TSUBO, 2) + '万円</td></tr>' +
+    '<tr><td>積み上げ（安い場合）</td><td>' + man(E.total[0]) + '</td><td>' + fm(perT(E.total[0]), 1) + '万円</td><td>' + fm(perM(E.total[0]), 2) + '万円</td></tr>' +
+    '<tr><td>積み上げ（まんなか）</td><td><b>' + man(E.mid) + '</b></td><td>' + fm(perT(E.mid), 1) + '万円</td><td>' + fm(perM(E.mid), 2) + '万円</td></tr>' +
+    '<tr><td>積み上げ（高い場合）</td><td>' + man(E.total[1]) + '</td><td>' + fm(perT(E.total[1]), 1) + '万円</td><td>' + fm(perM(E.total[1]), 2) + '万円</td></tr></table></div>' +
+    '<p class="note ' + (E.ratio > 2 ? 'alert' : E.ratio > 1.2 ? 'caution' : 'ok') + '">積み上げのまんなかは、ざっくり計算の<b>約' + fm(E.ratio, 1) + '倍</b>（' + (diff >= 0 ? '+' : '') + man(diff) + '）です。</p>' +
+    '<p class="muted">「坪7万円」は、壁紙・床・設備の一部をかえる軽めの工事に近い目安です。キッチンやおふろは<b>狭い部屋でも1台分の値段</b>がかかり、配管や電気までやり直すと、広さより「何を替えるか」で金額が決まります。そのため、小さい部屋ほど坪あたりは高くなります。</p>';
+  const maxV = Math.max(E.total[1], E.rough, 1);
+  barSvg($('cmpChart'), [
+    { label: 'ざっくり（坪' + fm(S.tsuboPrice, 1) + '万円）', lo: E.rough, point: true, muted: true },
+    { label: '積み上げ（幅）', lo: E.total[0], hi: E.total[1] }
+  ], maxV, 'くらべるグラフ（濃い所＝安い場合、うすい所＝高い場合までの幅）');
+  const cr = Object.keys(CATS).filter(c => E.cats[c]).map(c => ({ label: CATS[c].replace(/（.*?）/, ''), lo: E.cats[c].lo, hi: E.cats[c].hi }));
+  if (cr.length) barSvg($('catChart'), cr, Math.max(1, ...cr.map(r => r.hi)), 'なかみ別の内訳（工事費。経費と税をのぞく）'); else $('catChart').innerHTML = '';
+  // 修繕積立金
+  if (S.mode === 'm') {
+    const T = tsumitateCheck({ floors: S.t.floors, sizeIdx: S.t.sizeIdx, current: S.t.current, unitArea: S.area, park: S.t.park, parkCount: S.t.parkCount, totalPrivate: S.t.totalPrivate });
+    const st = T.status === 'low' ? ['alert', '目安より低め', '将来、積立金の値上げや、大規模修繕のときの一時金（まとまったお金の追加）が必要になるかもしれません。管理組合の「長期修繕計画」を見せてもらってください。'] :
+      T.status === 'high' ? ['ok', '目安より高め', '計画がしっかりしている場合もあれば、工事が近い・建物が古いなどの理由のこともあります。'] :
+        ['ok', '目安の幅の中', 'ただし、建物ごとに必要な額はちがいます。長期修繕計画で確認してください。'];
+    $('tsumiOut').innerHTML = '<div class="figures" style="margin-top:8px">' +
+      '<div class="figure"><div class="k">ガイドラインの目安（' + T.label + '）</div><div class="v">' + fm(T.avg) + '<small>円/㎡・月</small></div><div class="s">' + fm(T.avg * TSUBO) + '円/坪・月。幅 ' + fm(T.lo) + '〜' + fm(T.hi) + '円/㎡' + (T.add > 0 ? '（駐車場の分 +' + fm(T.add, 1) + '円をふくむ）' : '') + '</div></div>' +
+      '<div class="figure main"><div class="k">この部屋（' + FUDOSAN.area(S.area) + '）の目安の月額</div><div class="v">' + fm(T.needAvg) + '<small>円</small></div><div class="s">幅 ' + fm(T.needLo) + '〜' + fm(T.needHi) + '円</div></div>' +
+      '<div class="figure"><div class="k">今の積立金</div><div class="v">' + fm(T.per, 0) + '<small>円/㎡・月</small></div><div class="s">' + fm(T.per * TSUBO) + '円/坪・月。目安の平均の' + fm(T.ratio * 100) + '%</div></div></div>' +
+      '<p class="note ' + st[0] + '"><b>' + st[1] + '</b>：' + st[2] + '</p>' +
+      '<p class="muted">この目安は「計画期間（30年以上）全体の平均」です。新築のころは安く、だんだん上げていく「段階増額積立方式」の場合、ガイドラインでは最初の額は平均の0.6倍以上、最後は1.1倍以内が適切とされています。ガイドラインの数値は過去の計画の事例をもとにしたもので、最近の工事費の値上がりは十分には入っていない可能性があります。</p>';
+  }
+  $('barTotal').textContent = man(E.total[0]) + '〜' + man(E.total[1]);
+  $('barCmp').textContent = '坪' + fm(S.tsuboPrice, 1) + '万円なら ' + man(E.rough) + '（約' + fm(E.ratio, 1) + '倍）';
+  save();
+}
+
+// 入力のつなぎ
+function onBase(e) {
+  const id = e.target.id;
+  const n = parseFloat(e.target.value);
+  if (id === 'areaM2' && n > 0) { S.area = n; $('areaTsubo').value = r2(toTsubo(n)); }
+  else if (id === 'areaTsubo' && n > 0) { S.area = r2(toM2(n)); $('areaM2').value = S.area; }
+  else if (id === 'built' && n >= 1900 && n <= 2100) { S.built = Math.round(n); $('age').value = NOW_YEAR - S.built; }
+  else if (id === 'age' && n >= 0 && n <= 150) { S.built = NOW_YEAR - Math.round(n); $('built').value = S.built; }
+  else if (id === 'struct') S.struct = e.target.value;
+  else if (id === 'layout') S.layout = e.target.value;
+  else if (id === 'grade') S.grade = e.target.value;
+  else if (id === 'stories') S.stories = parseInt(e.target.value, 10) || 2;
+  else if (id === 'tsuboPrice') { S.tsuboPrice = isFinite(n) ? n : 0; $('tsuboPriceM2').value = r2(S.tsuboPrice / TSUBO); }
+  else if (id === 'tsuboPriceM2') { S.tsuboPrice = isFinite(n) ? r2(n * TSUBO) : 0; $('tsuboPrice').value = S.tsuboPrice; }
+  else if (['mgmtLo', 'mgmtHi', 'miscLo', 'miscHi', 'tax'].indexOf(id) >= 0) S[id] = isFinite(n) ? n : 0;
+  else if (id === 'tFloors') S.t.floors = e.target.value;
+  else if (id === 'tSize') S.t.sizeIdx = parseInt(e.target.value, 10) || 0;
+  else if (id === 'tCurrent') S.t.current = isFinite(n) ? n : 0;
+  else if (id === 'tPark') S.t.park = e.target.value;
+  else if (id === 'tParkCount') S.t.parkCount = isFinite(n) ? n : 0;
+  else if (id === 'tTotalPrivate') { S.t.totalPrivate = isFinite(n) ? n : 0; $('tTotalPrivateT').value = r2(toTsubo(S.t.totalPrivate)); }
+  else if (id === 'tTotalPrivateT') { S.t.totalPrivate = isFinite(n) ? r2(toM2(n)) : 0; $('tTotalPrivate').value = S.t.totalPrivate; }
+  else return;
+  update();
+}
+['areaM2', 'areaTsubo', 'built', 'age', 'struct', 'layout', 'grade', 'stories', 'mgmtLo', 'mgmtHi', 'miscLo', 'miscHi', 'tax', 'tsuboPrice', 'tsuboPriceM2', 'tFloors', 'tSize', 'tCurrent', 'tPark', 'tParkCount', 'tTotalPrivate', 'tTotalPrivateT'].forEach(id => {
+  $(id).addEventListener('input', onBase); $(id).addEventListener('change', onBase);
+});
+function onItem(e) {
+  const box = e.target.closest('.it'); const f = e.target.getAttribute('data-f');
+  if (!box || !f) return;
+  const id = box.getAttribute('data-id');
+  const o = S.items[S.mode][id];
+  const it = ITEMS.find(i => i.id === id);
+  if (!o || !it) return;
+  if (f === 'on') o.on = e.target.checked;
+  else {
+    const n = parseFloat(e.target.value);
+    if (e.target.value === '' || !isFinite(n)) o[f] = null;
+    else o[f] = f === 'qty' ? fromViewQty(it.unit, S.view, n) : fromViewPrice(it.unit, S.view, n);
+  }
+  S.preset[S.mode] = 'custom';
+  document.querySelectorAll('[data-preset]').forEach(b => b.classList.remove('on'));
+  update();
+}
+$('items').addEventListener('input', onItem);
+$('items').addEventListener('change', onItem);
+$('presets').addEventListener('click', e => {
+  const b = e.target.closest('[data-preset]'); if (!b) return;
+  const pid = b.getAttribute('data-preset');
+  const cur = S.items[S.mode];
+  const fresh = presetOverrides(S.mode, pid);
+  Object.keys(fresh).forEach(id => { cur[id].on = fresh[id].on; }); // 数量・単価の手直しは残す
+  S.preset[S.mode] = pid;
+  S.symAdded[S.mode] = {};
+  applySymptoms();
+  renderStatic(); update();
+});
+$('unitSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-u]'); if (!b) return;
+  S.view = b.getAttribute('data-u') === 'tsubo' ? 'tsubo' : 'm2';
+  renderStatic(); update();
+});
+$('applySug').addEventListener('click', () => {
+  const sug = suggest(S, NOW_YEAR); const cur = S.items[S.mode];
+  sug.items.forEach(x => { if (cur[x.id]) cur[x.id].on = true; });
+  const on = id => cur[id] && cur[id].on;
+  if (['kitchen', 'bath', 'toilet', 'senmen'].some(on)) { cur.kaitai_mizu.on = true; cur.yojo.on = true; if (cur.kanri) cur.kanri.on = true; }
+  if (['yuka', 'kyusui', 'haisui', 'kyuhaisui_h'].some(on)) cur.kaitai_naisou.on = true;
+  if (S.mode === 'h' && ['gaiheki', 'yane_paint', 'yane_cover', 'yane_fuki'].some(on)) cur.ashiba.on = true;
+  if (S.mode === 'h' && cur.yane_cover.on) cur.yane_paint.on = false;
+  S.preset[S.mode] = 'custom';
+  renderStatic(); update();
+});
+$('resetItems').addEventListener('click', () => {
+  const cur = S.items[S.mode];
+  Object.keys(cur).forEach(id => { cur[id].qty = null; cur[id].lo = null; cur[id].hi = null; });
+  renderItems(); update();
+});
+// 不具合のチェック：入れた工事は覚えておき、外すときはそれだけを外す（ほかのチェックで要るものは残す）
+function applySymptoms() {
+  const cur = S.items[S.mode], added = S.symAdded[S.mode];
+  symWork(S.mode, S.sym[S.mode]).forEach(id => { if (cur[id] && !cur[id].on) { cur[id].on = true; added[id] = true; } });
+}
+$('symList').addEventListener('change', e => {
+  const id = e.target.getAttribute('data-sym'); if (!id) return;
+  const chk = S.sym[S.mode], cur = S.items[S.mode], added = S.symAdded[S.mode];
+  chk[id] = e.target.checked;
+  if (!chk[id]) delete chk[id];
+  if (e.target.checked) applySymptoms();
+  else {
+    const still = symWork(S.mode, chk);
+    Object.keys(added).forEach(it => { if (still.indexOf(it) < 0) { if (cur[it]) cur[it].on = false; delete added[it]; } });
+  }
+  S.preset[S.mode] = 'custom';
+  renderStatic(); update();
+});
+function setMode(m) {
+  if (S.mode === m) return;
+  S.mode = m;
+  if (m === 'h' && S.area < 60) { S.area = HOUSE_DEFAULT.area; S.layout = HOUSE_DEFAULT.layout; }
+  if (m === 'm' && S.area > 150) { S.area = DEFAULT.area; S.layout = DEFAULT.layout; }
+  S.struct = STRUCTS[m][0][0];
+  renderStatic(); update();
+}
+$('modeM').addEventListener('click', () => setMode('m'));
+$('modeH').addEventListener('click', () => setMode('h'));
+// 確認表だけを印刷する
+$('printCheck').addEventListener('click', () => {
+  document.body.classList.add('print-check');
+  try { window.print(); } finally { setTimeout(() => document.body.classList.remove('print-check'), 500); }
+});
+let rt = null;
+window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(update, 150); });
+load();
+renderStatic();
+update();
+</script>
+</body>
+</html>

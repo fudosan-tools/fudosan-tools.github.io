@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>積算の目安（土地＋建物）</title>
+<link rel="stylesheet" href="../共通/common.css">
+<style>
+/* このページだけで足した部品（共通に無いもの） */
+[hidden] { display: none !important; }   /* .iline（display:flex）に hidden を付けても隠れるように */
+.iline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.iline input[type=number] { width: 7.5em; }
+.iline input.w5 { width: 5em; }
+.iline input.wide, .iline select.wide { width: 100%; max-width: 30em; }
+.iline .u { color: var(--ink-2); font-size: 13px; white-space: nowrap; }
+.formrows .fr > select { max-width: 24em; }
+.methodseg { margin: 4px 0 12px; }
+.methodseg .seg button { min-height: 36px; padding: 8px 12px; }
+.sub { font-size: 12px; color: var(--muted); }
+.conv { font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+.steps td.how { color: var(--ink-2); font-size: 12px; text-align: left; }
+.steps td.lab { white-space: normal; }
+.pick { font-size: 13px; }
+.pick td, .pick th { white-space: nowrap; }
+.pick td.addr { white-space: normal; min-width: 12em; text-align: left; }
+.pick tr.chosen td { background: var(--head); }
+.exrow { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); align-items: start; }
+.exrow .check { padding: 0; }
+.exrow .pctin { display: flex; align-items: center; gap: 4px; }
+.exrow .pctin input { width: 5em; }
+.exrow .hint2 { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.basis label { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
+.basis label input { margin-top: 4px; }
+.ratio-ok { color: var(--ok, #3d6b45); }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.btns .btn { min-height: 36px; }
+.checklist { list-style: none; padding: 0; margin: 0; }
+.checklist .check { border-bottom: 1px solid var(--rule); min-height: 36px; font-size: 14px; }
+.checklist .check span small { display: block; color: var(--muted); font-size: 12px; }
+#geoMsg { font-size: 13px; color: var(--ink-2); }
+#geoMsg.err { color: var(--alert, #a33a2a); }
+/* 土地の形の部品（共通/katachi_ui.js）を入れる開け閉めの欄 */
+details.ktbox { margin: 4px 0 12px; font-size: 14px; color: var(--ink); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 4px 0 8px; }
+details.ktbox > summary { font-size: 14px; padding: 8px 0; min-height: 36px; }
+details.ktbox .kt { min-width: 0; }
+#ktOut table { font-size: 13px; }
+#ktOut td, #ktOut th { white-space: normal; }
+#ktOut ul { margin: 4px 0; padding-left: 1.2em; }
+/* 擁壁のやり直し（共通/gake.js） */
+.gkbox { margin: 10px 0 4px; }
+.gkbox .formrows { margin-top: 6px; }
+#gkOut table { font-size: 13px; }
+#gkOut td.l, #gkOut th.l { text-align: left; white-space: normal; }
+#gkOut ul { margin: 4px 0; padding-left: 1.2em; font-size: 12px; color: var(--ink-2); }
+@media (max-width: 640px) {
+  .iline input[type=number] { width: 6.5em; }
+  .exrow { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="sekisan"></nav>
+
+<main class="page">
+<div class="page-head">
+  <div class="eyebrow">お金の計算</div>
+  <h1>積算の目安（土地＋建物）</h1>
+  <p class="lead">積算は、金融機関がお金を貸すときによく使う「土地の値段＋建物の値段」の見方です。この道具はその<b>目安</b>を出すもので、不動産の鑑定評価ではありません。土地は国税庁の<b>相続税路線価</b>（道路ごとに決めた1㎡あたりの値段）を基本にし、無いときは固定資産税路線価や公示価格から換算します。建物は「いま建てなおすといくらか × 残りの年数の割合」で出します。</p>
+</div>
+
+<p class="note caution">ここで出す数字は目安です。金融機関ごとに計算のしかた（土地の掛け目・建物の単価・耐用年数の扱い）はちがい、公表されていません。土地の評価は国税庁の財産評価基本通達の計算を使っていますが、正面の道路の決め方・地区の区分・面積の測り方などで変わります。最後は金融機関・税理士・不動産鑑定士に確かめてください。</p>
+
+<!-- 01 物件 -->
+<section>
+  <h2><span class="no">01</span>物件</h2>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="addr">住所</label>
+      <div class="iline"><input type="text" id="addr" class="wide" placeholder="例：世田谷区桜上水5丁目40番10号" autocomplete="off">
+        <button class="btn" type="button" id="geoBtn">位置をさがす</button></div>
+      <span class="hint"><span id="geoMsg">位置が分かると、近くの公示地・基準地（国が毎年値段を調べている地点）を出します。住所は国土地理院の住所検索で調べます。</span></span></div>
+    <div class="fr"><span class="lab">土地の面積</span>
+      <div class="iline m2pair"><input type="number" id="areaM2" min="0" step="0.01" inputmode="decimal" aria-label="土地の面積（㎡）"><span class="u">㎡</span>
+        <input type="number" id="areaT" min="0" step="0.01" inputmode="decimal" aria-label="土地の面積（坪）"><span class="u">坪</span></div>
+      <span class="automark" id="mk_areaM2" hidden>土地の形から入れた・要確認</span>
+      <span class="hint">登記簿の地積（公簿）か、測量した面積（実測）。どちらに入れても、もう片方が変わります（1坪＝3.30578㎡）。</span></div>
+    <div class="fr"><label class="lab" for="youto">用途地域</label>
+      <div class="iline"><input type="text" id="youto" class="wide" placeholder="例：第一種低層住居専用地域"><span class="automark" id="youtoMark" hidden>物件調査から入れた・要確認</span></div>
+      <span class="hint">分からなければ空でかまいません。<a href="../物件調査/index.html" id="surveyLink">物件調査</a>で調べられます。</span></div>
+    <div class="fr"><label class="lab" for="priceMan">売り出し価格</label>
+      <div class="iline"><input type="number" id="priceMan" min="0" step="10" inputmode="decimal"><span class="u">万円</span></div>
+      <span class="hint">入れると「積算価格は売り出し価格の何%か」を出します。</span></div>
+  </div>
+</section>
+
+<!-- 02 土地の値段のもと -->
+<section>
+  <h2><span class="no">02</span>土地の値段のもと</h2>
+  <p class="small">上から順に、あるものを使います。相続税路線価が一番の基本です。</p>
+  <div class="methodseg segscroll"><div class="seg" role="group" aria-label="土地の値段のもと" id="methodSeg">
+    <button type="button" data-m="rosenka">1 相続税路線価</button><button type="button" data-m="bairitsu">1' 倍率地域</button>
+    <button type="button" data-m="kotei">2 固定資産税路線価</button><button type="button" data-m="koji">3 公示価格・地価調査</button></div></div>
+
+  <div class="formrows" id="m_rosenka">
+    <div class="fr"><label class="lab" for="rosenkaK">相続税路線価</label>
+      <div class="iline"><input type="number" id="rosenkaK" min="0" step="1" inputmode="decimal"><span class="u">千円/㎡</span>
+        <span class="u">借地権割合の記号</span><select id="letter"><option>A</option><option>B</option><option>C</option><option selected>D</option><option>E</option><option>F</option><option>G</option></select></div>
+      <span class="hint">路線価図で、物件が面している道路に書いてある数字（千円単位）です。例：「300D」なら 30万円/㎡、記号Dは借地権割合60%。</span></div>
+    <div class="fr"><span class="lab">路線価図を開く</span>
+      <div class="iline"><select id="reiwa"><option value="8">令和8年分（2026年）</option><option value="7">令和7年分（2025年）</option><option value="6">令和6年分（2024年）</option></select>
+        <a id="rosenkaLink" href="https://www.rosenka.nta.go.jp/" target="_blank" rel="noopener">国税庁 路線価図・評価倍率表</a></div>
+      <span class="hint">都県は住所から選びます。開いた先で市区町村 → 町名 → 路線価図の順にたどってください。路線価が無い地域（倍率地域）なら「1' 倍率地域」を使います。毎年7月1日ごろに新しい年の分が出ます。</span></div>
+  </div>
+
+  <div class="formrows" id="m_bairitsu" hidden>
+    <div class="fr"><label class="lab" for="koteiHyokaMan">固定資産税評価額</label>
+      <div class="iline"><input type="number" id="koteiHyokaMan" min="0" step="1" inputmode="decimal"><span class="u">万円（土地全体）</span></div>
+      <span class="hint">固定資産税の課税明細書や評価証明書の「評価額」（課税標準額ではありません）。</span></div>
+    <div class="fr"><label class="lab" for="bairitsu">倍率</label>
+      <div class="iline"><input type="number" id="bairitsu" min="0" step="0.1" inputmode="decimal"><span class="u">倍</span>
+        <a id="bairitsuLink" href="https://www.rosenka.nta.go.jp/" target="_blank" rel="noopener">評価倍率表（国税庁）</a></div>
+      <span class="hint">路線価図と同じページの「評価倍率表」で、町ごと・宅地の倍率を見ます（市街地では1.0〜1.1が多い）。倍率地域では形の補正は入れません（固定資産税評価にふくまれているため）。</span></div>
+  </div>
+
+  <div class="formrows" id="m_kotei" hidden>
+    <div class="fr"><label class="lab" for="koteiUnit">固定資産税路線価</label>
+      <div class="iline"><input type="number" id="koteiUnit" min="0" step="100" inputmode="decimal"><span class="u">円/㎡</span>
+        <a href="https://www.chikamap.jp/" target="_blank" rel="noopener">全国地価マップ（固定資産税路線価）</a></div>
+      <div class="conv" id="koteiConv"></div>
+      <span class="hint">固定資産税の路線価は公示価格の約7割、相続税路線価は約8割をめやすに決められています。そこで 固定資産税路線価 × 0.8 ÷ 0.7 で相続税路線価の水準に直します。</span></div>
+  </div>
+
+  <div class="formrows" id="m_koji" hidden>
+    <div class="fr"><label class="lab" for="kojiUnit">公示価格・地価調査価格</label>
+      <div class="iline"><input type="number" id="kojiUnit" min="0" step="100" inputmode="decimal"><span class="u">円/㎡</span></div>
+      <div class="conv" id="kojiConv"></div>
+      <span class="hint">国が1月1日（公示）、都県が7月1日（地価調査）の値段を調べている地点の、1㎡あたりの値段です。相続税路線価は公示価格の約8割なので、× 0.8 で直します。</span></div>
+    <div class="fr"><label class="lab" for="chiikiPct">地点との差</label>
+      <div class="iline"><input type="number" id="chiikiPct" min="1" step="1" inputmode="decimal" class="w5"><span class="u">%（地点を100として、物件のある場所）</span></div>
+      <span class="hint">駅からの距離・道路の広さ・まわりの様子が地点とちがうときに直します。分からなければ100のまま。</span></div>
+  </div>
+
+  <div id="nearBox">
+    <h3>近くの公示地・基準地</h3>
+    <div class="iline small"><span>種類</span><select id="useFilter"><option value="0">住宅地</option><option value="5">商業地</option><option value="9">工業地</option><option value="all">すべて</option></select>
+      <span class="sub" id="nearMeta"></span></div>
+    <div id="nearList"><p class="small muted">住所の「位置をさがす」を押すと出ます。</p></div>
+  </div>
+</section>
+
+<!-- 03 土地の形と道路 -->
+<section id="shapeSec">
+  <h2><span class="no">03</span>土地の形と道路（国税庁の補正）</h2>
+  <p class="small">国税庁の「財産評価基本通達」の表で、形や道路の条件による補正をします。分からない欄は空のままでかまいません（その補正はしません）。</p>
+  <details class="more ktbox" id="ktBox"><summary>形を図で入れる（いびつな形・測量図の座標）</summary>
+    <p class="small">長方形でない土地は、ここで形を入れると、国税庁の決め方（想定整形地＝土地をすっぽり囲む、正面の道路に面した長方形）で <b>間口・奥行・土地の形・かげ地割合・面積</b> を下の欄に入れます。入れた欄には「土地の形から入れた・要確認」の印が付きます。印の付いた欄を手で直すと、その欄は手で入れた値を使います。角地・二方路は候補を知らせるだけで、自動では選びません。</p>
+    <div id="kt"></div>
+    <div id="ktOut"></div>
+  </details>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="district">地区の区分</label>
+      <select id="district"><option value="futsu">普通住宅地区</option><option value="shogyo">普通商業・併用住宅地区</option><option value="koudo">高度商業地区</option><option value="hanka">繁華街地区</option><option value="kojo">中小工場地区</option><option value="daikojo">大工場地区</option><option value="biru">ビル街地区</option></select>
+      <span class="hint">路線価図で、路線価を囲む記号の形で分かります（ふつうの住宅地なら記号なし＝普通住宅地区）。<span class="automark" id="districtMark" hidden>用途地域から入れた・要確認</span></span></div>
+    <div class="fr"><label class="lab" for="depthM">奥行</label>
+      <div class="iline"><input type="number" id="depthM" min="0" step="0.1" inputmode="decimal"><span class="u">m</span><span class="sub" id="okuyukiOut"></span></div>
+      <span class="automark" id="mk_depthM" hidden>土地の形から入れた・要確認</span>
+      <span class="hint">正面の道路から土地の奥までの長さ。形がいびつなときは「面積 ÷ 間口」などで決めます（上の「形を図で入れる」で出せます）。</span></div>
+    <div class="fr"><label class="lab" for="frontM">間口</label>
+      <div class="iline"><input type="number" id="frontM" min="0" step="0.1" inputmode="decimal"><span class="u">m</span><span class="sub" id="maguchiOut"></span></div>
+      <span class="automark" id="mk_frontM" hidden>土地の形から入れた・要確認</span>
+      <span class="hint">正面の道路に接している長さ。旗竿地なら竿（通路）の幅。</span></div>
+    <div class="fr"><label class="lab" for="shape">土地の形</label>
+      <select id="shape"><option value="seikei">整形（長方形・正方形）</option><option value="fusei">不整形・旗竿地・台形など</option></select>
+      <span class="automark" id="mk_shape" hidden>土地の形から入れた・要確認</span></div>
+    <div class="fr" id="kageRow" hidden><span class="lab">かげ地割合</span>
+      <div class="iline"><input type="number" id="kagePct" min="0" max="99" step="0.1" inputmode="decimal" class="w5"><span class="u">%　または 想定整形地</span>
+        <span class="m2pair iline"><input type="number" id="soteiM2" min="0" step="0.01" inputmode="decimal" aria-label="想定整形地（㎡）"><span class="u">㎡</span><input type="number" id="soteiT" min="0" step="0.01" inputmode="decimal" aria-label="想定整形地（坪）"><span class="u">坪</span></span></div>
+      <span class="automark" id="mk_kage" hidden>土地の形から入れた・要確認</span>
+      <span class="hint">想定整形地は、正面の道路に沿って土地をすっぽり囲む長方形。かげ地割合＝（想定整形地 − 土地）÷ 想定整形地。</span></div>
+    <div class="fr"><label class="lab" for="corner">角地</label>
+      <div class="iline"><select id="corner"><option value="none">ちがう</option><option value="kado">角地（2本の道路の角）</option><option value="junkado">準角地（曲がった1本の道路の角）</option></select></div>
+      <div class="iline" id="sideRow" hidden><span class="u">横の道路の</span><span class="u js-unitname">路線価</span><input type="number" id="sideUnit" min="0" step="1" inputmode="decimal"><span class="u js-unit">千円/㎡</span>
+        <span class="u">横から見た奥行</span><input type="number" id="sideDepthM" min="0" step="0.1" inputmode="decimal" class="w5"><span class="u">m</span></div>
+      <span class="hint">路線価×奥行補正の高い方の道路が「正面」です。横から見た奥行が空なら間口を使います。</span></div>
+    <div class="fr"><span class="lab">二方路</span>
+      <div class="iline"><label class="check"><input type="checkbox" id="rear"><span>裏側にも道路がある</span></label></div>
+      <div class="iline" id="rearRow" hidden><span class="u">裏の道路の</span><span class="u js-unitname">路線価</span><input type="number" id="rearUnit" min="0" step="1" inputmode="decimal"><span class="u js-unit">千円/㎡</span></div></div>
+    <div class="fr"><span class="lab">大きな土地</span>
+      <div class="iline"><label class="check"><input type="checkbox" id="kibo"><span>規模格差補正率を使う（地積規模の大きな宅地）</span></label>
+        <select id="sandai"><option value="1">三大都市圏（500㎡以上）</option><option value="0">それ以外（1000㎡以上）</option></select><span class="sub" id="kiboOut"></span></div>
+      <span class="hint">普通住宅地区・普通商業地区で、三大都市圏なら500㎡以上。市街化調整区域・工業専用地域・容積率400%以上（東京23区は300%以上）の土地は使えません。1都3県でも三大都市圏に入らない市町村があります。</span></div>
+    <div class="fr"><span class="lab">無道路地</span>
+      <div class="iline"><label class="check"><input type="checkbox" id="mudouro"><span>道路に接していない・接道が2m未満</span></label></div>
+      <div class="iline" id="tsuroRow" hidden><span class="u">道路まで通路をつくる面積</span><span class="m2pair iline"><input type="number" id="tsuroM2" min="0" step="0.01" inputmode="decimal" aria-label="通路の面積（㎡）"><span class="u">㎡</span><input type="number" id="tsuroT" min="0" step="0.01" inputmode="decimal" aria-label="通路の面積（坪）"><span class="u">坪</span></span></div>
+      <span class="hint">国税庁は、通路にする部分の値段（路線価×面積）を引きます（最大4割）。形の補正は、道路から見た想定整形地で「不整形」として入れてください。</span></div>
+    <div class="fr"><span class="lab">がけ地</span>
+      <div class="iline"><span class="u">土地のうち</span><input type="number" id="gakePct" min="0" max="100" step="1" inputmode="decimal" class="w5"><span class="u">% が使えない斜面　向き</span>
+        <select id="gakeDir"><option>南</option><option>東</option><option>西</option><option selected>北</option></select><span class="sub" id="gakeOut"></span></div>
+      <span class="hint">10%未満なら補正なし。向きは、がけの斜面が向いている方角。</span></div>
+    <div class="fr"><span class="lab">土砂災害特別警戒区域</span>
+      <div class="iline"><span class="u">土地のうち</span><input type="number" id="tokkeiPct" min="0" max="100" step="1" inputmode="decimal" class="w5"><span class="u">% が区域の中</span></div>
+      <span class="hint">いわゆるレッドゾーン。10%以上から補正（0.90〜0.70）。都県の土砂災害警戒区域の地図で確かめます。</span></div>
+    <div class="fr"><span class="lab">セットバック</span>
+      <div class="iline"><span class="u">道路にする部分</span><span class="m2pair iline"><input type="number" id="setbackM2" min="0" step="0.01" inputmode="decimal" aria-label="セットバックの面積（㎡）"><span class="u">㎡</span><input type="number" id="setbackT" min="0" step="0.01" inputmode="decimal" aria-label="セットバックの面積（坪）"><span class="u">坪</span></span></div>
+      <span class="hint">前の道路が4m未満で、建てかえのときに下がる部分（面積にふくまれているとき）。その部分は7割引きます。</span></div>
+    <div class="fr"><span class="lab">私道の持分</span>
+      <div class="iline"><span class="u">土地とは別の私道の部分</span><span class="m2pair iline"><input type="number" id="shidouM2" min="0" step="0.01" inputmode="decimal" aria-label="私道の面積（㎡）"><span class="u">㎡</span><input type="number" id="shidouT" min="0" step="0.01" inputmode="decimal" aria-label="私道の面積（坪）"><span class="u">坪</span></span>
+        <label class="check"><input type="checkbox" id="shidouPublic"><span>だれでも通る通り抜けの道</span></label></div>
+      <span class="hint">私道は路線価×面積×0.3（通り抜けの道は0）。ここでは正面の路線価で計算します。</span></div>
+    <div class="fr"><span class="lab">利用価値の低下</span>
+      <div class="iline"><label class="check"><input type="checkbox" id="riyouTeika"><span>道路との大きな高低差・騒音・日照の悪さなどで、使いにくい</span></label>
+        <span class="u">土地のうち</span><input type="number" id="riyouShare" min="0" max="100" step="1" inputmode="decimal" class="w5"><span class="u">%</span></div>
+      <span class="hint">国税庁は、その部分を10%引くとしています。ただし、路線価にすでにふくまれていれば使えません。</span></div>
+    <div class="fr"><label class="lab" for="right">権利</label>
+      <select id="right"><option value="own">所有権（ふつう）</option><option value="shakuchi">借地権（土地を借りている）</option></select>
+      <span class="hint">借地権なら × 借地権割合（02の記号）。積算では借地の物件は担保にとりにくく、金融機関によっては評価しないこともあります。</span></div>
+  </div>
+</section>
+
+<!-- 04 税の評価に入らない事情 -->
+<section>
+  <h2><span class="no">04</span>税の評価に入らない事情（目安）</h2>
+  <p class="small">路線価の計算には入らないけれど、売り買いや金融機関の評価で値段が下がる事情です。当てはまるものに印をつけると、土地の値段に掛けます。%は、いろいろな不動産会社・鑑定・買取業者の解説を比べた目安の真ん中で、変えられます。</p>
+  <div id="exList"></div>
+  <details class="more gkbox" id="gkBox">
+    <summary>擁壁のやり直し・がけ条例の費用を計算する</summary>
+    <p class="small">検査済証の無い擁壁（土を止める壁）は、がけ条例では「擁壁が無い」のと同じあつかいになることが多く、建てかえのときに作り直しを求められることがあります。長さと高さから、作り直しの費用の目安を出します。建てられる大きさへの影響は <a href="kenchiku.html">建築・ボリューム</a> の「がけ・擁壁」で見られます。</p>
+    <div class="formrows">
+      <div class="fr"><label class="lab" for="gkReg">がけ条例の地域</label><select id="gkReg"></select><span class="hint" id="gkRegHint"></span></div>
+      <div class="fr"><span class="lab">擁壁の長さ・高さ</span>
+        <div class="iline"><input type="number" id="gkL" min="0" step="0.1" inputmode="decimal" aria-label="擁壁の長さ"><span class="u">m（長さ）</span><input type="number" id="gkH" min="0" step="0.1" inputmode="decimal" aria-label="擁壁の高さ"><span class="u">m（高さ）</span></div>
+        <span class="hint">高さは、下の地面から上の地面まで。</span></div>
+      <div class="fr"><label class="lab" for="gkOld">今の擁壁</label><select id="gkOld"><option value="rc">鉄筋コンクリート</option><option value="stone">間知石・間知ブロックの練積み</option><option value="dry">空石積み・大谷石・ブロック積み</option><option value="none">なし（土の斜面）</option></select></div>
+      <div class="fr"><label class="lab" for="gkNew">新しくする擁壁</label><select id="gkNew"><option value="L">鉄筋コンクリート L型</option><option value="T">鉄筋コンクリート 逆T型</option><option value="kenchi">間知ブロック練積み</option></select></div>
+      <div class="fr"><label class="lab" for="gkAcc">重機の入り方</label><select id="gkAcc"><option value="ok">重機が入る</option><option value="small">小型の重機だけ</option><option value="hand">手作業</option></select></div>
+      <div class="fr"><span class="lab">まわり</span><div class="iline"><label class="check"><input type="checkbox" id="gkNb"><span>となりの建物・境界が近い（山留め）</span></label><label class="check"><input type="checkbox" id="gkRoad"><span>道路を使う・交通誘導</span></label></div></div>
+    </div>
+    <div id="gkOut"></div>
+  </details>
+  <div class="formrows" style="margin-top:8px">
+    <div class="fr"><label class="lab" for="exCostMan">そのほか引く費用</label>
+      <div class="iline"><input type="number" id="exCostMan" min="0" step="10" inputmode="decimal"><span class="u">万円</span></div>
+      <span class="hint">擁壁のつくり直し（上の「擁壁のやり直し」で計算して入れられます）・地中の埋設物の撤去・土壌の調査など。</span></div>
+  </div>
+</section>
+
+<!-- 05 建物 -->
+<section>
+  <h2><span class="no">05</span>建物</h2>
+  <div class="formrows">
+    <div class="fr"><span class="lab">建物</span><label class="check"><input type="checkbox" id="noBld"><span>建物はない（土地だけ）</span></label></div>
+    <div class="fr bld"><label class="lab" for="struct">構造</label>
+      <select id="struct"><option value="w">木造（耐用年数22年）</option><option value="ls3">軽量鉄骨・骨格材の厚さ3mm以下（19年）</option><option value="ls4">軽量鉄骨・3mmをこえ4mm以下（27年）</option><option value="s">重量鉄骨・4mmをこえる（34年）</option><option value="rc">RC 鉄筋コンクリート（47年）</option><option value="src">SRC 鉄骨鉄筋コンクリート（47年）</option></select>
+      <span class="hint">耐用年数は税の決まり（法定耐用年数・住宅用）。軽量鉄骨は鉄の厚さで年数がちがうので、メーカーの仕様書や建築確認の書類で確かめます。</span></div>
+    <div class="fr bld"><span class="lab">延床面積</span>
+      <div class="iline m2pair"><input type="number" id="floorM2" min="0" step="0.01" inputmode="decimal" aria-label="延床面積（㎡）"><span class="u">㎡</span>
+        <input type="number" id="floorT" min="0" step="0.01" inputmode="decimal" aria-label="延床面積（坪）"><span class="u">坪</span></div>
+      <span class="hint">全部の階の床面積の合計（登記簿の床面積）。</span></div>
+    <div class="fr bld"><span class="lab">建てた年</span>
+      <div class="iline"><input type="number" id="builtYear" min="1900" max="2100" step="1" inputmode="numeric" class="w5"><span class="u">年（西暦）</span>
+        <span class="u">築</span><input type="number" id="age" min="0" step="1" inputmode="numeric" class="w5"><span class="u">年</span></div>
+      <span class="hint">どちらかを入れると、もう片方が変わります（今年から引いた年数。月は数えません）。</span></div>
+    <div class="fr bld"><label class="lab" for="unitSrc">建てなおす単価</label>
+      <div class="iline"><select id="unitSrc"><option value="bank">金融機関の目安（木造15・重量鉄骨18・RC20万円/㎡）</option><option value="nta">国税庁の工事費用表（令和7年分・都県別）</option><option value="self">自分で入れる</option></select>
+        <select id="unitPref"><option>東京都</option><option>神奈川県</option><option>埼玉県</option><option>千葉県</option></select></div>
+      <div class="iline"><input type="number" id="unitMan" min="0" step="0.1" inputmode="decimal"><span class="u">万円/㎡</span><span class="sub" id="unitTsubo"></span></div>
+      <span class="hint">再調達価格（いま同じ建物を新しく建てるといくらか）。金融機関の目安は昔から使われている値で、最近の工事費（国税庁の表）より低めです。</span></div>
+    <div class="fr bld"><label class="lab" for="over">耐用年数を過ぎたら</label>
+      <div class="iline"><select id="over"><option value="zero">建物は0円とする</option><option value="residual">一部の値段を残す</option></select>
+        <span id="resRow" class="iline" hidden><span class="u">新築の</span><input type="number" id="residualPct" min="0" max="100" step="1" inputmode="decimal" class="w5"><span class="u">% は残す</span></span></div>
+      <span class="hint">金融機関の積算では、耐用年数を過ぎた建物は0とする解説が多いです。</span></div>
+  </div>
+</section>
+
+<!-- 06 結果 -->
+<section>
+  <h2><span class="no">06</span>積算価格</h2>
+  <div class="figures" id="figs"></div>
+  <div id="warn"></div>
+
+  <h3>積算に使う土地の値段</h3>
+  <div class="basis" id="basisBox">
+    <label><input type="radio" name="basis" value="tax"><span><b>相続税路線価ベースの評価額（税の評価）</b>　<span id="bTax"></span><br><span class="sub">はじめはこちら。金融機関の積算の解説では「路線価 × 面積」をそのまま使う例が多く、公示価格の8割ほどの水準なので、担保としては控えめな値になります。</span></span></label>
+    <label><input type="radio" name="basis" value="market"><span><b>時価に戻した目安（税の評価 ÷ 0.8）</b>　<span id="bMarket"></span><br><span class="sub">路線価は公示価格の約8割なので、0.8で割ると公示価格の水準（ふつうの売り買いの目安）に近づきます。</span></span></label>
+  </div>
+
+  <h3>土地の計算</h3>
+  <div class="tablewrap"><table class="steps" id="landSteps"></table></div>
+  <h3 class="bldh">建物の計算</h3>
+  <div class="tablewrap bldh"><table class="steps" id="bldSteps"></table></div>
+
+  <p class="small">相場とくらべる：<a href="../相場マップ試作/web/index.html" id="soubaLink">相場マップ</a>（町ごとの実際の取引の値段）</p>
+
+  <div class="for-client note">
+    <p><b>積算価格の見かた</b>：積算価格が売り出し価格より高いほど、金融機関は「担保の値打ちが十分」と見やすくなります。都心では売り出し価格のほうが高く、郊外では積算のほうが高くなりやすいと言われます。積算が低くても、家賃の収入（収益還元）や借りる人の年収で融資が決まることもあります。</p>
+  </div>
+  <div class="for-staff note">
+    <p><b>担当者向け</b>：金融機関の積算は公表されていません。解説記事では、融資額の上限を積算価格の7〜8割とみる例や、土地に掛け目（角地＋10%・旗竿−30%など）を入れる例があります（公表された基準ではありません）。耐用年数を過ぎた物件の融資期間を「経済的耐用年数」でのばす金融機関もあります。</p>
+  </div>
+</section>
+
+<!-- 07 担当者チェック -->
+<section class="for-staff" id="staffSec">
+  <h2><span class="no">07</span>担当者向け：積算の確認チェックリスト</h2>
+  <div class="staff-box">
+    <div class="t">チェックリスト（路線価図・役所・登記・売主で確認）</div>
+    <p class="muted" style="margin:0">物件：<span id="ckAddr">＿＿＿＿＿＿＿＿＿＿＿＿</span>　確認日：＿＿＿＿年＿＿月＿＿日　担当：＿＿＿＿＿＿</p>
+    <h3>土地の値段のもと</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>路線価の年（いまの年の分か）<small>新しい年の分は毎年7月1日ごろに出る。1〜6月は前の年の分を使うことが多い</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>路線価地域か、倍率地域か<small>倍率地域なら評価倍率表と、固定資産税評価額（評価証明書）</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>正面の道路の決め方（路線価×奥行補正の高い方）と、地区の区分（路線価図の記号の形）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>借地権割合の記号（A〜G）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>公示地・基準地を使ったときは、地点との差（駅距離・道路の幅・形・用途地域）</span></label></li>
+    </ul>
+    <h3>土地の形と道路</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>地積（公簿と実測のちがい）・地積測量図の有無</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>接道（建築基準法上の道路か・2m以上接しているか）<small>役所の道路の担当で道路の種類（42条1項・2項など）を確認</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>前の道路の幅とセットバックの要否・面積</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>私道の持分・通行と掘削の承諾書</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>間口・奥行の実測、旗竿地なら竿の幅と長さ</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>いびつな形の土地は、地積測量図の座標で形を入れたか（想定整形地は正面の道路で変わる）<small>「形を図で入れる」で出した間口・奥行・かげ地割合は目安。正面の道路・屈折路・角地の扱いは税理士・路線価図で確認</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>高低差・擁壁の検査済証・がけ条例（東京都の例：高さ2mをこえるがけ）<small>ほかの県・市は役所で確認</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>土砂災害警戒区域・特別警戒区域、都市計画道路の予定地</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>高圧線・線路・嫌悪施設など、路線価に入っていない事情</span></label></li>
+    </ul>
+    <h3>建物</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>建築確認済証・検査済証の有無<small>検査済証が無いと融資が出にくいことがある</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>構造（軽量鉄骨なら骨格材の厚さ）と、登記の構造の書き方</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>延床面積（登記と実際）・増築や用途の変更</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>建ぺい率・容積率をこえていないか（違反建築・既存不適格）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>新築の年月（登記簿の新築年月日）と旧耐震（1981年5月以前の建築確認）か</span></label></li>
+    </ul>
+    <div class="btns no-print">
+      <button class="btn" type="button" id="printCheck">このチェックリストを印刷する</button>
+      <button class="btn" type="button" id="clearCheck">チェックを全部外す</button>
+    </div>
+  </div>
+</section>
+
+<p class="no-print" style="text-align:right;margin-top:24px"><button class="btn" id="resetBtn" type="button">入力を最初の状態にもどす</button></p>
+
+<div class="disclaimer">
+  <p><b>これは目安です。</b>金融機関の積算のしかたは公表されておらず、ここでは解説記事でよく使われる考え方で計算しています。土地の評価は国税庁の財産評価基本通達の計算を使っていますが、相続税の申告に使うものではありません。路線価・倍率は国税庁の路線価図・評価倍率表、固定資産税評価額は市区町村（東京23区は都税事務所）、建物の構造・面積は登記簿と建築の書類で確かめてください。融資は金融機関、税金は税理士、値段は不動産会社・不動産鑑定士に確認してください。</p>
+  <p>使ったデータ・考え方の出典（2026年10月22日に確認）</p>
+  <ul>
+    <li>相続税路線価の水準：国税庁「<a href="https://www.nta.go.jp/information/release/kokuzeicho/2026/rosenka/index.htm" target="_blank" rel="noopener">令和8年分の路線価等について</a>」（路線価等は地価公示価格等を基にした価格の80%程度を目途に定めている）。路線価図：<a href="https://www.rosenka.nta.go.jp/" target="_blank" rel="noopener">国税庁 財産評価基準書</a>。</li>
+    <li>固定資産税評価の水準：総務省「固定資産評価基準」第1章第12節 経過措置（地価公示価格等の7割を目途）、<a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/149767_08.html" target="_blank" rel="noopener">総務省 固定資産税の概要</a>。固定資産税路線価：<a href="https://www.chikamap.jp/" target="_blank" rel="noopener">全国地価マップ</a>（一般財団法人 資産評価システム研究センター）。</li>
+    <li>補正率：国税庁「<a href="https://www.nta.go.jp/law/tsutatsu/kihon/sisan/hyoka_new/02/07.htm" target="_blank" rel="noopener">財産評価基本通達 付表</a>」・<a href="https://www.rosenka.nta.go.jp/docs/h31_thyousei.pdf" target="_blank" rel="noopener">調整率表（平成31年1月分以降用）</a>、通達20〜24-6（不整形地・規模格差・無道路地・がけ地・私道・セットバック）、タックスアンサー No.4617（利用価値が著しく低下している宅地）。</li>
+    <li>近くの公示地・基準地：「国土数値情報（地価公示データ 令和8年・都道府県地価調査データ 令和8年）」（国土交通省）<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-L01-2026.html" target="_blank" rel="noopener">L01</a>・<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-L02-2026.html" target="_blank" rel="noopener">L02</a> をもとに、1都3県の地点を分けて作成（林地はのぞく）。住所の位置：国土地理院 住所検索。</li>
+    <li>建物：法定耐用年数は国税庁「<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/pdf/2100_01.pdf" target="_blank" rel="noopener">主な減価償却資産の耐用年数表</a>」（住宅用）。再調達価格の金融機関の目安は不動産投資の解説（健美家ほか）、国税庁「<a href="https://www.nta.go.jp/taxes/shiraberu/saigai/h30/0018008-045/07_r07.htm" target="_blank" rel="noopener">地域別・構造別の工事費用表（令和7年分）</a>」。</li>
+    <li>税の評価に入らない事情の%：不動産会社・鑑定・買取業者の解説を比べた目安です。</li>
+    <li>いびつな形の土地（形を図で入れる）：想定整形地・かげ地割合・間口・奥行は国税庁 財産評価基本通達20（不整形地の評価）と質疑応答事例「不整形地の奥行距離の求め方」「屈折路に面する不整形地の想定整形地のとり方」のやり方の目安。測量図の座標は平面直角座標系（X 北・Y 東）。</li>
+    <li>面積：1坪＝3.30578㎡で換算。</li>
+  </ul>
+</div>
+</main>
+
+<script src="../共通/hosei_data.js"></script>
+<script src="sekisan_calc.js"></script>
+<script src="data/chika/index.js"></script>
+<script src="../共通/common.js"></script>
+<script src="../共通/katachi.js"></script>
+<script src="../共通/katachi_ui.js"></script>
+<script src="../共通/gake.js"></script>
+<script>
+(function () {
+  "use strict";
+  var S = window.SEKISAN, H = window.HOSEI, TSUBO = S.TSUBO, IDX = window.CHIKA_INDEX;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var THIS_YEAR = new Date().getFullYear();
+  // 「税の評価に入らない事情」に出すもの（国税庁の計算で入れた形・がけ・セットバックなどは、二重に引かないよう出さない）
+  var EX_IDS = ["saikenchiku", "shidou_ok", "shidou_ng", "hinadan", "youheki", "keisha", "kita", "senro", "kouatsu", "kenoshisetsu",
+    "jiko_kodoku", "jiko_tokusou", "jiko_jisatsu", "jiko_tasatsu"];
+
+  // ---------------------------------------------------------------- 入力の状態
+  var DEF = { addr: "", lat: null, lon: null, pref: "", areaM2: 150, youto: "", youtoAuto: false, priceMan: null,
+    method: "rosenka", rosenkaK: null, letter: "D", reiwa: "8", koteiHyokaMan: null, bairitsu: 1.1, koteiUnit: null, kojiUnit: null, chiikiPct: 100, kojiPick: "",
+    useFilter: "0", district: "futsu", districtAuto: false, depthM: null, frontM: null, shape: "seikei", kagePct: null, soteiM2: null,
+    corner: "none", sideDepthM: null, rear: false, kibo: null, sandai: "1", mudouro: false, tsuroM2: null,
+    gakePct: null, gakeDir: "北", tokkeiPct: null, setbackM2: null, shidouM2: null, shidouPublic: false, riyouTeika: false, riyouShare: 100, right: "own",
+    ex: {}, exCostMan: null,
+    noBld: false, struct: "w", floorM2: 100, builtYear: THIS_YEAR - 20, age: 20, unitSrc: "bank", unitPref: "東京都", unitMan: null, over: "zero", residualPct: 10,
+    basis: "tax", kz: null, ktOn: false, ktMan: {}, ktAuto: {}, v: 1 };
+  var ST = JSON.parse(JSON.stringify(DEF));
+  try { var sv = JSON.parse(localStorage.getItem("sekisanState") || "null"); if (sv && sv.v === 1) Object.assign(ST, sv); } catch (e) {}
+  // 物件調査などから URL で受けとる：?addr=…&area=…(㎡)&youto=…&lat=…&lon=…&price=…(万円)&floor=…(㎡)&built=…(西暦)&struct=w|ls3|ls4|s|rc|src
+  var ps = new URLSearchParams(location.search), fromUrl = false;
+  // 別の物件を URL で渡されたときは、前の物件の路線価などを持ちこまないよう、設定（単価のよりどころ・耐用年数の扱い・土地の値段の選び方など）以外は最初の状態にもどす
+  if (ps.get("addr") || ps.get("area") || ps.get("lat")) {
+    var keep = { unitSrc: ST.unitSrc, unitPref: ST.unitPref, over: ST.over, residualPct: ST.residualPct, basis: ST.basis, useFilter: ST.useFilter, reiwa: ST.reiwa };
+    ST = Object.assign(JSON.parse(JSON.stringify(DEF)), keep);
+  }
+  if (ps.get("addr")) { ST.addr = ps.get("addr"); ST.lat = ST.lon = null; ST.pref = ""; fromUrl = true; }
+  if (+ps.get("area") > 0) { ST.areaM2 = +ps.get("area"); fromUrl = true; }
+  if (ps.get("youto")) { ST.youto = ps.get("youto"); ST.youtoAuto = true; ST.district = districtFromYouto(ST.youto); ST.districtAuto = true; fromUrl = true; }
+  if (+ps.get("lat") && +ps.get("lon")) { ST.lat = +ps.get("lat"); ST.lon = +ps.get("lon"); }
+  if (+ps.get("price") > 0) ST.priceMan = +ps.get("price");
+  if (+ps.get("floor") > 0) ST.floorM2 = +ps.get("floor");
+  if (+ps.get("built") > 1900) { ST.builtYear = +ps.get("built"); ST.age = Math.max(0, THIS_YEAR - ST.builtYear); }
+  if (S.STRUCTS[ps.get("struct")]) ST.struct = ps.get("struct");
+  // 土地の形（共通/katachi.js）：? か # の kz・kzr・kzf・kzt で受けとる。受けとったら、形の値を欄に入れる
+  var K = window.Katachi, KU = window.KatachiUI;
+  ST.ktMan = ST.ktMan || {}; ST.ktAuto = ST.ktAuto || {};
+  var urlLand = KU ? KU.readLocation() : null;
+  if (urlLand && K && !(ST.ktOn && ST.kz === K.toQuery(urlLand))) {   // 同じ形（このページが書いた # を開きなおした）なら、手で直した印はそのまま
+    ST.kz = K.toQuery(urlLand); ST.ktOn = true; ST.ktMan = {}; ST.ktAuto = {};
+    if (+ps.get("area") > 0) ST.ktMan.areaM2 = true;   // URL の area（登記の地積など）を渡されたときは、そちらを手入力あつかいにして残す
+  }
+  function districtFromYouto(y) { return /工業/.test(y) ? "kojo" : /商業/.test(y) ? "shogyo" : "futsu"; }
+  function save() { try { localStorage.setItem("sekisanState", JSON.stringify(ST)); } catch (e) {} }
+
+  // ---------------------------------------------------------------- 入力欄と状態をつなぐ
+  var NUM = ["areaM2", "priceMan", "rosenkaK", "koteiHyokaMan", "bairitsu", "koteiUnit", "kojiUnit", "chiikiPct", "depthM", "frontM", "kagePct", "soteiM2",
+    "sideUnit", "sideDepthM", "rearUnit", "tsuroM2", "gakePct", "tokkeiPct", "setbackM2", "shidouM2", "riyouShare", "exCostMan", "floorM2", "builtYear", "age", "unitMan", "residualPct"];
+  var TXT = ["addr", "youto", "letter", "reiwa", "useFilter", "district", "shape", "corner", "gakeDir", "right", "struct", "unitSrc", "unitPref", "over", "sandai"];
+  var CHK = ["rear", "mudouro", "shidouPublic", "riyouTeika", "noBld"];
+  var PAIRS = { areaM2: "areaT", soteiM2: "soteiT", tsuroM2: "tsuroT", setbackM2: "setbackT", shidouM2: "shidouT", floorM2: "floorT" };
+  var r2 = function (v) { return Math.round(v * 100) / 100; };
+  // 横・裏の道路の値は、土地の値段のもとごとに分けてしまう（路線価は千円、ほかは円で、単位がちがうため）
+  var PER_METHOD = { sideUnit: 1, rearUnit: 1 };
+  var key = function (k) { return PER_METHOD[k] ? k + "_" + ST.method : k; };
+  function fill() {
+    NUM.forEach(function (k) { var e = $(k), v = ST[key(k)]; if (e && document.activeElement !== e) e.value = v == null ? "" : v; });
+    TXT.forEach(function (k) { var e = $(k); if (e && document.activeElement !== e) e.value = ST[k]; });
+    CHK.forEach(function (k) { $(k).checked = !!ST[k]; });
+    Object.keys(PAIRS).forEach(function (k) { var e = $(PAIRS[k]); if (document.activeElement !== e) e.value = ST[k] > 0 ? r2(ST[k] / TSUBO) : ""; });
+    $("youtoMark").hidden = !ST.youtoAuto; $("districtMark").hidden = !ST.districtAuto;
+    ["areaM2", "frontM", "depthM", "shape", "kage"].forEach(function (k) { $("mk_" + k).hidden = !(ST.ktOn && ST.ktAuto[k] && !ST.ktMan[k]); });
+  }
+  function num(v) { var x = parseFloat(v); return isFinite(x) ? x : null; }
+  // 土地の形から入れる欄（欄の名前 → 印の名前）。形の値を使っているときに手で直したら、その欄は手入力を優先する
+  var KT_KEY = { areaM2: "areaM2", areaT: "areaM2", frontM: "frontM", depthM: "depthM", shape: "shape", kagePct: "kage", soteiM2: "kage", soteiT: "kage" };
+  function ktHand(id) { var k = KT_KEY[id]; if (k && ST.ktOn) { ST.ktMan[k] = true; ST.ktAuto[k] = false; } }
+  NUM.forEach(function (k) { $(k).addEventListener("input", function () {
+    ktHand(k);
+    ST[key(k)] = num(this.value);
+    if (k === "builtYear" && ST.builtYear > 1900) ST.age = Math.max(0, THIS_YEAR - ST.builtYear);
+    if (k === "age" && ST.age != null) ST.builtYear = THIS_YEAR - ST.age;
+    if (k === "soteiM2" || (k === "areaM2" && ST.soteiM2)) ST.kagePct = ST.soteiM2 > 0 && ST.areaM2 > 0 ? Math.round(S.kageFromSotei(ST.soteiM2, ST.areaM2)) : ST.kagePct;
+    if (k === "kagePct") ST.soteiM2 = null;
+    if (k === "unitMan") ST.unitSrc = "self";
+    if (k === "rosenkaK" || k === "koteiUnit" || k === "kojiUnit") ST.kojiPick = k === "kojiUnit" ? "" : ST.kojiPick;
+    update(k); }); });
+  Object.keys(PAIRS).forEach(function (k) { $(PAIRS[k]).addEventListener("input", function () {
+    ktHand(PAIRS[k]);
+    var v = num(this.value); ST[k] = v == null ? null : r2(v * TSUBO);
+    if (k === "soteiM2" || (k === "areaM2" && ST.soteiM2)) ST.kagePct = ST.soteiM2 > 0 && ST.areaM2 > 0 ? Math.round(S.kageFromSotei(ST.soteiM2, ST.areaM2)) : ST.kagePct;
+    update(PAIRS[k]); }); });
+  TXT.forEach(function (k) { $(k).addEventListener(k === "addr" || k === "youto" ? "input" : "change", function () {
+    ktHand(k);
+    ST[k] = this.value;
+    if (k === "youto") ST.youtoAuto = false;
+    if (k === "district") ST.districtAuto = false;
+    if (k === "addr") { ST.pref = S.prefOf(ST.addr) || ST.pref; }
+    update(k); }); });
+  CHK.forEach(function (k) { $(k).addEventListener("change", function () { ST[k] = this.checked; update(k); }); });
+  $("kibo").addEventListener("change", function () { ST.kibo = this.checked; update("kibo"); });
+  document.querySelectorAll("#methodSeg button").forEach(function (b) { b.addEventListener("click", function () { ST.method = b.getAttribute("data-m"); update("method"); }); });
+  document.querySelectorAll("input[name=basis]").forEach(function (r) { r.addEventListener("change", function () { ST.basis = this.value; update("basis"); }); });
+
+  // ---------------------------------------------------------------- 擁壁のやり直しの費用（共通/gake.js）
+  var GK = window.Gake;
+  var GK_DEF = { reg: "auto", L: null, H: null, old: "rc", nw: "L", acc: "ok", nb: false, road: false, used: null };
+  ST.gk = Object.assign({}, GK_DEF, ST.gk || {});
+  function gkRegion() {
+    if (ST.gk.reg && ST.gk.reg !== "auto") return ST.gk.reg;
+    var pref = ST.pref || (S.prefOf ? S.prefOf(ST.addr || "") : "") || "";
+    var rg = GK ? GK.regionFor(pref, ST.addr || "") : null;
+    return rg ? rg.id : "tokyo";
+  }
+  function gkBuild() {
+    if (!GK) { $("gkBox").hidden = true; return; }
+    var sel = $("gkReg"), h = '<option value="auto">自動（住所から）</option>', last = "";
+    GK.REGIONS.forEach(function (rg) { var pn = GK.PREF_NAME[rg.pref]; if (pn !== last) { if (last) h += "</optgroup>"; h += '<optgroup label="' + pn + '">'; last = pn; } h += '<option value="' + rg.id + '">' + esc(rg.name) + "</option>"; });
+    sel.innerHTML = h + "</optgroup>";
+    gkFill();
+    [["gkReg", "reg"], ["gkOld", "old"], ["gkNew", "nw"], ["gkAcc", "acc"]].forEach(function (a) { $(a[0]).addEventListener("change", function () { ST.gk[a[1]] = this.value; update("gk"); }); });
+    [["gkL", "L"], ["gkH", "H"]].forEach(function (a) { $(a[0]).addEventListener("input", function () { ST.gk[a[1]] = num(this.value); update("gk"); }); });
+    [["gkNb", "nb"], ["gkRoad", "road"]].forEach(function (a) { $(a[0]).addEventListener("change", function () { ST.gk[a[1]] = this.checked; update("gk"); }); });
+    $("gkOut").addEventListener("click", function (e) {
+      var b = e.target; while (b && b !== this && !(b.getAttribute && b.getAttribute("data-gkuse"))) b = b.parentNode;
+      if (!b || b === this) return;
+      ST.exCostMan = +b.getAttribute("data-gkuse"); ST.gk.used = b.getAttribute("data-gkwhich"); fill(); update("exCostMan");
+    });
+    if (ST.gk.L || ST.gk.H) $("gkBox").open = true;
+  }
+  function gkFill() {
+    var g = ST.gk;
+    $("gkReg").value = g.reg || "auto"; $("gkL").value = g.L == null ? "" : g.L; $("gkH").value = g.H == null ? "" : g.H;
+    $("gkOld").value = g.old; $("gkNew").value = g.nw; $("gkAcc").value = g.acc; $("gkNb").checked = !!g.nb; $("gkRoad").checked = !!g.road;
+  }
+  function gkShow() {
+    if (!GK) return;
+    var g = ST.gk, rid = gkRegion(), rule = GK.ruleOf(rid), rg = GK.region(rid);
+    $("gkRegHint").textContent = (g.reg === "auto" ? "住所から：" + rg.name + "。" : "") + rule.short + "：" + rule.def + "。" + rule.dist + "。";
+    if (!(g.L > 0 && g.H > 0)) { $("gkOut").innerHTML = '<p class="small muted">長さと高さを入れると、費用の内わけが出ます。</p>'; return; }
+    var c = GK.cost({ L: g.L, H: g.H, oldType: g.old, newType: g.nw, access: g.acc, neighbor: g.nb, road: g.road, region: rid });
+    var man = function (y) { return Math.round(y / 1e4).toLocaleString("ja-JP") + "万円"; };
+    var h = '<div class="tablewrap"><table><thead><tr><th class="l">内わけ</th><th>下限</th><th>中央</th><th>上限</th></tr></thead><tbody>' +
+      c.rows.map(function (x) { return '<tr><td class="l">' + esc(x.name) + '<br><span class="sub">' + esc(x.how) + "</span></td><td>" + man(x.lo) + "</td><td>" + man(x.mid) + "</td><td>" + man(x.hi) + "</td></tr>"; }).join("") +
+      '<tr class="total"><td class="l">合計（税抜）</td><td>' + man(c.lo) + "</td><td>" + man(c.mid) + "</td><td>" + man(c.hi) + "</td></tr>" +
+      '<tr><td class="l">長さ1mあたり</td><td>' + man(c.perM[0]) + "</td><td>" + man(c.perM[1]) + "</td><td>" + man(c.perM[2]) + "</td></tr></tbody></table></div>";
+    var mid = Math.round(c.mid / 1e4), hi = Math.round(c.hi / 1e4);
+    h += '<div class="btns"><button type="button" class="btn" data-gkuse="' + mid + '" data-gkwhich="mid">中央の ' + mid.toLocaleString("ja-JP") + '万円を「そのほか引く費用」に入れる</button><button type="button" class="btn" data-gkuse="' + hi + '" data-gkwhich="hi">上限の ' + hi.toLocaleString("ja-JP") + "万円を入れる</button></div>";
+    h += "<ul>" + c.notes.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>";
+    var md = GK.MORIDO_MAP[rg.morido];
+    if (md) h += '<p class="small">盛土規制法の区域：' + esc(md.by) + "（" + esc(md.zone) + "）。" + '<a href="' + esc(md.u) + '" target="_blank" rel="noopener">区域の案内</a>' + (md.map ? '・<a href="' + esc(md.map) + '" target="_blank" rel="noopener">地図</a>' : "") + "。高さ2mを超える擁壁は、工作物の確認申請か盛土規制法の許可が要ります。</p>";
+    if (ST.ex.youheki && ST.ex.youheki.on && ST.exCostMan > 0) h += '<p class="note caution">「擁壁のやり直しが要る・がけ条例にかかる」の掛け目と、工事費の両方で引いています。工事費を引くなら、掛け目は「高低差・ひな壇（擁壁は使える）」に替えてください（二重に引かないため）。</p>';
+    $("gkOut").innerHTML = h;
+  }
+
+  // ---------------------------------------------------------------- 「税の評価に入らない事情」の欄
+  function buildEx() {
+    $("exList").innerHTML = EX_IDS.map(function (id) {
+      var f = H.byId(id); if (!f) return "";
+      var on = ST.ex[id] && ST.ex[id].on, pct = ST.ex[id] && ST.ex[id].pct != null ? ST.ex[id].pct : Math.round(f.mid * 100);
+      return '<div class="exrow"><label class="check"><input type="checkbox" data-ex="' + id + '"' + (on ? " checked" : "") + '><span>' + esc(f.name) + '</span></label>' +
+        '<span class="pctin"><span class="u">更地の</span><input type="number" min="0" max="120" step="1" inputmode="decimal" data-expct="' + id + '" value="' + pct + '"><span class="u">%</span></span>' +
+        '<div class="hint2">目安の幅 ' + Math.round(f.lo * 100) + '〜' + Math.round(f.hi * 100) + '%。' + esc(f.how) +
+        '<details class="more"><summary>出どころ（' + f.src.length + '）</summary><p>' + f.src.map(function (s) { return '<a href="' + esc(s.u) + '" target="_blank" rel="noopener">' + esc(s.t) + "</a>：" + esc(s.n); }).join("<br>") + "</p></details></div></div>";
+    }).join("");
+    $("exList").querySelectorAll("[data-ex]").forEach(function (e) { e.addEventListener("change", function () { var id = e.getAttribute("data-ex"); ST.ex[id] = ST.ex[id] || {}; ST.ex[id].on = e.checked; update("ex"); }); });
+    $("exList").querySelectorAll("[data-expct]").forEach(function (e) { e.addEventListener("input", function () { var id = e.getAttribute("data-expct"); ST.ex[id] = ST.ex[id] || {}; ST.ex[id].pct = num(e.value); update("ex"); }); });
+  }
+
+  // ---------------------------------------------------------------- 計算と表示
+  function unitFactor() { return ST.method === "rosenka" ? 1000 : 1; }   // 路線価図は千円単位
+  function landParams() {
+    var f = unitFactor();
+    var main = ST.method === "rosenka" ? ST.rosenkaK : ST.method === "kotei" ? ST.koteiUnit : ST.kojiUnit;
+    var kiboAuto = S.kiboDistrictOK(ST.district) && ST.areaM2 >= S.kiboMinArea(ST.sandai === "1");
+    return { method: ST.method, areaM2: ST.areaM2 || 0, unitInput: (main || 0) * f, chiikiPct: ST.chiikiPct == null ? 100 : ST.chiikiPct,
+      koteiHyoka: (ST.koteiHyokaMan || 0) * 1e4, bairitsu: ST.bairitsu || 0,
+      district: ST.district, depthM: ST.depthM, frontM: ST.frontM, shape: ST.shape, kagePct: ST.kagePct,
+      corner: ST.corner, sideUnit: (ST[key("sideUnit")] || 0) * f, sideDepthM: ST.sideDepthM, rear: ST.rear, rearUnit: (ST[key("rearUnit")] || 0) * f,
+      kibo: ST.kibo == null ? kiboAuto : ST.kibo, kiboAuto: kiboAuto, sandai: ST.sandai === "1", mudouro: ST.mudouro, tsuroM2: ST.tsuroM2,
+      gakeRatio: (ST.gakePct || 0) / 100, gakeDir: ST.gakeDir, tokkeiRatio: (ST.tokkeiPct || 0) / 100, setbackM2: ST.setbackM2 || 0,
+      shidouM2: ST.shidouM2 || 0, shidouPublic: ST.shidouPublic, riyouTeika: ST.riyouTeika, riyouShare: ST.riyouShare, right: ST.right, letter: ST.letter };
+  }
+  function bldUnit() {
+    if (ST.unitSrc === "bank") return S.UNIT_PRESETS.bank[ST.struct];
+    if (ST.unitSrc === "nta") return S.ntaUnit(ST.unitPref, ST.struct);
+    return (ST.unitMan || 0) * 1e4;
+  }
+  function update(changed) {
+    var m = ST.method, nb = m !== "bairitsu";
+    // 見せる・隠す
+    document.querySelectorAll("#methodSeg button").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-m") === m); });
+    ["rosenka", "bairitsu", "kotei", "koji"].forEach(function (k) { $("m_" + k).hidden = k !== m; });
+    $("shapeSec").hidden = !nb;
+    $("kageRow").hidden = ST.shape !== "fusei";
+    $("sideRow").hidden = ST.corner === "none";
+    $("rearRow").hidden = !ST.rear;
+    $("tsuroRow").hidden = !ST.mudouro;
+    $("resRow").hidden = ST.over !== "residual";
+    $("unitPref").hidden = ST.unitSrc !== "nta";
+    document.querySelectorAll(".fr.bld").forEach(function (e) { if (e.querySelector("#noBld")) return; e.hidden = ST.noBld; });
+    document.querySelectorAll(".bldh").forEach(function (e) { e.hidden = ST.noBld; });
+    document.querySelectorAll(".js-unit").forEach(function (e) { e.textContent = m === "rosenka" ? "千円/㎡" : "円/㎡"; });
+    document.querySelectorAll(".js-unitname").forEach(function (e) { e.textContent = m === "rosenka" ? "路線価" : m === "kotei" ? "固定資産税路線価" : "値段"; });
+    if (ST.unitSrc !== "self") ST.unitMan = Math.round(bldUnit() / 1e3) / 10;
+    // 路線価図のリンク（年・都県）
+    var pref = ST.pref || S.prefOf(ST.addr);
+    $("rosenkaLink").href = S.rosenkaUrl(+ST.reiwa, pref);
+    $("rosenkaLink").textContent = "国税庁 路線価図（令和" + ST.reiwa + "年分" + (pref ? "・" + pref : "") + "）";
+    $("bairitsuLink").href = S.rosenkaUrl(8, pref);
+    fill();
+    var p = landParams();
+    $("kibo").checked = !!p.kibo;
+    // 換算の表示
+    if (ST.koteiUnit) $("koteiConv").textContent = "相続税路線価の水準にすると " + S.yen(S.toRosenka("kotei", ST.koteiUnit)) + "/㎡（× 0.8 ÷ 0.7）"; else $("koteiConv").textContent = "";
+    if (ST.kojiUnit) $("kojiConv").textContent = (ST.kojiPick ? "使った地点：" + ST.kojiPick + "。" : "") + "相続税路線価の水準にすると " + S.yen(S.toRosenka("koji", ST.kojiUnit * (ST.chiikiPct || 100) / 100)) + "/㎡（× 0.8" + (ST.chiikiPct && ST.chiikiPct !== 100 ? "・地点との差 " + ST.chiikiPct + "%" : "") + "）"; else $("kojiConv").textContent = "";
+    // 補正率の小さな表示
+    $("okuyukiOut").textContent = ST.depthM > 0 && nb ? "奥行価格補正率 " + S.okuyukiRate(ST.district, ST.depthM).toFixed(2) : "";
+    $("maguchiOut").textContent = ST.frontM > 0 && nb ? "間口狭小補正率 " + S.maguchiRate(ST.district, ST.frontM).toFixed(2) + (ST.depthM > 0 && ST.depthM / ST.frontM >= 2 ? "・奥行長大 " + S.chodaiRate(ST.district, ST.depthM, ST.frontM).toFixed(2) : "") : "";
+    $("gakeOut").textContent = ST.gakePct >= 10 ? "がけ地補正率 " + S.gakeRate(ST.gakePct / 100, ST.gakeDir).toFixed(2) : "";
+    $("kiboOut").textContent = p.kibo ? "補正率 " + S.kiboRate(ST.areaM2, p.sandai).toFixed(2) + (ST.kibo == null ? "（面積と地区から自動）" : "") : "";
+    $("unitTsubo").textContent = ST.unitMan ? "（" + (ST.unitMan * TSUBO).toFixed(1) + "万円/坪）" : "";
+    // 計算
+    var L = S.land(p);
+    var exList = EX_IDS.filter(function (id) { return ST.ex[id] && ST.ex[id].on; }).map(function (id) { return { id: id, pct: ST.ex[id].pct }; });
+    var X = S.extras(exList), cost = (ST.exCostMan || 0) * 1e4;
+    var landTax = Math.max(0, Math.round(L.tax * X.use - cost)), landMarket = Math.max(0, Math.round(L.market * X.use - cost));
+    var landUse = ST.basis === "market" ? landMarket : landTax;
+    var B = ST.noBld ? null : S.building({ struct: ST.struct, unit: bldUnit(), floorM2: ST.floorM2, age: ST.age, over: ST.over, residualPct: ST.residualPct });
+    var T = S.total(landUse, B ? B.value : 0, (ST.priceMan || 0) * 1e4);
+    // 大きな数字
+    var area = ST.areaM2 || 0;
+    var noLand = !(landUse > 0); // 土地の値段が入っていないと、合計と割合が建物だけの数字になるので見出しで知らせる
+    $("figs").innerHTML =
+      '<div class="figure main"><div class="k">積算価格（土地＋建物）</div><div class="v">' + S.man(T.total) + '</div><div class="s">' + (noLand ? "土地の値段がまだ入っていません（建物だけの数字）" : ST.basis === "market" ? "土地は時価に戻した目安" : "土地は税の評価（路線価ベース）") + "</div></div>" +
+      '<div class="figure"><div class="k">土地</div><div class="v">' + S.man(landUse) + '</div><div class="s">' + (area ? S.man(landUse / area) + "/㎡・" + S.man(landUse / area * TSUBO) + "/坪" : "") + "</div></div>" +
+      (B ? '<div class="figure"><div class="k">建物</div><div class="v">' + S.man(B.value) + '</div><div class="s">' + (B.expired ? "耐用年数を過ぎている" : "残り" + B.remain + "年／" + B.life + "年") + "</div></div>" : "") +
+      '<div class="figure"><div class="k">売り出し価格に対して</div><div class="v">' + (T.ratio == null || noLand ? "—" : Math.round(T.ratio * 100) + "%") + '</div><div class="s">' + (noLand ? "土地の値段を入れると出ます" : T.ratio == null ? "売り出し価格を入れると出ます" : "積算 ÷ 売り出し価格（" + S.man((ST.priceMan || 0) * 1e4, 0) + "）") + "</div></div>";
+    var warn = [];
+    if (!area) warn.push("土地の面積を入れてください。");
+    if (m === "rosenka" && !ST.rosenkaK) warn.push("相続税路線価を入れてください（路線価図の数字。千円単位）。");
+    if (m === "bairitsu" && !(ST.koteiHyokaMan && ST.bairitsu)) warn.push("固定資産税評価額と倍率を入れてください。");
+    if (m === "kotei" && !ST.koteiUnit) warn.push("固定資産税路線価を入れてください。");
+    if (m === "koji" && !ST.kojiUnit) warn.push("公示価格・地価調査価格を入れるか、下の表の「使う」を押してください。");
+    if (nb && ST.shape === "fusei" && !(ST.kagePct >= 10)) warn.push("不整形地は、かげ地割合（または想定整形地の面積）を入れると補正されます。");
+    if (X.rows.some(function (r) { return r.id === "saikenchiku"; })) warn.push("再建築不可の物件は、金融機関の担保評価がとても低くなる（評価しない）ことが多いです。");
+    if (ST.right === "shakuchi") warn.push("借地権の物件は、金融機関によって評価のしかたが大きくちがいます。");
+    $("warn").innerHTML = warn.map(function (w) { return '<p class="note caution">' + esc(w) + "</p>"; }).join("");
+    // 土地の値段の2つ
+    $("bTax").textContent = S.man(landTax); $("bMarket").textContent = S.man(landMarket);
+    document.querySelectorAll("input[name=basis]").forEach(function (r) { r.checked = r.value === ST.basis; });
+    // 土地の計算の表
+    var rows = L.steps.map(function (s) {
+      var v = s.value != null ? S.yen(s.value) : s.unit != null ? S.yen(s.unit) + "/㎡" : "";
+      return '<tr><td class="lab">' + esc(s.label) + '</td><td class="how">' + esc(s.how) + "</td><td>" + v + "</td></tr>";
+    });
+    rows.push('<tr class="total"><td>相続税路線価ベースの評価額</td><td class="how">税の評価の水準（公示価格の約8割）</td><td>' + S.yen(L.tax) + "</td></tr>");
+    rows.push('<tr><td>時価に戻した目安</td><td class="how">÷ 0.8</td><td>' + S.yen(L.market) + "</td></tr>");
+    if (X.rows.length || cost) {
+      X.rows.forEach(function (r) { rows.push('<tr><td class="lab">' + esc(r.name) + '</td><td class="how">× ' + Math.round(r.use * 100) + "%（目安の幅 " + Math.round(r.lo * 100) + "〜" + Math.round(r.hi * 100) + "%）</td><td></td></tr>"); });
+      if (cost) rows.push('<tr><td>そのほか引く費用</td><td class="how">− ' + S.man(cost) + "</td><td></td></tr>");
+      rows.push('<tr class="total"><td>事情を入れた土地の値段</td><td class="how">税の評価 ' + S.man(landTax) + "／時価の目安 " + S.man(landMarket) + (X.rows.length ? "（掛け目の幅で計算すると 税の評価 " + S.man(Math.max(0, L.tax * X.lo - cost)) + "〜" + S.man(Math.max(0, L.tax * X.hi - cost)) + "）" : "") + "</td><td>" + S.yen(landUse) + "</td></tr>");
+    }
+    $("landSteps").innerHTML = '<thead><tr><th>段</th><th>計算</th><th>値</th></tr></thead><tbody>' + rows.join("") + "</tbody>";
+    gkShow();
+    // 建物の計算の表
+    if (B) {
+      $("bldSteps").innerHTML = '<thead><tr><th>段</th><th>計算</th><th>値</th></tr></thead><tbody>' +
+        '<tr><td>再調達価格</td><td class="how">' + S.man(bldUnit()) + "/㎡ × " + esc(S.fmtM2(ST.floorM2 || 0)) + "</td><td>" + S.yen(B.full) + "</td></tr>" +
+        '<tr><td>残りの年数の割合</td><td class="how">' + esc(B.name) + "：（耐用 " + B.life + "年 − 築 " + B.age + "年）÷ " + B.life + "年" +
+        (ST.over === "residual" && B.ratio > B.remain / B.life ? "。残す割合 " + ST.residualPct + "% を使う" : "") + "</td><td>" + (B.ratio * 100).toFixed(1) + "%</td></tr>" +
+        '<tr class="total"><td>建物の積算価格</td><td class="how"></td><td>' + S.yen(B.value) + "</td></tr></tbody>";
+    }
+    $("ckAddr").textContent = ST.addr || "＿＿＿＿＿＿＿＿＿＿＿＿";
+    var q = new URLSearchParams(); if (ST.addr) q.set("q", ST.addr); $("surveyLink").href = "../物件調査/index.html" + (ST.addr ? "?" + q.toString() : "");
+    if (changed === "useFilter") loadNear(); else if (changed === "near") renderNear();
+    // 土地の形：相場マップへのリンクと、このページのアドレス（#kz=…）に形を入れて引きつげるように
+    var kq = ST.ktOn && ST.kz ? ST.kz : "";
+    $("soubaLink").href = "../相場マップ試作/web/index.html" + (kq ? "#" + kq : "");
+    if (KU && typeof history !== "undefined" && history.replaceState) {
+      var hq = KU.mergeQuery(location.hash, kq), want = hq ? "#" + hq : "";
+      if (want !== (location.hash || "")) { try { history.replaceState(null, "", location.pathname + location.search + want); } catch (e) {} }
+    }
+    ktShow();
+    save();
+  }
+
+  // ---------------------------------------------------------------- 土地の形（いびつな形・測量図の座標）：共通/katachi_ui.js
+  var ktUI = null, ktRes = null, ktIgnoreQ = null;
+  function ktInitialLand() {
+    if (ST.kz) { var l = K.fromQuery(ST.kz); if (l) return l; }
+    // 今の欄（間口・奥行・面積・形）に近い形から始める
+    if (ST.frontM > 0 && ST.depthM > 0) {
+      var a = K.approxFromDims({ F: ST.frontM, D: ST.depthM, area: ST.shape === "fusei" ? ST.areaM2 : null, type: ST.shape === "fusei" ? "daikei" : "rect" });
+      if (a) return a;
+    }
+    if (ST.areaM2 > 0) return K.makeShape("rect", { W: 10, D: Math.round(ST.areaM2 / 10 * 100) / 100 }, 4);
+    return null;
+  }
+  function ktMount() {
+    if (ktUI || !K || !KU) return;
+    var land = ktInitialLand();
+    ktIgnoreQ = land ? K.toQuery(land) : K.toQuery(K.makeShape("rect", { W: 10, D: 20 }, 4));
+    ktUI = KU.mount($("kt"), { value: land, onChange: ktChanged });
+  }
+  function ktChanged(res, ui) {
+    ktUI = ui; ktRes = res;
+    var mine = ktIgnoreQ != null && res.query === ktIgnoreQ; ktIgnoreQ = null;   // 最初に開いたとき・このページが入れた形のときは、手で入れた欄を書きかえない
+    if (res.ok) ST.kz = res.query;
+    if (!mine && res.ok) ST.ktOn = true;
+    if (ST.ktOn) ktApply(res);
+    update("kt");
+  }
+  function ktApply(res) {
+    var v = S.fromKatachi(res); if (!v) return;
+    function put(k, fn) { if (ST.ktMan[k]) return; fn(); ST.ktAuto[k] = true; }
+    put("areaM2", function () { ST.areaM2 = v.areaM2; });
+    put("frontM", function () { ST.frontM = v.frontM; });
+    put("depthM", function () { ST.depthM = v.depthM; });
+    put("shape", function () { ST.shape = v.shape; });
+    put("kage", function () { ST.kagePct = v.kagePct; ST.soteiM2 = v.soteiM2; });
+  }
+  function ktShow() {
+    var box = $("ktOut"); if (!box) return;
+    if (!ktRes) { box.innerHTML = ""; return; }
+    var v = S.fromKatachi(ktRes);
+    if (!v) { box.innerHTML = '<p class="note alert">形が正しくないため、下の欄には入れていません（上の注意を見てください）。</p>'; return; }
+    var f = function (x, d) { return x == null || !isFinite(x) ? "—" : (+x).toFixed(d == null ? 2 : d).replace(/\.?0+$/, ""); };
+    var rows = [["areaM2", "面積", f(v.areaM2) + "㎡（" + f(v.areaM2 / TSUBO) + "坪）", ST.areaM2 == null ? "—" : f(ST.areaM2) + "㎡"],
+      ["frontM", "間口", f(v.frontM) + "m" + (v.flag ? "（竿の幅）" : ""), ST.frontM == null ? "—" : f(ST.frontM) + "m"],
+      ["depthM", "奥行", f(v.depthM) + "m", ST.depthM == null ? "—" : f(ST.depthM) + "m"],
+      ["shape", "土地の形", v.shape === "fusei" ? "不整形" : "整形", ST.shape === "fusei" ? "不整形" : "整形"],
+      ["kage", "かげ地割合", f(v.kagePct, 1) + "%（想定整形地 " + f(v.soteiM2) + "㎡）", ST.kagePct == null ? "—" : f(ST.kagePct, 1) + "%"]];
+    var anyMan = rows.some(function (r) { return ST.ktMan[r[0]]; });
+    var h = '<div class="tablewrap"><table><thead><tr><th>欄</th><th>形から出した値</th><th>いまの欄</th></tr></thead><tbody>' +
+      rows.map(function (r) { return "<tr><td>" + r[1] + "</td><td>" + r[2] + "</td><td>" + r[3] + (ST.ktOn && ST.ktMan[r[0]] ? '<br><span class="sub">手で直した値を使っています</span>' : "") + "</td></tr>"; }).join("") +
+      "</tbody></table></div>";
+    h += '<div class="btns">' + (ST.ktOn ? '<button type="button" class="btn" data-kt="off">形の値を使わない（手入力にもどす）</button>' : '<button type="button" class="btn primary" data-kt="on">形の値を下の欄に入れる</button>') +
+      (ST.ktOn && anyMan ? '<button type="button" class="btn" data-kt="reapply">手で直した欄も形の値にもどす</button>' : "") +
+      (v.setbackM2 > 0 ? '<button type="button" class="btn" data-kt="sb">後退部分 ' + f(v.setbackM2) + "㎡ をセットバックの欄に入れる</button>" : "") + "</div>";
+    if (v.cands.length) h += '<div class="note caution"><b>候補（自動では選びません）</b><ul>' + v.cands.map(function (c) {
+      return "<li>" + esc(c.text) + (c.key === "corner" ? "。当てはまれば「角地」の欄で選び、横の道路の路線価を入れてください" : c.key === "rear" ? "。当てはまれば「二方路」に印を付けてください" : "") + "</li>"; }).join("") + "</ul></div>";
+    if (ST.areaM2 > 0 && Math.abs(ST.areaM2 - v.areaM2) > v.areaM2 * 0.01) h += '<p class="note caution">面積の欄（' + f(ST.areaM2) + '㎡）と、形から出した面積（' + f(v.areaM2) + '㎡）がちがいます。かげ地割合は形の面積で出しています。登記の地積（公簿）と測量の面積（実測）のどちらを使うか確かめてください。</p>';
+    if (v.notes.length) h += '<div class="note"><ul>' + v.notes.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ul></div>";
+    h += '<p class="muted">正面の道路は、路線価がちがうときは「路線価×奥行価格補正率」の高い方です。形の図で正面の道路を選び直せます。想定整形地のとり方は国税庁の財産評価基本通達20と質疑応答事例によります（目安。申告は税理士に確認）。</p>';
+    box.innerHTML = h;
+  }
+  $("ktOut").addEventListener("click", function (ev) {
+    var b = ev.target.closest ? ev.target.closest("[data-kt]") : null; if (!b) return;
+    var a = b.getAttribute("data-kt");
+    if (a === "off") { ST.ktOn = false; ST.ktAuto = {}; }
+    else if (a === "on" || a === "reapply") { ST.ktOn = true; ST.ktMan = {}; ST.ktAuto = {}; if (ktRes) ktApply(ktRes); }
+    else if (a === "sb") { var v = S.fromKatachi(ktRes); if (v) ST.setbackM2 = v.setbackM2; }
+    update("kt");
+  });
+  $("ktBox").addEventListener("toggle", function () { if (this.open) ktMount(); });
+
+  // ---------------------------------------------------------------- 住所 → 位置（国土地理院）と、近くの公示地・基準地
+  var PREF_RE = /^(東京都|神奈川県|千葉県|埼玉県)/;
+  function geoMsg(t, err) { $("geoMsg").textContent = t; $("geoMsg").className = err ? "err" : ""; }
+  $("geoBtn").addEventListener("click", function () {
+    var q = (ST.addr || "").trim();
+    if (!q) { geoMsg("住所を入れてください。", true); return; }
+    geoMsg("国土地理院の住所検索で探しています。");
+    fetch("https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(q))
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (list) {
+        var all = (list || []).filter(function (h) { return h && h.properties && PREF_RE.test(h.properties.title); });
+        if (!PREF_RE.test(q)) all.sort(function (a, b) { return (/^東京都/.test(b.properties.title) ? 1 : 0) - (/^東京都/.test(a.properties.title) ? 1 : 0); });
+        if (!all.length) { geoMsg("1都3県（東京都・神奈川県・埼玉県・千葉県）の中では見つかりませんでした。市区町村の名前から入れてみてください。", true); return; }
+        var hit = all[0], c = hit.geometry.coordinates;
+        ST.lat = c[1]; ST.lon = c[0]; ST.pref = PREF_RE.exec(hit.properties.title)[1];
+        geoMsg("見つかりました：" + hit.properties.title + (all.length > 1 ? "（ほかに " + (all.length - 1) + " 件の候補。ちがうときは都県・市区町村の名前からくわしく入れてください）" : ""));
+        update("near"); loadNear();
+      })
+      .catch(function () { geoMsg("住所検索につながりませんでした。インターネットの接続を確かめてください。公示価格は手で入れられます。", true); });
+  });
+  var loaded = {}, nearRows = [];
+  function loadTiles(keys, done) {
+    var need = keys.filter(function (k) { return IDX && IDX.tiles[k] && !loaded[k]; }), left = need.length;
+    if (!left) { done(); return; }
+    need.forEach(function (k) {
+      var s = document.createElement("script");
+      s.src = "data/chika/t_" + k + ".js";
+      s.onload = s.onerror = function () { loaded[k] = true; if (--left === 0) done(); };
+      document.head.appendChild(s);
+    });
+  }
+  function loadNear() {
+    if (!IDX) { $("nearList").innerHTML = '<p class="note caution">公示地のデータ（data/chika/index.js）が読みこめませんでした。シミュレーターのフォルダごと開いているか確かめてください。</p>'; return; }
+    if (ST.lat == null) return;
+    var ring = 1;
+    (function step() {
+      var keys = S.tileKeysAround(IDX.meta.grid, ST.lat, ST.lon, ring);
+      loadTiles(keys, function () {
+        var T = window.CHIKA_TILES || {};
+        nearRows = [].concat.apply([], keys.map(function (k) { return T[k] || []; }));
+        var n = S.nearest(nearRows, ST.lat, ST.lon, 5, ST.useFilter).length;
+        if (n < 5 && ring < 3) { ring++; step(); return; }
+        renderNear();
+      });
+    })();
+  }
+  function renderNear() {
+    if (ST.lat == null || !nearRows.length) return;
+    var list = S.nearest(nearRows, ST.lat, ST.lon, 8, ST.useFilter);
+    $("nearMeta").textContent = "地価公示 " + IDX.meta.years.L01.join("・") + "年1月1日／地価調査 " + IDX.meta.years.L02.join("・") + "年7月1日の値段。近い順に8地点まで";
+    if (!list.length) { $("nearList").innerHTML = '<p class="small muted">近くに、この種類の地点がありません。種類を変えてみてください。</p>'; return; }
+    $("nearList").innerHTML = '<div class="tablewrap"><table class="pick"><thead><tr><th>地点</th><th>所在</th><th>距離</th><th>値段</th><th>前年比</th><th>地積</th><th>用途地域</th><th>道路</th><th>駅</th><th></th></tr></thead><tbody>' +
+      list.map(function (r, i) {
+        var lab = r.no + "（" + r.year + "年 " + (r.kind === "公示" ? "地価公示" : "地価調査") + "）";
+        return '<tr class="' + (ST.kojiPick === lab ? "chosen" : "") + '"><td>' + esc(r.no) + '<br><span class="sub">' + (r.kind === "公示" ? "地価公示" : "地価調査") + "・" + esc(r.use) + '</span></td><td class="addr">' + esc(r.addr) + (r.jukyo ? '<br><span class="sub">住居表示 ' + esc(r.jukyo) + "</span>" : "") +
+          '<br><span class="sub">' + esc(r.around) + "</span></td><td>" + (r.d < 1000 ? Math.round(r.d) + "m" : (r.d / 1000).toFixed(1) + "km") + "</td><td>" + S.yen(r.price) + "/㎡<br>" + '<span class="sub">' + S.man(r.price * TSUBO) + "/坪</span></td><td>" + (r.chg > 0 ? "+" : "") + r.chg + "%</td><td>" + r.area + "㎡</td><td>" + esc(r.youto) + "<br>" + '<span class="sub">' + r.kenpei + "/" + r.youseki + "%</span></td><td>" + esc(r.roadDir) + " " + r.roadW + "m<br>" + '<span class="sub">' + esc(r.roadType) + "</span></td><td>" + esc(r.station) + "<br>" + '<span class="sub">' + r.stDist + "m</span></td>" +
+          '<td><button class="btn" type="button" data-use="' + i + '">使う</button></td></tr>';
+      }).join("") + "</tbody></table></div>" +
+      '<p class="small muted">地点は「その地域のふつうの形・広さの土地」です。物件と地点で、駅からの距離・道路の幅・用途地域がちがうときは「地点との差」で直してください。地価公示と地価調査が同じ地点のこともあります。</p>';
+    $("nearList").querySelectorAll("[data-use]").forEach(function (b) { b.addEventListener("click", function () {
+      var r = list[+b.getAttribute("data-use")];
+      ST.method = "koji"; ST.kojiUnit = r.price; ST.kojiPick = r.no + "（" + r.year + "年 " + (r.kind === "公示" ? "地価公示" : "地価調査") + "）";
+      update("near"); $("m_koji").scrollIntoView({ block: "nearest" }); }); });
+  }
+
+  // ---------------------------------------------------------------- そのほかのボタン
+  $("printCheck").addEventListener("click", function () { window.print(); });
+  $("clearCheck").addEventListener("click", function () { document.querySelectorAll("#staffSec input[type=checkbox]").forEach(function (c) { c.checked = false; }); });
+  $("resetBtn").addEventListener("click", function () { ST = JSON.parse(JSON.stringify(DEF)); try { localStorage.removeItem("sekisanState"); } catch (e) {} buildEx(); nearRows = []; $("nearList").innerHTML = '<p class="small muted">住所の「位置をさがす」を押すと出ます。</p>'; geoMsg("位置が分かると、近くの公示地・基準地を出します。");
+    if (ktUI) { var dl = K.makeShape("rect", { W: 10, D: 20 }, 4); ktIgnoreQ = K.toQuery(dl); ktUI.set(dl); ST.kz = null; ST.ktOn = false; ST.ktAuto = {}; ST.ktMan = {}; }
+    $("ktBox").open = false;
+    ST.gk = Object.assign({}, GK_DEF); if (GK) { gkFill(); $("gkBox").open = false; }
+    update("reset"); });
+
+  buildEx();
+  gkBuild();
+  if (ST.ktOn && ST.kz) { $("ktBox").open = true; ktMount(); }
+  update("init");
+  if (ST.lat != null) loadNear();
+  else if (fromUrl && ST.addr) $("geoBtn").click();
+})();
+</script>
+</body>
+</html>

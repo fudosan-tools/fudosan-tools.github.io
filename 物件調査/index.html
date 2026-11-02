@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>物件調査シート</title>
+<link rel="stylesheet" href="../共通/common.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  /* このページだけで足した部品（共通に入れる候補は報告に書く） */
+  .search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+  .search .field { margin: 0; }
+  .search .btn { height: 40px; }
+  .search-msg { font-size: 13px; color: var(--ink-2); margin: 8px 0 0; min-height: 1.6em; }
+  .search-msg.err { color: var(--alert); }
+  .survey-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 24px; margin-top: 20px; align-items: start; }
+  @media (max-width: 900px) { .survey-grid { grid-template-columns: minmax(0, 1fr); } }
+  #map { height: 480px; border: 1px solid var(--rule-strong); background: var(--sheet); }
+  @media (max-width: 640px) { #map { height: 340px; } }
+  .map-foot { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .map-foot label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; color: var(--ink-2); }
+  .leaflet-container { font-family: var(--font); }
+  .pin { width: 18px; height: 18px; border: 2px solid var(--alert); background: rgba(255,255,255,.6); border-radius: 50%; }
+  .pin::after { content: ""; position: absolute; left: 6px; top: 6px; width: 2px; height: 2px; background: var(--alert); }
+  .place-name { font-family: var(--font-head); font-size: 22px; margin: 0 0 2px; line-height: 1.4; }
+  .place-sub { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+  .kv th { width: 9.5em; text-align: left; font-size: 13px; color: var(--ink-2); font-weight: 400; background: none; border-top: 0; vertical-align: top; }
+  .kv td { text-align: left; }
+  .kv td .s { display: block; font-size: 12px; color: var(--muted); }
+  .rules td, .rules th { text-align: left; }
+  .rules td:nth-child(2) { white-space: nowrap; }
+  .st { font-size: 12px; white-space: nowrap; }
+  .st.yes { color: var(--alert); }
+  .st.no { color: var(--muted); }
+  .st.maybe { color: var(--caution); }
+  .linklist { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rule); }
+  .linklist li { padding: 9px 0; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: 13em minmax(0, 1fr); gap: 4px 16px; }
+  .linklist li .d { font-size: 13px; color: var(--ink-2); }
+  @media (max-width: 640px) { .linklist li { grid-template-columns: 1fr; } }
+  /* 建てられる大きさの2つの数字（「72.0㎡（21.8坪）」など長い）は、スマホでは1列に */
+  @media (max-width: 640px) { #volFigures { grid-template-columns: minmax(0, 1fr); } #volFigures .figure { border-right: 0; padding-left: 0 !important; } }
+  .checklist h3 { margin: 18px 0 4px; }
+  .checklist .check { border-bottom: 1px solid var(--rule); min-height: 36px; padding: 7px 0; }
+  .checklist .check small { color: var(--muted); display: block; font-size: 12px; }
+  .sheet-head { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 24px; margin-bottom: 8px; }
+  .sheet-head div { border-bottom: 1px solid var(--rule-strong); padding: 6px 0; font-size: 13px; color: var(--ink-2); min-height: 34px; }
+  .empty { color: var(--muted); font-size: 14px; padding: 24px 0; border-top: 1px solid var(--rule); }
+  .zone-say { margin: 0 0 6px; }
+  .print-only { display: none; }
+  a.btn { display: inline-block; text-decoration: none; }
+  .pin { position: relative; }
+  .memo-line { border-bottom: 1px solid var(--rule); height: 36px; }
+  @media print {
+    #map { height: 300px; }
+    .print-only { display: block; }
+    .survey-grid { grid-template-columns: 1fr 1fr; }
+    .linklist li { grid-template-columns: 12em 1fr; }
+    h2 { break-after: avoid; }
+    .checklist { break-before: page; }
+  }
+  .src-line { font-size: 12px; color: var(--muted); margin: 0 0 10px; line-height: 1.7; }
+  .kv td .old { color: var(--caution); }
+/* がけ条例・擁壁の行の要点（共通/gake.js） */
+.gk-ck { font-size: 12px; color: var(--ink-2); margin: -2px 0 8px 28px; line-height: 1.6; overflow-wrap: anywhere; }
+.gk-ck a { word-break: break-all; }
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="survey"></nav>
+<main class="page">
+  <header class="page-head">
+    <div class="eyebrow">物件調査シート（β版・1都3県：東京都・神奈川県・埼玉県・千葉県）</div>
+    <h1>物件調査シート</h1>
+    <p class="lead">住所を入れると、その場所の用途地域（どんな建物を建ててよい地域か）、建ぺい率・容積率（土地にどれだけの大きさの建物を建ててよいか）、高さの制限、防火地域などを、東京都と国の公開データから調べて表示します。</p>
+  </header>
+
+  <section class="panel no-print" aria-label="住所で探す">
+    <form class="search" id="searchForm">
+      <div class="field">
+        <label class="lab" for="q">住所（住居表示）</label>
+        <input type="search" id="q" placeholder="例：世田谷区成城6丁目8番1号／川崎市中原区小杉町3丁目" autocomplete="street-address">
+      </div>
+      <button type="submit" class="btn primary">調べる</button>
+    </form>
+    <p class="search-msg" id="searchMsg">データを読みこんでいます。</p>
+    <p class="muted" style="margin:0">地番（登記簿の番号。例「123番4」）ではなく、郵便が届く住所で入れてください。東京都の区以外は、市町村の名前から入れると確実です。地図をクリックしても場所を選べます。</p>
+  </section>
+
+  <div class="print-only">
+    <div class="sheet-head">
+      <div>調べた場所：<span class="js-place"></span></div>
+      <div>調べた日：　　　年　　月　　日</div>
+      <div>担当者：</div>
+    </div>
+  </div>
+
+  <div class="survey-grid">
+    <div>
+      <div id="map" role="application" aria-label="地図。クリックすると、その場所を調べます"></div>
+      <div class="map-foot">
+        <label><input type="checkbox" id="showAround" checked> まわりの用途地域の境目を線で表示（地図を拡大したとき）</label>
+        <span>赤い丸：調べている場所　太い線：その場所の用途地域の区域　点線：高度地区の区域</span>
+      </div>
+    </div>
+    <div id="result">
+      <div class="empty" id="emptyMsg">住所を入れるか、地図をクリックしてください。</div>
+    </div>
+  </div>
+
+  <div id="detail" hidden>
+   <div id="zoneOnly">
+    <h2><span class="no">02</span>高さの制限（斜線制限・絶対高さ）</h2>
+    <p class="small">建物の高さは、いくつもの決まりのうち<strong>いちばん厳しいもの</strong>で決まります。「斜線制限」は、道路やおとなりの日当たり・風通しを守るため、境界線から斜めの線を引いて、それより上に建物を出せないようにする決まりです。</p>
+    <div class="tablewrap"><table class="rules" id="rulesTable"></table></div>
+    <div class="note" id="rulesNote"></div>
+
+    <div class="panel" style="margin-top:20px">
+      <h3>この土地に建てられる大きさを計算する</h3>
+      <div class="formrows">
+        <div class="fr">
+          <label class="lab" for="road">前の道路の幅</label>
+          <div class="unit-input"><input type="number" id="road" min="0" step="0.1" value="4"><span>m</span></div>
+          <span class="hint">建物に面した道路の幅。4m未満の道路は、敷地を道路の中心から2m下げる（セットバック）必要があることが多いです。</span>
+        </div>
+        <div class="fr">
+          <label class="lab" for="areaM2">敷地の面積</label>
+          <div class="row" style="gap:8px">
+            <div class="unit-input" style="flex:1 1 120px"><input type="number" id="areaM2" min="0" step="0.01" value="120"><span>㎡</span></div>
+            <div class="unit-input" style="flex:1 1 120px"><input type="number" id="areaTsubo" min="0" step="0.01"><span>坪</span></div>
+          </div>
+          <span class="hint">㎡と坪のどちらに入れても、もう片方が変わります（1坪＝3.30578㎡）。</span>
+        </div>
+      </div>
+      <div class="figures" id="volFigures" style="margin-top:14px"></div>
+      <p style="margin:14px 0 4px;display:flex;flex-wrap:wrap;gap:8px"><a class="btn primary" id="toKenchiku" href="../シミュレーター/kenchiku.html">建てられる大きさを計算する</a><a class="btn" id="toTochi" href="../シミュレーター/tochi.html">分割・アパートを考える</a><a class="btn" id="toSekisan" href="../シミュレーター/sekisan.html">積算の目安を出す</a></p>
+      <p class="muted" id="toKenchikuNote"></p>
+    </div>
+
+    <section class="for-client">
+      <h2><span class="no">03</span>暮らしへの関係</h2>
+      <div id="clientSay"></div>
+    </section>
+   </div>
+
+    <h2><span class="no" id="noLinks">04</span>ほかの調べもの</h2>
+    <p class="small">ここで出した内容は、次の公式の地図や資料でも確かめてください。</p>
+    <ul class="linklist" id="links"></ul>
+
+    <section class="for-staff checklist">
+      <h2><span class="no">05</span>物件調査チェックリスト</h2>
+      <div class="staff-box">
+        <div class="t">担当者向け　調べた結果といっしょに印刷できます</div>
+        <p class="small" style="margin:0 0 8px">上の結果（用途地域・建ぺい率・容積率・高さ・防火）は、役所の窓口で必ず確かめてから重要事項説明に使ってください。</p>
+        <button type="button" class="btn no-print" onclick="window.print()">調査シートを印刷する</button>
+        <div id="checkSummary"></div>
+        <div id="checklist"></div>
+      </div>
+    </section>
+
+    <h2><span class="no" id="noChiban">06</span>地番について</h2>
+    <p class="small">住所（住居表示。例「成城六丁目8番1号」）と、地番（土地の登記の番号。例「成城六丁目123番4」）は、<strong>別の番号</strong>です。東京23区や多くの市の中心部は住居表示がされているため、2つはふつう一致しません（住居表示をしていない地域では、住所に地番を使います）。登記簿・公図を取るときは地番が必要です。</p>
+    <ul class="small">
+      <li>地番を調べる：法務局で「地番検索」をたのむ（電話でも答えてくれる局があります）。権利証・固定資産税の通知書・登記簿にも書いてあります。</li>
+      <li>地番から位置を出す：法務省が「登記所備付地図」のデータ（地図XML）を G空間情報センターで無料公開しています。ただし都市部は、正しい座標を持たない図（公図）の区域も多く、地図に正確に重ねられない場所があります。この道具での地番検索は次の段階で検討します。</li>
+      <li>登記情報提供サービス（有料）：インターネットで登記簿・公図・地積測量図を取れます。</li>
+    </ul>
+  </div>
+
+  <div class="disclaimer">
+    <strong>この表示について</strong>
+    <ul>
+      <li>この結果は目安です。<strong>正式な内容は、市区町村の窓口（都市計画・建築の担当課）と都市計画図で必ず確かめてください。</strong>敷地が地域の境目にかかる場合、地区計画や条例で別の決まりがある場合など、ここに出ない制限があります。</li>
+      <li>東京都：用途地域・高度地区・防火地域・地区計画・風致地区は、東京都都市整備局「都市計画決定情報GISデータ」（<a href="https://catalog.data.metro.tokyo.lg.jp/dataset/t000008d0000000028" target="_blank" rel="noopener">東京都オープンデータカタログサイト</a>、<a href="https://creativecommons.org/licenses/by/4.0/deed.ja" target="_blank" rel="noopener">CC BY 4.0</a>）を加工して作成。時点：用途地域・高度地区・防火地域 2025年3月31日、地区計画 2025年5月2日、風致地区 2013年12月17日。島しょ部は入っていません。</li>
+      <li>神奈川県・埼玉県・千葉県、および1都3県の区域区分（市街化区域・市街化調整区域）・都市計画区域・高度利用地区・特別用途地区：国土交通省「<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A55-2024.html" target="_blank" rel="noopener">国土数値情報（都市計画決定情報）</a>」2024年度版（CC BY 4.0）を加工して作成。市町村から集めたデータで、<strong>時点は市町村ごとにちがいます</strong>（結果の欄に出します）。国は「建築確認や重要事項説明の手続きに使うことは保証しない。範囲はおおよその位置」としています。高度地区は場所だけで、種類・高さは入っていません。横浜市は用途地域だけが公開されています。</li>
+      <li>一部の市町村（川口市・桶川市・川島町・横瀬町・芝山町）は、国のデータに容積率・建ぺい率が入っていないため、国土交通省「<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A29-2019.html" target="_blank" rel="noopener">国土数値情報（用途地域）</a>」2019年度版（CC BY 4.0）の値で補い、「古いデータ」と表示します。秦野市は補えるデータがありません。</li>
+      <li>住所から位置・地図で選んだ場所の町名：<a href="https://maps.gsi.go.jp/" target="_blank" rel="noopener">国土地理院</a>の住所検索・逆ジオコーダ（地理院地図で使われている仕組み。国土地理院は、主に地理院地図からの利用を想定し、予告なく変わることがあるとしています）。ピンは住所の代表点で、敷地とずれることがあります。</li>
+      <li>地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（淡色地図）。地図の表示に <a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a> を使っています。</li>
+      <li>斜線制限などの説明：建築基準法 第52条・第53条・第55条・第56条・第56条の2・別表第3・別表第4（<a href="https://laws.e-gov.go.jp/law/325AC0000000201" target="_blank" rel="noopener">e-Gov法令検索</a>）、東京都の高度地区（各区の都市計画）。天空率による緩和、地区計画の高さの決まり、都県・市の建築の条例などは計算に入れていません。</li>
+      <li>日影規制（何時間まで影を落としてよいか）と、東京都以外の敷地面積の最低限度・低層住居専用地域の絶対高さ（10mか12m）は、データに入っていません。役所の都市計画図で確かめてください。</li>
+    </ul>
+  </div>
+</main>
+
+<script src="../共通/common.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="survey_core.js"></script>
+<script src="data/tiles/index.js"></script>
+<script src="../共通/gake.js"></script>
+<script>
+(function () {
+  "use strict";
+  var S = window.SURVEY, F = window.FUDOSAN, IDX = window.SURVEY_INDEX;
+  var $ = function (id) { return document.getElementById(id); };
+  var map, marker, hiYouto = null, hiKoudo = null, aroundLayer = null, renderer;
+  var current = null; // いま調べている結果
+  var goSeq = 0, aroundSeq = 0;
+  var PREF_RE = /^(東京都|神奈川県|埼玉県|千葉県)/;
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function msg(t, err) { var m = $("searchMsg"); m.textContent = t; m.classList.toggle("err", !!err); }
+
+  /* ---------- 地図 ---------- */
+  map = L.map("map", { zoomControl: true, scrollWheelZoom: true }).setView([35.66, 139.66], 11);
+  L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png", {
+    maxZoom: 19, maxNativeZoom: 18, minZoom: 5,
+    attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>'
+  }).addTo(map);
+  renderer = L.canvas({ padding: 0.3 });
+  var css = getComputedStyle(document.documentElement);
+  function color(name, fb) { return (css.getPropertyValue(name) || fb).trim() || fb; }
+  var pinIcon = L.divIcon({ className: "", html: '<div class="pin"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+  map.on("click", function (e) { go(e.latlng.lat, e.latlng.lng, "地図で選んだ場所"); });
+
+  /* ---------- タイル（その場所のデータのファイル）を読む ---------- */
+  var tiles = {}, tileOrder = [], pending = {};
+  function loadTile(key, cb) {
+    if (tiles[key]) { cb(tiles[key]); return; }
+    if (!IDX || !S.hasTile(IDX, key)) { cb(null); return; }
+    if (pending[key]) { pending[key].push(cb); return; }
+    pending[key] = [cb];
+    function done() {
+      var raw = window.SURVEY_TILES && window.SURVEY_TILES[key];
+      var db = raw ? S.prepareTile(IDX, key, raw) : null;
+      if (db) {
+        tiles[key] = db; tileOrder.push(key);
+        try { delete window.SURVEY_TILES[key]; } catch (e) {}
+        while (tileOrder.length > 40) { var old = tileOrder.shift(); if (!current || current.tileKey !== old) delete tiles[old]; }
+      }
+      var list = pending[key]; delete pending[key];
+      list.forEach(function (f) { f(db); });
+    }
+    if (window.SURVEY_TILES && window.SURVEY_TILES[key]) { done(); return; }
+    var s = document.createElement("script");
+    s.src = "data/tiles/" + key + ".js";
+    s.onload = done;
+    s.onerror = done;
+    document.head.appendChild(s);
+  }
+
+  function lineStyle(w, dash, op) { return { renderer: renderer, color: color("--accent", "#2a4570"), weight: w, opacity: op == null ? 1 : op, dashArray: dash || null, interactive: false }; }
+  function drawAround() {
+    var seq = ++aroundSeq;
+    if (aroundLayer) { map.removeLayer(aroundLayer); aroundLayer = null; }
+    if (!IDX || !$("showAround").checked || map.getZoom() < 15) return;
+    var b = map.getBounds(), w = b.getWest(), s = b.getSouth(), e = b.getEast(), n = b.getNorth();
+    var keys = S.tilesForBounds(IDX.meta.grid, w, s, e, n, 12);
+    if (!keys) return;
+    keys = keys.filter(function (k) { return S.hasTile(IDX, k); });
+    var left = keys.length, dbs = [];
+    if (!left) return;
+    keys.forEach(function (k) {
+      loadTile(k, function (db) {
+        if (db) dbs.push(db);
+        if (--left || seq !== aroundSeq) return;
+        var group = [], ink = color("--ink-2", "#4f4d48");
+        dbs.forEach(function (d) {
+          (d.youto || []).forEach(function (f) {
+            if (f.b[2] < w || f.b[0] > e || f.b[3] < s || f.b[1] > n) return;
+            S.edgeLines(f, d.meta.clip).forEach(function (ln) {
+              group.push(L.polyline(ln, { renderer: renderer, color: ink, weight: 1, opacity: 0.55, interactive: false }));
+            });
+          });
+        });
+        aroundLayer = L.layerGroup(group).addTo(map);
+      });
+    });
+  }
+  map.on("moveend", drawAround);
+  $("showAround").addEventListener("change", drawAround);
+
+  /* ---------- 住所 → 位置（国土地理院） ---------- */
+  // 住所の名前のうち、市区町村の部分（例「神奈川県川崎市中原区」）を取りのぞいて、その先が残るかを見る
+  function finerThanMuni(title) {
+    var best = "";
+    Object.keys((IDX && IDX.names) || {}).forEach(function (c) {
+      var nm = IDX.names[c];
+      if (title.indexOf(nm) === 0 && nm.length > best.length) best = nm;
+    });
+    if (!best) return /[区市町村].+/.test(title.replace(PREF_RE, ""));
+    return title.length > best.length;
+  }
+  $("searchForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var q = $("q").value.trim();
+    if (!q) { msg("住所を入れてください。", true); return; }
+    var maybeChiban = /[0-9０-９]+番[0-9０-９]+$/.test(q) && !/号/.test(q);
+    var chibanNote = maybeChiban ? "（「◯番◯」で終わる番号は地番かもしれません。住居表示なら「◯番◯号」です）" : "";
+    var hasPref = PREF_RE.test(q);
+    msg("国土地理院の住所検索で探しています。");
+    fetch("https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(q))
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (list) {
+        var all = (list || []).filter(function (h) { return h && h.properties && PREF_RE.test(h.properties.title); });
+        // 都県の名前が無い入力は、これまでどおり東京都の候補を先にする
+        if (!hasPref) all.sort(function (a, b) { return (/^東京都/.test(b.properties.title) ? 1 : 0) - (/^東京都/.test(a.properties.title) ? 1 : 0); });
+        if (!all.length) {
+          msg((list && list.length ? "1都3県（東京都・神奈川県・埼玉県・千葉県）の中では見つかりませんでした。" : "見つかりませんでした。") +
+            "市区町村の名前から入れてみてください（例：川崎市中原区小杉町3丁目）。" + chibanNote, true);
+          return;
+        }
+        var hit = all[0], c = hit.geometry.coordinates, title = hit.properties.title;
+        // 「東京都」だけ、「川崎市中原区」だけ、のように大まかにしか当たらなかったときは場所を決めない
+        if (!finerThanMuni(title)) {
+          msg("場所をしぼりこめませんでした（" + title + " までしか分かりません）。市区町村の名前と町名から入れてください（例：世田谷区成城6丁目8番1号）。" + chibanNote, true);
+          return;
+        }
+        var others = all.slice(1, 4).map(function (h) { return h.properties.title; });
+        msg("見つかりました：" + title + (all.length > 1 ? "（ほかに " + (all.length - 1) + " 件の候補" + (others.length ? "：" + others.join("、") + (all.length > 4 ? " など" : "") : "") + "。ちがう場合は、都県・市区町村の名前からくわしく入れてください）" : "") + chibanNote);
+        try { localStorage.setItem("surveyLastQ", q); } catch (e) {}
+        go(c[1], c[0], title, true);
+      })
+      .catch(function () { msg("住所検索につながりませんでした。インターネットの接続を確かめるか、地図をクリックして場所を選んでください。", true); });
+  });
+
+  // 地図で選んだ場所の町名（国土地理院の逆ジオコーダ。つながらなくても結果はそのまま出す）
+  function revGeo(r, seq) {
+    if (r.label !== "地図で選んだ場所" && r.label !== "指定された場所") return;
+    fetch("https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=" + r.lat.toFixed(6) + "&lon=" + r.lon.toFixed(6))
+      .then(function (x) { return x.json(); })
+      .then(function (j) {
+        if (seq !== goSeq || !j || !j.results) return;
+        var nm = (IDX.names && IDX.names[j.results.muniCd]) || "";
+        if (!nm) return;
+        r.addr = nm + (j.results.lv01Nm && j.results.lv01Nm !== "－" ? j.results.lv01Nm : "");
+        r.muniCd = j.results.muniCd; // 政令市の区まで分かる（土地活用の駐車場の表は区ごと）
+        updatePlace(); updateKenchiku();
+      })
+      .catch(function () {});
+  }
+
+  /* ---------- その場所を調べる ---------- */
+  function go(lat, lon, label, zoom) {
+    if (!IDX) return;
+    var seq = ++goSeq;
+    if (!marker) {
+      marker = L.marker([lat, lon], { icon: pinIcon, draggable: true, keyboard: false }).addTo(map);
+      marker.on("dragend", function () { var p = marker.getLatLng(); go(p.lat, p.lng, "地図で選んだ場所"); });
+    } else marker.setLatLng([lat, lon]);
+    if (zoom) map.setView([lat, lon], 17); else if (!map.getBounds().contains([lat, lon])) map.panTo([lat, lon]);
+    var key = S.tileKey(IDX.meta.grid, lat, lon);
+    function show(db) {
+      if (seq !== goSeq) return;
+      current = db ? S.lookup(db, lat, lon) : { lat: lat, lon: lon, inData: false, loadFailed: S.hasTile(IDX, key) };
+      current.label = label;
+      current.tileKey = key;
+      highlight();
+      render();
+      revGeo(current, seq);
+    }
+    if (!S.hasTile(IDX, key)) { show(null); return; }
+    if (!tiles[key]) $("result").innerHTML = '<div class="empty">この場所のデータを読みこんでいます。</div>';
+    loadTile(key, show);
+  }
+  function highlight() {
+    [hiYouto, hiKoudo].forEach(function (l) { if (l) map.removeLayer(l); });
+    hiYouto = hiKoudo = null;
+    var clip = current.youtoFeature || current.koudoFeature ? tiles[current.tileKey] && tiles[current.tileKey].meta.clip : null;
+    if (current.youtoFeature) {
+      var g = [L.polygon(current.youtoFeature.rings.map(function (r) { var a = []; for (var i = 0; i < r.length; i += 2) a.push([r[i + 1], r[i]]); return a; }),
+        { renderer: renderer, stroke: false, fillColor: color("--accent", "#2a4570"), fillOpacity: 0.06, interactive: false })];
+      S.edgeLines(current.youtoFeature, clip).forEach(function (ln) { g.push(L.polyline(ln, lineStyle(3))); });
+      hiYouto = L.layerGroup(g).addTo(map);
+    }
+    if (current.koudoFeature) {
+      hiKoudo = L.layerGroup(S.edgeLines(current.koudoFeature, clip).map(function (ln) { return L.polyline(ln, lineStyle(1.5, "5 5")); })).addTo(map);
+    }
+  }
+
+  function fmtM(v) { return (Math.round(v * 10) / 10) + "m"; }
+  function muniLabel(r) { return r.muni && r.muni.name ? r.muni.pref + r.muni.name : ""; }
+  function placeText(r) {
+    if (r.label && r.label !== "地図で選んだ場所" && r.label !== "指定された場所") return r.label;
+    if (r.addr) return r.addr + "（" + r.label + "）";
+    var m = muniLabel(r);
+    return m ? m + "（" + r.label + "）" : r.label;
+  }
+  function updatePlace() {
+    if (!current) return;
+    var t = placeText(current);
+    Array.prototype.forEach.call(document.querySelectorAll(".js-place"), function (el) { el.textContent = t; });
+    var pn = document.querySelector("#result .place-name");
+    if (pn) pn.textContent = t;
+    renderChecklist();
+  }
+  // データの出どころと時点（市区町村ごと）
+  function srcText(r) {
+    var IS = IDX.sources;
+    if (r.src === "T") return "出どころ：" + IS.T.name + "（用途地域・高度地区・防火 2025年3月31日時点、地区計画 2025年5月2日時点）";
+    var m = r.muni || {}, t = "出どころ：国土数値情報「都市計画決定情報」2024年度版（国土交通省）。";
+    if (m.name) t += m.name + "のデータの時点：" + (m.asOf ? m.asOf : "記載なし（国が2019年ごろのデータで埋めた可能性があり、古いことがあります）");
+    if (m.note) t += "。国の注記：" + m.note;
+    return t;
+  }
+  function stateText(state, yesText) {
+    if (state === "yes") return yesText;
+    if (state === "nodata") return '<span class="old">データなし（役所で確認）</span>';
+    if (state === "unknown") return "不明（役所で確認）";
+    return "指定なし";
+  }
+
+  function render() {
+    var r = current, out = [];
+    var placeTxt = placeText(r);
+    Array.prototype.forEach.call(document.querySelectorAll(".js-place"), function (el) { el.textContent = placeTxt; });
+    out.push('<h2 style="margin-top:0"><span class="no">01</span>この場所の都市計画</h2>');
+    out.push('<p class="place-name">' + esc(placeTxt) + "</p>");
+    out.push('<p class="place-sub">緯度 ' + r.lat.toFixed(6) + "　経度 " + r.lon.toFixed(6) + (muniLabel(r) ? "　" + esc(muniLabel(r)) : "") + "</p>");
+
+    if (!r.inData || !r.youto) {
+      if (!r.inData) {
+        out.push('<div class="note caution">' + (r.loadFailed ? "この場所のデータ（data/tiles/" + esc(r.tileKey) + ".js）を読みこめませんでした。フォルダごと開いているか確かめてください。" :
+          "この場所は、読みこんだデータ（1都3県の本土）の外です（東京都の島しょ部、1都3県の外、海の上など）。下の「ほかの調べもの」から、その市区町村の都市計画図を見てください。") + "</div>");
+      } else {
+        var why;
+        if (r.kuiki && r.kuiki.code === 23) why = "<strong>市街化調整区域</strong>です。市街化をおさえる区域で、原則として家やお店を建てられません（例外は都県・市の許可が要ります）。建てられるかどうかは、市町村の開発許可の窓口で必ず確かめてください。";
+        else if (r.toshiKeikaku === false) why = "<strong>都市計画区域の外</strong>のようです。用途地域はありませんが、建築の決まりが無いわけではありません（県や市町村の条例など）。役所で確かめてください。";
+        else if (r.muni && r.muni.avail && r.muni.avail.youto === "x") why = "この市町村は用途地域のデータを公開していません。役所で確かめてください。";
+        else why = "用途地域の指定がない場所です（線引きをしていない都市計画区域の「白地」、または道路・川の上など）。建ぺい率・容積率は県が決めた数値になります。役所で確かめてください。";
+        out.push('<div class="note caution">' + why + "</div>");
+        var rows0 = [];
+        if (r.kuiki) rows0.push(["区域区分", esc(r.kuiki.name), ""]);
+        rows0.push(["防火の指定", stateText(r.bouka.state, esc(r.bouka.name)), ""]);
+        rows0.push(["地区計画", stateText(r.chikuState, r.chiku.map(function (c) { return esc(c.name); }).join("、")), ""]);
+        out.push('<div class="tablewrap"><table class="kv">' + rows0.map(function (x) { return "<tr><th>" + x[0] + "</th><td>" + x[1] + "</td></tr>"; }).join("") + "</table></div>");
+        out.push('<p class="src-line">' + esc(srcText(r)) + "</p>");
+      }
+      $("result").innerHTML = out.join("");
+      $("detail").hidden = false;
+      $("zoneOnly").hidden = true;
+      $("rulesTable").innerHTML = ""; $("rulesNote").textContent = ""; $("volFigures").innerHTML = ""; $("clientSay").innerHTML = "";
+      renderLinks(); renderChecklist(); updateKenchiku();
+      return;
+    }
+    var y = r.youto, k = r.koudo, tokyo = y.tokyo;
+    var ah = S.absHeight(y);
+    var hMax = [];
+    if (ah) hMax.push(ah);
+    if (k && k.max > 0) hMax.push(k.max);
+    var hNote = hMax.length ? "絶対高さ・高度地区" : (y.low ? "10mか12m（役所で確認）" : (k && !k.typeKnown ? "高度地区あり（役所で確認）" : "斜線制限で決まる"));
+    out.push('<div class="figures">' +
+      '<div class="figure main"><div class="k">用途地域</div><div class="v" style="font-size:18px">' + esc(y.name) + "</div></div>" +
+      '<div class="figure"><div class="k">建ぺい率</div><div class="v">' + (y.kenpei > 0 ? y.kenpei + "<small>%</small>" : "—") + "</div><div class='s'>" + (y.fill2019 ? "2019年度の値（古い）" : "1階の広さの上限") + "</div></div>" +
+      '<div class="figure"><div class="k">容積率</div><div class="v">' + (y.youseki > 0 ? y.youseki + "<small>%</small>" : "—") + "</div><div class='s'>" + (y.fill2019 ? "2019年度の値（古い）" : "全部の階の合計の上限") + "</div></div>" +
+      '<div class="figure"><div class="k">高さの上限</div><div class="v">' + (hMax.length ? Math.min.apply(null, hMax) + "<small>m</small>" : "—") + "</div><div class='s'>" + hNote + "</div></div>" +
+      "</div>");
+    out.push('<p class="src-line">' + esc(srcText(r)) + "</p>");
+
+    var rows = [];
+    if (r.kuiki) rows.push(["区域区分", esc(r.kuiki.name), r.kuiki.code === 22 ? "すでに市街地か、これから市街地にする区域" : ""]);
+    rows.push(["用途地域", esc(y.name), "どんな建物を建ててよいかの決まり"]);
+    var ratioNote = y.fill2019 ? '<span class="old">国の2024年度版のデータに数値が無いため、2019年度の国土数値情報の値を出しています（古いデータ。変わっていることがあります）。</span>' : "";
+    if (y.noRatio) ratioNote = '<span class="old">データに数値がありません（役所で確認）。</span>';
+    rows.push(["建ぺい率", y.kenpei > 0 ? y.kenpei + "%" : "データなし", ratioNote + "土地の面積のうち、建物で覆ってよい割合（上乗せの例：" + S.kenpeiBonus(y, r.bouka).join("／") + "）"]);
+    var rf = S.roadFar(y.kind, +$("road").value);
+    rows.push(["容積率", (y.youseki > 0 ? y.youseki + "%" : "データなし") + (y.tokurei ? "（特例容積率適用区域）" : ""), "土地の面積に対する、全部の階の床面積の合計の割合" + (rf ? "。前の道路の幅 " + $("road").value + "m なら上限は " + rf.far + "%（道路の幅×" + rf.coef + "）" + (y.youseki > 0 ? "で、指定の " + y.youseki + "% と小さい方が使えます" : "") : "")]);
+    var kTxt, kSub;
+    if (k && k.typeKnown) { kTxt = esc(k.name) + (k.max > 0 ? "／最高 " + k.max + "m" : "") + (k.min > 0 ? "／最低 " + k.min + "m" : ""); kSub = k.code <= 3 ? S.koudoFormula(k.code) : "東京都の高さの決まり（高さの上限）"; }
+    else if (k) { kTxt = "あり（種類・高さは役所で確認）"; kSub = "国のデータには高度地区の場所だけが入っています。北側の斜線の式や高さの上限は、市の都市計画図で確かめてください。"; }
+    else { kTxt = stateText(r.koudoState, ""); kSub = r.koudoState === "nodata" ? "この市町村は高度地区のデータを公開していません。" : (tokyo ? "東京都の高さの決まり（北側の斜線と高さの上限）" : "高さの決まり（北側の斜線や高さの上限）"); }
+    rows.push(["高度地区", kTxt, kSub]);
+    if (y.low) rows.push(["絶対高さ", ah ? ah + "m" : "10mまたは12m（役所で確認）", "低層住居専用地域・田園住居地域の高さの上限" + (ah ? "" : "。国のデータにはどちらかが入っていません")]);
+    var bSub = r.bouka.code === 10 ? "燃えにくい建物（耐火建築物など）にする必要がある地域" : r.bouka.code === 20 ? "燃えにくい材料で建てる必要がある地域" :
+      (r.bouka.state === "nodata" ? "この市町村は防火地域のデータを公開していません。" : tokyo ? "東京都建築安全条例の「新たな防火規制」の区域かどうかは別に確認" : "");
+    rows.push(["防火の指定", stateText(r.bouka.state, esc(r.bouka.name)), bSub]);
+    if (tokyo) rows.push(["敷地面積の最低限度", y.minArea > 0 ? F.area(y.minArea, 0) : "指定なし", y.minArea > 0 ? "これより小さく土地を分けると家を建てられない（分ける前からの土地は例外あり）" : ""]);
+    else rows.push(["敷地面積の最低限度", '<span class="old">データなし（役所で確認）</span>', "国のデータには入っていません。用途地域や地区計画で決めている市町村があります。"]);
+    if (y.gaiheki > 0) rows.push(["外壁の後退距離", y.gaiheki + "m", "建物の外壁を、敷地の境界線から離す距離"]);
+    rows.push(["地区計画", stateText(r.chikuState, r.chiku.map(function (c) { return esc(c.name); }).join("、")), r.chiku.length ? "地区だけの決まりがあります。" + r.chiku.map(function (c) { return "問い合わせ先：" + esc(c.contact || "市区町村役所") + (c.last ? "（最終告示 " + c.last + "）" : ""); }).join("／") : (r.chikuState === "nodata" ? "この市町村は地区計画のデータを公開していません。" : "")]);
+    if (r.fuchi.length) rows.push(["風致地区", r.fuchi.map(function (c) { return esc(c.name); }).join("、"), "緑を守るため、建ぺい率・高さ・壁の位置に別の決まりがあります"]);
+    else if (r.fuchiState === "nodata") rows.push(["風致地区", '<span class="old">データなし（役所で確認）</span>', ""]);
+    if (r.other && r.other.length) rows.push(["ほかの地域地区", r.other.map(function (o) { return esc(o.kind + (o.name && o.name !== o.kind ? "（" + o.name + "）" : "")); }).join("、"), "高度利用地区は容積率などが別に決まります。特別用途地区は建てられる建物の種類が変わります。"]);
+    rows.push(["日影規制", "役所の図で確認", "このデータには入っていません"]);
+    out.push('<div class="tablewrap"><table class="kv">' + rows.map(function (x) {
+      return "<tr><th>" + x[0] + "</th><td>" + x[1] + (x[2] ? '<span class="s">' + x[2] + "</span>" : "") + "</td></tr>";
+    }).join("") + "</table></div>");
+
+    if (r.edgeM != null && r.edgeM < 20) {
+      out.push('<div class="note alert">用途地域の境目まで約 ' + fmtM(r.edgeM) + ' です。敷地が2つの地域にまたがると、建ぺい率・容積率は面積の割合で計算し直します。幹線道路ぞいは「道路の境界から20m（30m）」で地域が分かれていることが多いので、役所の都市計画図で境目を確かめてください。</div>');
+    }
+    if (r.youtoMixed) out.push('<div class="note alert">この点では、ちがう内容の用途地域が重なって見つかりました（境目の上の可能性）。役所の図で確かめてください。</div>');
+    if (r.koudoEdgeM != null && r.koudoEdgeM < 10) out.push('<div class="note caution">高度地区の境目まで約 ' + fmtM(r.koudoEdgeM) + " です。</div>");
+    if (r.boukaEdgeM != null && r.boukaEdgeM < 10) out.push('<div class="note caution">防火の指定の境目まで約 ' + fmtM(r.boukaEdgeM) + " です。建物が2つにまたがると、厳しい方の決まりがかかります。</div>");
+    if (!tokyo) out.push('<div class="note">国のデータは「おおよその位置」です。境目の近くや、データの時点が古い市町村では、特に役所で確かめてください。</div>');
+    out.push('<p class="muted">ピンは住所の代表点です。敷地の位置とずれるときは、地図をクリックするか赤い丸を動かしてください。</p>');
+    $("result").innerHTML = out.join("");
+    $("detail").hidden = false;
+    $("zoneOnly").hidden = false;
+    renderRules(); renderVolume(); renderClient(); renderLinks(); renderChecklist(); updateKenchiku();
+  }
+
+  function renderRules() {
+    var r = current; if (!r || !r.youto) return;
+    var rows = S.heightRules(r.youto, r.koudo, { roadW: +$("road").value, koudoState: r.koudoState });
+    var st = function (a) { return a === true ? '<span class="st yes">かかる</span>' : a === false ? '<span class="st no">かからない</span>' : '<span class="st maybe">確認が必要</span>'; };
+    $("rulesTable").innerHTML = "<thead><tr><th>決まり</th><th>この場所</th><th>中身</th></tr></thead><tbody>" +
+      rows.map(function (x) { return "<tr><td>" + esc(x.title) + "</td><td>" + st(x.applies) + "</td><td>" + esc(x.rule) + '<span class="muted" style="display:block">' + esc(x.detail) + "</span></td></tr>"; }).join("") + "</tbody>";
+    $("rulesNote").textContent = "「天空率」という計算で、道路斜線・隣地斜線・北側斜線がゆるくなることがあります（高度地区はゆるくなりません）。地区計画で高さの決まりがある場合は、そちらも見てください。";
+  }
+
+  /* ---------- 面積（㎡と坪） ---------- */
+  var lock = false;
+  $("areaM2").addEventListener("input", function () { if (lock) return; lock = true; var v = parseFloat(this.value); $("areaTsubo").value = v > 0 ? (v / F.TSUBO).toFixed(2) : ""; lock = false; renderVolume(); updateKenchiku(); });
+  $("areaTsubo").addEventListener("input", function () { if (lock) return; lock = true; var v = parseFloat(this.value); $("areaM2").value = v > 0 ? (v * F.TSUBO).toFixed(2) : ""; lock = false; renderVolume(); updateKenchiku(); });
+  $("road").addEventListener("input", function () { if (current && current.youto) { render(); } });
+  $("areaTsubo").value = (120 / F.TSUBO).toFixed(2);
+
+  function renderVolume() {
+    var r = current, el = $("volFigures");
+    if (!r || !r.youto) { el.innerHTML = ""; return; }
+    var a = parseFloat($("areaM2").value), y = r.youto;
+    if (!(a > 0) || !(y.kenpei > 0 && y.youseki > 0)) { el.innerHTML = y.kenpei > 0 ? "" : '<p class="muted">建ぺい率・容積率がデータに無いため、計算できません。役所で数値を確かめて、建築のページに入れてください。</p>'; return; }
+    var rf = S.roadFar(y.kind, +$("road").value);
+    var far = rf ? Math.min(y.youseki, rf.far) : y.youseki;
+    el.innerHTML =
+      '<div class="figure"><div class="k">1階の広さの上限（建築面積）</div><div class="v" style="font-size:20px">' + F.area(a * y.kenpei / 100) + '</div><div class="s">敷地 × 建ぺい率 ' + y.kenpei + "%（上乗せなし）</div></div>" +
+      '<div class="figure main"><div class="k">延床面積の上限（全部の階の合計）</div><div class="v" style="font-size:20px">' + F.area(a * far / 100) + '</div><div class="s">敷地 × 容積率 ' + far + "%" + (rf && rf.far < y.youseki ? "（道路の幅で下がる）" : "") + "</div></div>";
+  }
+  function updateKenchiku() {
+    var a = parseFloat($("areaM2").value), road = parseFloat($("road").value), r = current && current.youto ? current : null;
+    var url = S.kenchikuUrl("../シミュレーター/kenchiku.html", r, { road: road, area: a });
+    $("toKenchiku").href = url;
+    // 土地活用・積算評価にも、市区町村・用途地域・面積・位置を引きつぐ
+    var q2 = [];
+    function add2(k, v) { if (v !== undefined && v !== null && v !== "" && v === v) q2.push(k + "=" + encodeURIComponent(v)); }
+    if (current && (current.muniCd || (current.muni && current.muni.code))) add2("city", current.muniCd || current.muni.code);
+    if (current) add2("addr", current.addr || (current.label !== "地図で選んだ場所" && current.label !== "指定された場所" ? current.label : ""));
+    if (r) { add2("youto", r.youto.name); if (r.youto.kenpei > 0) add2("kenpei", r.youto.kenpei); if (r.youto.youseki > 0) add2("youseki", r.youto.youseki); }
+    if (road > 0) add2("road", road);
+    if (a > 0) add2("area", Math.round(a * 100) / 100);
+    $("toTochi").href = "../シミュレーター/tochi.html" + (q2.length ? "?" + q2.join("&") : "");
+    var q3 = [];
+    function add3(k, v) { if (v !== undefined && v !== null && v !== "" && v === v) q3.push(k + "=" + encodeURIComponent(v)); }
+    if (current) { add3("addr", current.addr || muniLabel(current) || ""); add3("lat", current.lat.toFixed(6)); add3("lon", current.lon.toFixed(6)); }
+    if (r) add3("youto", r.youto.name);
+    if (a > 0) add3("area", Math.round(a * 100) / 100);
+    $("toSekisan").href = "../シミュレーター/sekisan.html" + (q3.length ? "?" + q3.join("&") : "");
+    var t = "";
+    if (r) {
+      t = "建築・ボリュームのページを、用途地域・建ぺい率・容積率・高度地区・防火の指定・道路の幅・敷地の面積を引きついで開きます。斜線制限による高さは、向こうのページで計算します（北が道路かどうか、などを入れてください）。";
+      var miss = [];
+      if (r.youto.low && !S.absHeight(r.youto)) miss.push("絶対高さ（10mか12m）");
+      if (r.koudo && !(r.koudo.src === "T" && r.koudo.code >= 1 && r.koudo.code <= 3) && !(r.koudo.max > 0)) miss.push("高度地区の種類");
+      if (r.koudoState === "nodata") miss.push("高度地区の有無");
+      if (r.bouka.state === "nodata") miss.push("防火の指定");
+      if (!(r.youto.kenpei > 0)) miss.push("建ぺい率・容積率");
+      if (miss.length) t += " データに無いため引きつがないもの：" + miss.join("・") + "（役所で確かめて、向こうのページで入れてください）。";
+    }
+    $("toKenchikuNote").textContent = t;
+  }
+
+  /* ---------- お客様向けの説明 ---------- */
+  var SAY = {
+    1: "低い家（2〜3階建て）が中心の、静かな住宅地です。建てられるお店はとても小さいもの（住まいと一緒のお店など）だけです。日当たりや静けさが守られやすい反面、近くにお店ができにくく、買い物は少し歩くことがあります。",
+    2: "第一種低層住居専用地域とほぼ同じ、低い家が中心の静かな住宅地です。小さなお店（床面積150㎡まで。コンビニなど）は建てられます。",
+    3: "中くらいの高さのマンションと家がまじる住宅地です。病院・大学や、500㎡までのお店も建てられます。となりにマンションが建つことがあります。",
+    4: "第一種中高層住居専用地域に加えて、1,500㎡までのお店や事務所も建てられる住宅地です。",
+    5: "住まいが中心ですが、3,000㎡までのお店・事務所・ホテルなども建てられます。住宅地の中にお店がまじることがあります。",
+    6: "第一種住居地域に加えて、カラオケやパチンコ店なども建てられます。夜のにぎやかさを確かめておくと安心です。",
+    7: "大きな道路ぞいに多い地域です。車の販売店や小さな倉庫なども建てられます。車の音や交通量を確かめておくと安心です。",
+    8: "近所の人が買い物をするお店が多い地域です。住まいも建てられます。高い建物が建つことがあり、便利な反面、にぎやかです。",
+    9: "駅前や繁華街の地域です。高い建物が建ちやすく、夜もにぎやかです。日当たりは周りの建物しだいです。",
+    10: "小さな工場と、住まい・お店がまじる地域です。危険の大きい工場は建てられません。まわりの工場の音やにおいを確かめておくと安心です。",
+    11: "工場のための地域です。住まいは建てられますが、学校・病院・ホテルは建てられません。",
+    12: "工場だけの地域で、住まいは建てられません。",
+    13: "畑などの農地と、低い家がいっしょにある住宅地です。農産物の直売所や農家レストランなども建てられます。"
+  };
+  function renderClient() {
+    var r = current, y = r.youto, k = r.koudo, h = [];
+    var ah = S.absHeight(y);
+    h.push("<h3>" + esc(y.name) + "とは</h3><p class='zone-say'>" + esc(SAY[y.code] || "") + "</p>");
+    if (y.low) h.push("<h3>高さは " + (ah ? ah + "m" : "10mか12m") + " まで</h3><p class='zone-say'>3階建てくらいまでの建物しか建ちません。まわりに急に高いマンションが建つ心配は小さい地域です。</p>");
+    if (k && k.typeKnown && k.code <= 3) h.push("<h3>" + esc(k.name) + "</h3><p class='zone-say'>北どなりの家の日当たりを守るため、建物の北側を低くする決まりです。逆に、南どなりが建てかわっても、あなたの家の日当たりがある程度守られます。</p>");
+    else if (k && !k.typeKnown) h.push("<h3>高度地区</h3><p class='zone-say'>建物の高さをおさえる決まりがある地域です。くわしい中身は担当者に聞いてみてください。</p>");
+    if (k && k.max > 0) h.push("<h3>高さの上限 " + k.max + "m</h3><p class='zone-say'>この地域では、" + k.max + "m（おおよそ " + Math.floor(k.max / 3) + " 階建て）より高い建物は、原則として建てられません。</p>");
+    if (r.bouka.code) h.push("<h3>" + esc(r.bouka.name) + "</h3><p class='zone-say'>火事が広がりにくいよう、燃えにくい材料や構造で建てる決まりです。建てかえやリフォームのとき、窓や外壁の費用が少し高くなることがあります。</p>");
+    if (y.minArea > 0) h.push("<h3>土地を分けるときの決まり（" + F.area(y.minArea, 0) + "以上）</h3><p class='zone-say'>土地を細かく分けて家を建てることを防ぐ決まりです。将来、土地を2つに分けて売るつもりがあれば、この面積に注意してください。</p>");
+    if (r.chiku.length) h.push("<h3>地区計画（" + r.chiku.map(function (c) { return esc(c.name); }).join("、") + "）</h3><p class='zone-say'>この地区だけの決まり（建物の高さや色、塀の作り方、土地の分け方など）があります。街並みがそろいやすい反面、建てるときに守ることが増えます。担当者に中身を聞いてみてください。</p>");
+    $("clientSay").innerHTML = h.join("");
+  }
+
+  /* ---------- 公式の地図・資料への案内 ---------- */
+  var MUNI_LINKS = {
+    "世田谷区": [
+      ["世田谷区 都市計画図", "https://www.city.setagaya.lg.jp/02008/3680.html", "地域ごとの都市計画図（PDF）。日影規制の時間も載っています。"],
+      ["せたがやiMap（都市計画情報）", "https://www.city.setagaya.lg.jp/01000/8486.html", "地図をクリックすると用途地域などが出ます。指定道路図も見られます。"],
+      ["新たな防火規制の区域図（世田谷区）", "https://www.toshiseibi.metro.tokyo.lg.jp/bosai/mokuzou_seibi/bouka/anzen_kuikizu/kuikizu_setagaya", "東京都建築安全条例の防火の決まり（東京都都市整備局）"]
+    ],
+    "目黒区": [
+      ["めぐろ地図情報サービス", "https://www.city.meguro.tokyo.jp/kenchiku/shigoto/machidukuri/megurotizujouhou.html", "地域地区図・指定道路図・道路台帳の図などを見られます。"],
+      ["目黒区地域地区図（用途地域等）", "https://www.city.meguro.tokyo.jp/toshikeikaku/shigoto/tochitorihiki/tiikitikuzu.html", "用途地域・高度地区・日影規制の説明と問い合わせ先"],
+      ["新たな防火規制の区域図（目黒区）", "https://www.toshiseibi.metro.tokyo.lg.jp/bosai/mokuzou_seibi/bouka/anzen_kuikizu/kuikizu_meguro", "東京都建築安全条例の防火の決まり（東京都都市整備局）"]
+    ],
+    "渋谷区": [
+      ["渋谷区地図情報システム", "https://www2.wagmap.jp/shibuya/Portal", "区の地図サービス。都市計画の載り方は区に確かめてください（都市計画課：区役所本庁舎11階）。"],
+      ["新たな防火規制の区域図（渋谷区）", "https://www.toshiseibi.metro.tokyo.lg.jp/bosai/mokuzou_seibi/bouka/anzen_kuikizu/kuikizu_shibuya", "東京都建築安全条例の防火の決まり（東京都都市整備局）"]
+    ],
+    "横浜市": [
+      ["横浜市 都市計画図等閲覧システム（A-Mappy）", "https://a-mappy.city.yokohama.lg.jp/", "用途地域・高度地区・防火地域・地区計画などを地図で見られます（横浜市建築局）。国のデータには横浜市の高度地区・防火地域・地区計画が入っていないので、必ずここで確かめてください。"]
+    ],
+    "川崎市": [
+      ["ガイドマップかわさき", "https://kawasaki.geocloud.jp/webgis/", "右のメニューの「都市計画情報」で、用途地域・高度地区・防火地域・地区計画などを見られます（川崎市）。"]
+    ],
+    "さいたま市": [
+      ["さいたま市地図情報", "https://www.sonicweb-asp.jp/saitama/", "さいたま市の地図サービス。都市計画の情報を見られます。"]
+    ],
+    "千葉市": [
+      ["千葉市 都市計画課", "https://www.city.chiba.jp/toshi/toshi/keikaku/", "千葉市の都市計画の案内（用途地域などの問い合わせ先）。"]
+    ]
+  };
+  function renderLinks() {
+    var r = current, lat = r.lat.toFixed(6), lon = r.lon.toFixed(6), L2 = [];
+    var mname = r.muni && r.muni.name;
+    (MUNI_LINKS[mname] || []).forEach(function (x) { L2.push(x); });
+    if (!MUNI_LINKS[mname]) L2.push([(mname ? mname + "の" : "その市区町村の") + "都市計画図", "https://www.reinfolib.mlit.go.jp/", (mname ? mname : "市区町村") + "のホームページで「都市計画図」「地図情報」を探してください。日影規制・高度地区の中身・敷地面積の最低限度などが載っています。国の不動産情報ライブラリでも用途地域などを地図で見られます。"]);
+    L2.push(["重ねるハザードマップ", "https://disaportal.gsi.go.jp/maps/?ll=" + lat + "," + lon + "&z=16&base=pale", "洪水・土砂災害・高潮・津波などの危険を地図で重ねて見られます（国土交通省・国土地理院）。"]);
+    L2.push(["地理院地図", "https://maps.gsi.go.jp/#17/" + lat + "/" + lon + "/", "土地の高さ（標高）・昔の地形・航空写真を見られます（国土地理院）。"]);
+    L2.push(["不動産情報ライブラリ", "https://www.reinfolib.mlit.go.jp/", "取引価格・地価公示・地価調査・学区・防災情報・用途地域など（国土交通省）。"]);
+    L2.push(["路線価図（財産評価基準書）", "https://www.rosenka.nta.go.jp/", "相続税・贈与税の土地の評価に使う価格（国税庁）。"]);
+    L2.push(["用途地域ごとの建物の決まり", "https://www.toshiseibi.metro.tokyo.lg.jp/kanko/area_ree/youto_seigen.pdf", "用途地域ごとに建てられる建物の一覧（東京都都市整備局、PDF。法律の決まりなので他県でも同じ）。"]);
+    $("links").innerHTML = L2.map(function (x) {
+      return '<li><a href="' + esc(x[1]) + '" target="_blank" rel="noopener">' + esc(x[0]) + '</a><span class="d">' + esc(x[2]) + "</span></li>";
+    }).join("");
+  }
+
+  /* ---------- 担当者向けチェックリスト ---------- */
+  var CHECK = [
+    ["法務局（登記）", [
+      ["登記簿（全部事項証明書）", "所有者・持分・抵当権など。地番で取る"],
+      ["公図", "土地の形と、となりの土地・道路との位置関係"],
+      ["地積測量図", "面積と境界の測量の記録（無い土地もある）"],
+      ["建物図面・各階平面図", "建物の位置と各階の形"],
+      ["地番と住居表示の対応", "法務局の地番検索、または固定資産税の通知書で確認"]
+    ]],
+    ["役所（都市計画・建築）", [
+      ["区域区分（市街化区域・市街化調整区域）", "調整区域なら建てられるかを開発許可の窓口で確認"],
+      ["用途地域・建ぺい率・容積率", "この画面の結果を窓口・都市計画図で確認"],
+      ["高度地区・日影規制・絶対高さ", "日影規制の時間（例 4-2.5）を役所の図で確認"],
+      ["防火地域・準防火地域", "東京都は「新たな防火規制」（東京都建築安全条例）の区域も確認"],
+      ["地区計画・建築協定・風致地区", "地区独自の決まり（高さ・色・敷地の分け方など）"],
+      ["敷地面積の最低限度", "土地を分けるときの面積の決まり"],
+      ["道路の種類（建築基準法の道路か）", "指定道路図・道路台帳。42条2項道路ならセットバック"],
+      ["道路の幅と接道（2m以上接しているか）", "都県・市の条例の路地状敷地の決まりも"],
+      ["都市計画道路の予定", "計画線に入ると建て方に制限"],
+      ["建築確認・検査済証の履歴", "台帳記載事項証明書、建築計画概要書"],
+      ["埋蔵文化財包蔵地か", "市区町村の教育委員会。工事前に届け出が要ることがある"],
+      ["土壌汚染（要措置区域・形質変更時要届出区域）", "都県の環境部局・市区町村の担当課"],
+      ["がけ条例", "高さ2mを超えるがけの近く（東京都建築安全条例第6条、各県・市の建築の条例）", "gkJorei"]
+    ]],
+    ["ライフライン", [
+      ["上水道（引込管の口径・位置）", "水道局の給水装置の図面"],
+      ["下水道（公共下水・雨水と汚水の分け方）", "市区町村の下水道台帳"],
+      ["ガス（都市ガス・プロパン）", "ガス会社の埋設管の図"],
+      ["電気・通信", "電柱の位置、引込線"]
+    ]],
+    ["現地", [
+      ["境界標（コンクリート杭・金属プレート）", "全部の角にあるか、写真を撮る"],
+      ["越境（塀・屋根・木の枝・配管）", "となりとの間ではみ出しが無いか"],
+      ["前の道路の幅を測る", "何か所かで測る。側溝の扱いも"],
+      ["土地の高低差・擁壁", "古い擁壁は作り直しが必要なことがある", "gkYoheki"],
+      ["まわりの環境（騒音・におい・日当たり・嫌悪施設）", "時間帯を変えて見る"],
+      ["電柱・ごみ置き場・消火栓の位置", "出入口や駐車の邪魔にならないか"]
+    ]],
+    ["そのほか", [
+      ["ハザードマップ（洪水・土砂・高潮・内水）", "重要事項説明で水害の位置を説明する"],
+      ["学区（小学校・中学校）", "市区町村の教育委員会"],
+      ["路線価・地価公示", "価格の目安"]
+    ]]
+  ];
+  function renderChecklistItems() {
+    var h = "";
+    CHECK.forEach(function (g, gi) {
+      h += "<h3>" + esc(g[0]) + "</h3>";
+      g[1].forEach(function (c, ci) {
+        h += '<label class="check"><input type="checkbox" id="ck' + gi + "_" + ci + '"><span>' + esc(c[0]) + "<small>" + esc(c[1]) + "</small></span></label>";
+        if (c[2]) h += '<div class="gk-ck" id="' + c[2] + '"></div>';
+      });
+    });
+    h += '<h3>メモ</h3><div class="memo-line"></div><div class="memo-line"></div><div class="memo-line"></div>';
+    $("checklist").innerHTML = h;
+  }
+  // がけ条例・擁壁の行に、その市区町村の条例の要点と、盛土規制法・土砂災害の地図を出す（共通/gake.js）
+  function renderGakeCheck(r) {
+    var G = window.Gake, a = $("gkJorei"), b = $("gkYoheki");
+    if (!a || !b) return;
+    var rg = G && r && r.muni ? G.regionFor(r.muni.pref, r.muni.name) : null;
+    function lk(t, u) { return '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + "</a>"; }
+    if (!rg) { a.innerHTML = b.innerHTML = '<span class="muted">場所を調べると、その市区町村の決まりの要点が出ます（1都3県）。</span>'; return; }
+    var rule = G.ruleOf(rg.id), md = G.MORIDO_MAP[rg.morido], ds = G.DOSHA_MAP[rg.pref];
+    a.innerHTML = "<b>" + esc(rg.name) + "：" + esc(rule.short) + "</b><br>がけ：" + esc(rule.def) + "。<br>離す範囲：" + esc(rule.dist) + "。" + esc(rule.need) + "。<br>" +
+      rule.src.map(function (x) { return lk(x.t, x.u); }).join("・") + '<span class="muted">（確認日 ' + G.CHECKED + "）</span>";
+    b.innerHTML = "検査済証の無い擁壁・空石積み・増し積み・二段擁壁・大谷石・はらみ・ひび・水抜き穴の無いものは、安全と認められず「擁壁が無い」のと同じあつかいになることが多い。" +
+      (md ? "<br>盛土規制法の区域：" + esc(md.by) + "（" + esc(md.zone) + "）" + lk("区域の案内", md.u) + (md.map ? "・" + lk("地図", md.map) : "") : "") +
+      (ds ? "<br>土砂災害の区域：" + lk(ds.t, ds.u) : "") +
+      '<br>建てられる大きさ・作り直しの費用：' + '<a href="../シミュレーター/kenchiku.html">建築・ボリューム</a>の「がけ・擁壁」';
+  }
+  function renderChecklist() {
+    var r = current, sum = [];
+    function st(state, yes) { return state === "yes" ? yes : state === "nodata" ? "データなし" : "指定なし"; }
+    if (r && r.inData) {
+      if (r.kuiki) sum.push("区域区分：" + r.kuiki.name);
+      if (r.youto) {
+        var ah = S.absHeight(r.youto);
+        sum.push("用途地域：" + r.youto.name + "／建ぺい率 " + (r.youto.kenpei > 0 ? r.youto.kenpei + "%" : "データなし") + "／容積率 " + (r.youto.youseki > 0 ? r.youto.youseki + "%" : "データなし") + (r.youto.fill2019 ? "（2019年度の値）" : ""));
+        sum.push("高度地区：" + (r.koudo ? (r.koudo.typeKnown ? r.koudo.name : "あり（種類は役所で確認）") + (r.koudo.max ? "（最高 " + r.koudo.max + "m）" : "") : st(r.koudoState)) + "／防火：" + r.bouka.name +
+          (r.youto.low ? "／絶対高さ " + (ah ? ah + "m" : "10mか12m") : "") + (r.youto.minArea ? "／敷地最低 " + r.youto.minArea + "㎡" : ""));
+      } else sum.push("用途地域：なし（" + (r.kuiki && r.kuiki.code === 23 ? "市街化調整区域" : "指定なしの区域") + "）／防火：" + r.bouka.name);
+      sum.push("地区計画：" + (r.chiku.length ? r.chiku.map(function (c) { return c.name; }).join("、") : st(r.chikuState)) + (r.fuchi.length ? "／風致地区：" + r.fuchi.map(function (c) { return c.name; }).join("、") : ""));
+      sum.push(srcText(r));
+    }
+    renderGakeCheck(r);
+    $("checkSummary").innerHTML = sum.length ? '<p class="small" style="margin:10px 0 0">データでの結果（' + esc(document.querySelector(".js-place").textContent) + "）<br>" + sum.map(esc).join("<br>") + "</p>" : "";
+  }
+
+  /* ---------- データの読みこみ ---------- */
+  if (!IDX) { msg("データ（data/tiles/index.js）が読みこめませんでした。物件調査のフォルダごと開いているか確かめてください。", true); return; }
+  renderChecklistItems();
+  msg("住所を入れて「調べる」を押すか、地図をクリックしてください。");
+  try { var last = localStorage.getItem("surveyLastQ"); if (last) $("q").value = last; } catch (e) {}
+  // URL で場所を渡されたとき（例：index.html?lat=35.64&lon=139.60 ／ index.html?q=川崎市中原区小杉町3丁目）
+  var ps = new URLSearchParams(location.search), plat = parseFloat(ps.get("lat")), plon = parseFloat(ps.get("lon"));
+  if (plat && plon) go(plat, plon, "指定された場所", true);
+  else if (ps.get("q")) { $("q").value = ps.get("q"); $("searchForm").requestSubmit(); }
+})();
+</script>
+</body>
+</html>

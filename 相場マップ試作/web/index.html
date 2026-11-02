@@ -1,0 +1,1415 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>相場マップ（売買・賃貸）</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="../../共通/common.css">
+<style>
+  /* 地図のページだけの形（色・文字は共通の決まりを使う） */
+  html, body { height: 100%; }
+  body { font-size: 14px; }
+  #app { display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); height: 100%; }   /* 列を画面の幅までにする（メニューの1行の長さでページが広がらないように） */
+  header.bar { padding: 12px 16px 10px; border-bottom: 1px solid var(--rule); background: var(--paper); }
+  .title { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .title h1 { font-size: 20px; margin: 0; }
+  .title .sub { color: var(--muted); font-size: 12px; }
+  #toggleFilters { margin-left: auto; display: none; }
+  .areapick { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; align-items: end; }
+  .areapick label, .filters label { display: flex; flex-direction: column; font-size: 11px; color: var(--ink-2); gap: 3px; }
+  .areapick select { width: auto; max-width: 200px; font-size: 13px; padding: 5px 8px; }
+  .areapick label.inline { flex-direction: row; align-items: center; gap: 6px; font-size: 12px; padding-bottom: 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 4px; }
+  .circlepick { display: flex; flex-wrap: wrap; gap: 8px 10px; margin-top: 10px; align-items: end; }
+  .circlepick label { display: flex; flex-direction: column; font-size: 11px; color: var(--ink-2); gap: 3px; }
+  .circlepick select, .circlepick input { font-size: 13px; padding: 5px 8px; }
+  .circlepick input { width: 15em; max-width: 100%; }
+  .circlepick .btn { min-height: 32px; }
+  .circlepick .btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .kmchips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .kmchips label { flex-direction: row; align-items: center; gap: 3px; font-size: 13px; color: var(--ink); border: 1px solid var(--rule-strong); padding: 4px 8px; background: #fff; cursor: pointer; }
+  .kmchips label:has(input:checked) { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .kmchips input { width: auto; padding: 0; margin: 0; }
+  .kmgroup { font-size: 11px; color: var(--ink-2); display: flex; flex-direction: column; gap: 3px; }
+  .layerbox { position: absolute; top: 10px; right: 10px; z-index: 900; background: rgba(255,255,255,.96); border: 1px solid var(--rule-strong); padding: 6px 10px; font-size: 12px; max-width: 200px; max-height: calc(100% - 20px); overflow: auto; }
+  .layerbox .ttl { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 2px 0; font: inherit; font-weight: 600; color: var(--ink); cursor: pointer; }
+  .layerbox.closed .body { display: none; }
+  .layerbox label { display: flex; align-items: center; gap: 5px; padding: 2px 0; cursor: pointer; }
+  .layerbox input[type=range] { width: 100%; }
+  .layerbox .sw { display: inline-block; width: 11px; height: 11px; margin-right: 4px; vertical-align: -1px; }
+  .layerbox .keys { margin: 4px 0; line-height: 1.5; column-count: 2; column-gap: 6px; font-size: 11px; }
+  .ringlabel { color: #a3402a; font: 600 11px/1 var(--font); background: rgba(255,255,255,.85); padding: 1px 3px; white-space: nowrap; }
+  #circleMsg { font-size: 12px; color: var(--ink-2); padding-bottom: 6px; }
+  #map.picking { cursor: crosshair; }
+  #map.picking .leaflet-interactive { cursor: crosshair; }
+  .chip { font-size: 12px; border: 1px solid var(--rule-strong); border-radius: 2px; padding: 2px 4px 2px 8px; background: var(--sheet); display: inline-flex; align-items: center; gap: 4px; }
+  .chip button { font: inherit; border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 4px; }
+  .chip button:hover { color: var(--alert); }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; align-items: end; }
+  .filters select { width: auto; max-width: 170px; font-size: 13px; padding: 5px 8px; }
+  .filters .grp { font-size: 11px; color: var(--muted); align-self: center; border-left: 2px solid var(--rule-strong); padding-left: 8px; }
+  .filters label[hidden], .filters .grp[hidden] { display: none; }
+  .filters label.inline { flex-direction: row; align-items: center; gap: 6px; font-size: 12px; padding-bottom: 6px; }
+  main.mapmain { position: relative; display: grid; grid-template-columns: 1fr 420px; min-height: 0; }
+  #mapWrap { position: relative; min-height: 0; }
+  #map { position: absolute; inset: 0; background: #e8e6e0; }
+  #panel { border-left: 1px solid var(--rule-strong); overflow-y: auto; padding: 14px 20px 40px; background: var(--paper); }
+  .legend { position: absolute; left: 12px; bottom: 22px; z-index: 900; background: var(--paper); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: 2px; padding: 8px 10px; font-size: 11px; max-width: 230px; cursor: pointer; }
+  .legend .row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+  .legend i { width: 18px; height: 11px; display: inline-block; border: 1px solid rgba(0,0,0,.08); }
+  .legend i.few { background-image: repeating-linear-gradient(45deg, transparent 0 3px, rgba(0,0,0,.3) 3px 4px); }
+  .legend i.mine { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--accent); background: #fff; }
+  .loading { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 950; background: var(--paper);
+    border: 1px solid var(--rule-strong); padding: 4px 12px; font-size: 12px; }
+  .loading[hidden] { display: none; }
+  #panel .tabs { margin: 0 0 10px; }
+  #panel .tabs .seg button { min-height: 34px; }
+  #panel h2 { font-size: 20px; margin: 10px 0 2px; padding: 0; border: 0; display: block; }
+  #panel h3 { font-size: 13px; margin: 22px 0 6px; color: var(--ink); border-bottom: 1px solid var(--rule-strong); padding-bottom: 4px; }
+  #panel .figures { margin-top: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  #panel .figure { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--rule); }
+  #panel .figure:nth-child(odd) { border-right: 1px solid var(--rule); }
+  #panel .figure:nth-child(even) { padding-left: 12px; border-right: 0; }
+  #panel .figure .v { font-size: 21px; }
+  .alt { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+  .warnline { font-size: 12.5px; color: var(--alert); margin: 10px 0; }
+  #panel table { font-size: 12.5px; }
+  #panel td, #panel th { padding: 5px 6px 5px 0; white-space: nowrap; }
+  #panel td.wrap, #panel th.wrap { white-space: normal; text-align: left; }
+  td.bar { width: 26%; }
+  .barw { height: 6px; background: var(--rule); }
+  .barw span { display: block; height: 100%; background: #3987e5; }
+  tr.few td { color: var(--muted); }
+  .up { color: var(--alert); } .down { color: var(--accent); }
+  .stars { color: var(--accent); letter-spacing: 1px; }
+  .minemark { font-size: 10.5px; color: var(--accent); border: 1px solid var(--accent); padding: 0 3px; margin-left: 4px; border-radius: 2px; }
+  #townList tbody tr { cursor: pointer; }
+  #townList tbody tr:hover td { background: var(--accent-weak); }
+  details.explain { margin: 14px 0; font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--rule); padding-top: 8px; }
+  details.explain summary { cursor: pointer; color: var(--accent); }
+  footer.src { font-size: 11px; color: var(--muted); margin-top: 26px; line-height: 1.7; border-top: 1px solid var(--rule); padding-top: 10px; }
+  /* 目安の計算・自分の記録の入力 */
+  #panel .formrows .fr { grid-template-columns: 7.5em minmax(0, 1fr); padding: 8px 0; }
+  #panel .formrows .fr > * { min-width: 0; }
+  #panel .formrows .fr > :not(.lab) { grid-column: 2; }   /* 入力が2行以上でも右の列にそろえる */
+  @media (max-width: 640px) { #panel .formrows .fr { grid-template-columns: minmax(0, 1fr); } #panel .formrows .fr > :not(.lab) { grid-column: 1; } }
+  #panel .formrows .fr > .lab { font-size: 13px; }
+  #panel .formrows input[type=number], #panel .formrows input[type=text], #panel .formrows input[type=month] { width: 6.5em; font-size: 13px; padding: 4px 6px; }
+  #panel .formrows input.wide, #panel .formrows select.wide { width: 100%; }
+  #panel .formrows select { font-size: 13px; padding: 4px 6px; width: auto; max-width: 100%; }
+  .iline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12.5px; color: var(--ink-2); }
+  .iline input[type=checkbox] { margin: 0; }
+  table.steps td.num, table.steps th.num, table.mine td.num { text-align: right; padding-left: 8px; }
+  table.steps tr.total td { font-weight: 600; }
+  table.mine td { vertical-align: top; }
+  table.mine .del { font: inherit; font-size: 11px; color: var(--muted); background: none; border: 1px solid var(--rule); border-radius: 2px; cursor: pointer; padding: 1px 6px; }
+  /* 土地の形の部品（共通/katachi_ui.js）を入れる欄：横いっぱいに使う */
+  #panel .formrows .fr.ktfr { grid-template-columns: minmax(0, 1fr); }
+  #panel .formrows .fr.ktfr > * { grid-column: 1; }
+  #panel .ktfr details.more { font-size: 13px; color: var(--ink); }
+  #panel .ktfr .kt input[type=number] { width: 100%; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: center; }
+  .leaflet-tooltip { font-family: var(--font); font-size: 12px; border-radius: 2px; }
+  .leaflet-control-zoom a { border-radius: 2px !important; }
+  @media (max-width: 760px) {
+    #toggleFilters { display: inline-block; }
+    .filters { display: none; }
+    .filters.open { display: flex; }
+    .filters label { flex: 1 1 45%; }
+    .filters select, .areapick select { width: 100%; max-width: none; }
+    .areapick label:not(.inline) { flex: 1 1 45%; }
+    #app { height: auto; min-height: 100%; }
+    main.mapmain { grid-template-columns: minmax(0, 1fr); grid-template-rows: 58vh auto; }
+    #panel { border-left: 0; border-top: 1px solid var(--rule-strong); padding: 14px 16px 30px; }
+    .legend { bottom: 8px; left: 8px; font-size: 10px; padding: 6px 8px; max-width: 180px; }
+    .legend.small .row { display: none; }
+    .legend.small::after { content: "（押すと色の説明）"; display: block; color: var(--muted); }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <nav class="toolnav" data-current="map"></nav>
+  <header class="bar">
+    <div class="title">
+      <h1>相場マップ（売買・賃貸）</h1>
+      <span class="sub" id="subTitle"></span>
+      <button id="toggleFilters" class="btn" aria-expanded="false">条件をしぼる ▾</button>
+    </div>
+    <div class="areapick">
+      <label>都県 <select id="fPref"></select></label>
+      <label>市区町村 <select id="fCity"></select></label>
+      <label class="inline"><input type="checkbox" id="fKeep"> いま出ている所も残す（並べて比べる）</label>
+      <span class="chips" id="cityChips"></span>
+    </div>
+    <div class="circlepick">
+      <div class="kmgroup">半径で見る（いくつでも選べます）
+        <span class="kmchips" id="fKms"><label><input type="checkbox" value="0.5">500m</label><label><input type="checkbox" value="1">1km</label><label><input type="checkbox" value="1.5">1.5km</label><label><input type="checkbox" value="2">2km</label><label><input type="checkbox" value="3">3km</label><label><input type="checkbox" value="5">5km</label><label><input type="checkbox" value="10">10km</label></span>
+      </div>
+      <label>中心の住所<input type="search" id="fAddr" placeholder="例：渋谷区神南1丁目" autocomplete="off"></label>
+      <button class="btn" id="fAddrGo" type="button">探す</button>
+      <button class="btn" id="fPick" type="button">地図を押して決める</button>
+      <span id="circleMsg"></span>
+    </div>
+    <div class="circlepick">
+      <label>駅の数で見る（駅名）<input type="search" id="fStnName" list="fStnList" placeholder="例：渋谷" autocomplete="off"><datalist id="fStnList"></datalist></label>
+      <label>範囲
+        <select id="fStnN"><option value="">使わない</option><option value="1">1駅先まで</option><option value="2">2駅先まで</option><option value="3">3駅先まで</option><option value="5">5駅先まで</option><option value="10">10駅先まで</option></select>
+      </label>
+      <span id="stnMsg" class="muted small"></span>
+    </div>
+    <div class="filters" id="filters">
+      <label>種類
+        <span class="seg" id="segType">
+          <button data-v="中古マンション等" class="on">マンション</button><button data-v="宅地(土地と建物)">戸建</button><button data-v="宅地(土地)">土地</button><button data-v="宅地(土地と建物・戸建以外)">アパート・店舗等</button>
+        </span>
+      </label>
+      <label>大きく出す単位
+        <span class="seg" id="segUnit"><button data-v="m2" class="on">㎡</button><button data-v="tsubo">坪</button></span>
+      </label>
+      <label>地図の色
+        <select id="fColor">
+          <option value="price">相場（単価・総額）</option>
+          <option value="liq">流動性</option>
+          <option value="count">件数</option>
+        </select>
+      </label>
+      <label>データの種類
+        <select id="fSrc">
+          <option value="all">両方</option>
+          <option value="成約">成約価格（レインズ由来）</option>
+          <option value="取引">取引価格（アンケート）</option>
+        </select>
+      </label>
+      <label>期間 <select id="fYear"></select></label>
+      <label>駅 <select id="fStation"></select></label>
+      <label>駅から徒歩
+        <select id="fWalk">
+          <option value="">すべて</option><option value="0-5">5分以内</option><option value="6-10">6〜10分</option>
+          <option value="11-15">11〜15分</option><option value="16-999">16分以上</option>
+        </select>
+      </label>
+      <label>広さ <select id="fArea"></select></label>
+      <label data-for="mansion">間取り
+        <select id="fPlan">
+          <option value="">すべて</option><option value="1R1K">1R・1K・1DK</option><option value="1LDK">1LDK・2K・2DK</option>
+          <option value="2LDK">2LDK</option><option value="3LDK">3LDK</option><option value="4LDK">4LDK以上</option>
+        </select>
+      </label>
+      <label data-for="mansion house other">構造
+        <select id="fStruct">
+          <option value="">すべて</option><option value="RC">RC（鉄筋コンクリート）</option><option value="SRC">SRC（鉄骨鉄筋コンクリート）</option>
+          <option value="S">鉄骨（軽量含む）</option><option value="木造">木造</option>
+        </select>
+      </label>
+      <label data-for="mansion house other">築年数
+        <select id="fAge">
+          <option value="">すべて</option><option value="0-10">10年以内</option><option value="11-20">11〜20年</option>
+          <option value="21-30">21〜30年</option><option value="31-40">31〜40年</option><option value="41-999">41年以上</option>
+        </select>
+      </label>
+      <label data-for="house">建物
+        <select id="fHouse">
+          <option value="">すべて</option><option value="old">古家付きの可能性（木造・築35年以上）</option><option value="notold">古家以外</option>
+        </select>
+      </label>
+      <span class="grp" data-for="house land other">土地の条件</span>
+      <label data-for="house land other">土地の形
+        <select id="fShape">
+          <option value="">すべて</option><option value="seikei">整形（長方形・正方形など）</option>
+          <option value="fusei">不整形・台形</option><option value="fukuro">袋地等（旗竿をふくむ）</option>
+        </select>
+      </label>
+      <label data-for="house land other">前面道路
+        <select id="fRoad">
+          <option value="">すべて</option><option value="public">公道（区道・市道・都道など）</option><option value="private">私道</option>
+          <option value="none">道路に接していない</option>
+        </select>
+      </label>
+      <label data-for="house land other">道路の幅
+        <select id="fWidth">
+          <option value="">すべて</option><option value="lt4">4m未満</option><option value="4to6">4〜6m</option><option value="ge6">6m以上</option>
+        </select>
+      </label>
+      <label data-for="house land other">間口（道路に接する長さ）
+        <select id="fFront">
+          <option value="">すべて</option><option value="lt2">2m未満（旗竿のおそれ）</option><option value="2to4">2〜4m</option><option value="ge4">4m以上</option>
+        </select>
+      </label>
+      <label>都市計画
+        <select id="fCp">
+          <option value="noChosei">市街化調整区域を除く</option>
+          <option value="">すべて</option>
+          <option value="chosei">市街化調整区域だけ</option>
+          <option value="low">低層住居</option>
+          <option value="mid">中高層住居</option>
+          <option value="res">住居</option>
+          <option value="com">商業</option>
+          <option value="ind">工業</option>
+          <option value="other">非線引き・都市計画区域外など</option>
+        </select>
+      </label>
+      <label>取引の事情
+        <select id="fJijo">
+          <option value="">すべて</option>
+          <option value="nospecial">競売・関係者間・隣地などを除く</option>
+          <option value="clean">上に加えて私道ふくみも除く</option>
+          <option value="private">私道を含む取引だけ</option>
+        </select>
+      </label>
+      <label class="inline"><input type="checkbox" id="fMine"> 自分の記録を地図に出す</label>
+    </div>
+  </header>
+  <main class="mapmain">
+    <div id="mapWrap">
+      <div id="map" role="application" aria-label="町ごとの相場の地図"></div>
+      <div class="legend" id="legend" title="押すと小さくなります"></div>
+      <div class="layerbox" id="layerBox">
+        <button type="button" class="ttl" id="layerTtl">地図に重ねる ▾</button>
+        <div class="body">
+          <label><input type="checkbox" id="lyTown"> 町の相場の色</label>
+          <label><input type="checkbox" id="lyCircle"> 半径の円</label>
+          <label><input type="checkbox" id="lyStn"> 駅（駅数で見るとき）</label>
+          <label><input type="checkbox" id="lyZone"> 用途地域</label>
+          <label><input type="checkbox" id="lyChosei"> 市街化調整区域</label>
+          <label style="display:block">濃さ<input type="range" id="lyAlpha" min="0.15" max="0.8" step="0.05"></label>
+          <div class="keys" id="layerKeys"></div>
+          <div class="muted small" id="layerMsg"></div>
+        </div>
+      </div>
+      <div class="loading" id="loading" hidden>読みこみ中…</div>
+    </div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data/index.js"></script>
+<script src="../../共通/hosei_data.js"></script>
+<script src="souba_calc.js"></script>
+<script src="../../共通/common.js"></script>
+<script src="../../共通/katachi.js"></script>
+<script src="../../共通/katachi_ui.js"></script>
+<script>
+"use strict";
+const C = window.SOUBA_CALC, IDX = window.SOUBA_INDEX;
+const TSUBO = C.TSUBO, MIN_N = C.MIN_N;
+const RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#104281"];
+const NODATA = "#e9e9e6";
+const QUARTERS = IDX.quarters;
+const FULL = C.fullYears(QUARTERS);
+const Y0 = IDX.from ? IDX.from[0] : 2021, Y1 = IDX.to ? IDX.to[0] : 2026, Q1 = IDX.to ? IDX.to[1] : 4;
+const QLABEL = { 1: "1〜3月", 2: "4〜6月", 3: "7〜9月", 4: "10〜12月" };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// ---------- 市区町村の一覧 ----------
+const CITY_INFO = {};      // コード → {code, name, pref, n, geo, bbox}
+IDX.prefs.forEach(p => p.cities.forEach(([code, name, n, geo, bbox, byType]) => { CITY_INFO[code] = { code, name, pref: p.code, n, geo, bbox, byType: byType || {} }; }));
+const DEFAULT_CITIES = ["13110", "13112", "13113"].filter(c => CITY_INFO[c]);
+
+// ---------- 状態 ----------
+const S = { type: "中古マンション等", unit: "m2", color: "price", src: "all", year: `${Y0}-${Y1}`,
+  station: "", walk: "", area: "", plan: "", struct: "", age: "", house: "", shape: "", road: "", width: "", front: "", jijo: "", cp: "noChosei", lyTown: true, lyCircle: true, lyStn: true, stn: "", stnN: "", lyZone: false, lyChosei: false, lyAlpha: 0.45, kms: [],
+  mine: true, keep: false, cities: DEFAULT_CITIES.length ? DEFAULT_CITIES : [], tab: "market", sel: null, km: "", center: null };
+try { Object.assign(S, JSON.parse(localStorage.getItem("soubaMap") || "{}"), { sel: null }); } catch (e) {}
+S.cities = (S.cities || []).filter(c => CITY_INFO[c]);
+if (!S.cities.length) { const first = Object.values(CITY_INFO).find(c => c.n > 0) || Object.values(CITY_INFO)[0]; if (first) S.cities = [first.code]; }
+// URLの # のうしろで画面の状態を決められる（例：#c=13113&t=宅地(土地)&k=13113|富ケ谷&tab=calc）。リンクで同じ画面を開くため
+let HASH_SEL = null;
+try {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get("c")) S.cities = h.get("c").split(",");
+  if (h.get("t")) S.type = h.get("t");
+  ["tab", "src", "year", "shape", "road", "width", "front", "jijo", "cp", "house", "unit", "color", "area", "struct", "age", "plan", "walk", "station"].forEach(key => { if (h.has(key)) S[key] = h.get(key); });
+  HASH_SEL = h.get("k");
+  if (h.get("rc")) { const a = h.get("rc").split(",").map(Number); if (a.length === 2 && a.every(isFinite)) S.center = a; }
+  if (h.get("rk")) { S.kms = h.get("rk").split(","); S.km = String(Math.max(...S.kms.map(Number))); S.stn = ""; S.stnN = ""; }
+  if (h.get("st")) { S.stn = h.get("st"); S.stnN = h.get("sn") || "1"; S.center = null; S.kms = []; S.km = ""; }
+} catch (e) {}
+S.cities = S.cities.filter(c => CITY_INFO[c]);
+if (!S.cities.length) S.cities = DEFAULT_CITIES.length ? DEFAULT_CITIES : [Object.keys(CITY_INFO)[0]];
+if (!C.TYPES[S.type]) S.type = "中古マンション等";
+const save = () => { try { const { sel, ...rest } = S; localStorage.setItem("soubaMap", JSON.stringify(rest)); } catch (e) {} };
+
+// ---------- 書式 ----------
+const man = v => (v / 10000);
+const fmtMan = v => v == null || isNaN(v) ? "—" : (man(v) >= 10000 ? (man(v) / 10000).toFixed(2) + "億円" : Math.round(man(v)).toLocaleString() + "万円");
+const unitLabel = () => S.unit === "m2" ? "㎡" : "坪";
+const conv = v => S.unit === "m2" ? v : v * TSUBO;
+// ㎡と坪はいつも両方出す（選んだ方を大きく、もう一方を小さく）
+const otherLabel = () => S.unit === "m2" ? "坪" : "㎡";
+const otherConv = v => S.unit === "m2" ? v * TSUBO : v;
+const fmtUnit = v => v == null ? "—" : man(conv(v)).toFixed(1) + "万円/" + unitLabel() + "（" + man(otherConv(v)).toFixed(1) + "万円/" + otherLabel() + "）";
+const fmtUnitHtml = v => v == null ? "—" : man(conv(v)).toFixed(1) + "万円/" + unitLabel() + `<span class="alt">${man(otherConv(v)).toFixed(1)}万円/${otherLabel()}</span>`;
+const fmtArea = a => a == null ? "—" : (S.unit === "m2" ? Math.round(a) + "㎡（" + (a / TSUBO).toFixed(1) + "坪）" : (a / TSUBO).toFixed(1) + "坪（" + Math.round(a) + "㎡）");
+const isTotalType = () => C.isTotal(S.type);
+const kindOf = () => ({ "中古マンション等": "mansion", "宅地(土地と建物)": "house", "宅地(土地)": "land", "宅地(土地と建物・戸建以外)": "other" })[S.type];
+const mainVal = r => C.mainVal(r, S.type);
+const fmtMain = v => isTotalType() ? fmtMan(v) : fmtUnitHtml(v);
+const mainName = () => isTotalType() ? "総額の中央値" : (S.type === "宅地(土地)" ? "土地の単価（中央値）" : "単価（中央値）");
+const median = C.median, quant = C.quant;
+const townName = k => k.split("|")[1];
+const cityName = code => CITY_INFO[code] ? CITY_INFO[code].name : code;
+const wardOf = k => cityName(k.split("|")[0]);
+
+// ---------- 市区町村のデータを読みこむ（file:// でも動くよう <script> を足す） ----------
+const CITY = {}, PENDING = {};
+window.SOUBA = { add(o) { const c = C.decodeCity(o); CITY[c.code] = c; if (PENDING[c.code]) { PENDING[c.code](c); delete PENDING[c.code]; } } };
+function loadCity(code) {
+  if (CITY[code]) return Promise.resolve(CITY[code]);
+  return new Promise((resolve, reject) => {
+    PENDING[code] = resolve;
+    const s = document.createElement("script");
+    s.src = "data/c_" + code + ".js";
+    s.onerror = () => { delete PENDING[code]; reject(new Error(code)); };
+    document.head.appendChild(s);
+  });
+}
+let ALL = [], HH = {};
+function rebuildRows() {
+  ALL = []; HH = {};
+  S.cities.forEach(code => { const c = CITY[code]; if (!c) return; ALL = ALL.concat(c.rows); c.towns.forEach(t => { HH[t.key] = t.hh; }); });
+}
+
+// ---------- 条件のしぼりこみ ----------
+const AREA_LAND = [["", "すべて"], ["0-100", "土地100㎡未満（約30坪未満）"], ["100-150", "100〜150㎡（約30〜45坪）"], ["150-200", "150〜200㎡（約45〜60坪）"], ["200-99999", "200㎡以上（約60坪以上）"]];
+const AREA_BINS = {
+  "中古マンション等": [["", "すべて"], ["0-40", "40㎡未満（約12坪未満）"], ["40-60", "40〜60㎡（約12〜18坪）"], ["60-80", "60〜80㎡（約18〜24坪）"], ["80-9999", "80㎡以上（約24坪以上）"]],
+  "宅地(土地と建物)": AREA_LAND, "宅地(土地)": AREA_LAND, "宅地(土地と建物・戸建以外)": AREA_LAND,
+};
+
+// ---------- 町ごとの集計 ----------
+let TOWN = {}, LIQ = { n: 0 };
+function aggregate() {
+  computeInside();
+  const a = C.aggregate(scopeRows(), S, k => HH[k], QUARTERS); TOWN = a.TOWN; LIQ = a.LIQ;
+}
+// いま見ている範囲の取引（駅数・半径・全部）
+const scopeRows = () => STN ? ALL.filter(r => rowHop(r) != null) : INSIDE ? ALL.filter(r => INSIDE[r.k] != null) : ALL;
+
+// ---------- 駅の数で見る。取引の「最寄駅」で数えるので、町の代表点で数える半径より正確 ----------
+const NEAR_KM = 6;    // 同じ名前の遠くの駅と取りちがえないよう、駅から町までの距離で確かめる
+let STN = null, STATIONS = null, STN_LABEL = {};
+const stnMsg = t => { document.getElementById("stnMsg").textContent = t; };
+async function loadStations() {
+  if (STATIONS) return STATIONS;
+  await loadScript("data/stations.js");
+  STATIONS = window.SOUBA_STATIONS;
+  const count = {}; STATIONS.h.forEach(h => { count[h[0]] = (count[h[0]] || 0) + 1; });
+  STN_LABEL = {}; STATIONS.h.forEach((h, i) => { STN_LABEL[count[h[0]] > 1 ? `${h[0]}（${h[3].split("、")[0]}）` : h[0]] = i; });
+  document.getElementById("fStnList").innerHTML = Object.keys(STN_LABEL).map(l => `<option value="${esc(l)}">`).join("");
+  return STATIONS;
+}
+function rowHop(r) {
+  const key = r.station + "|" + r.k, c = STN.cache;
+  if (key in c) return c[key];
+  const list = STN.keys[C.stationKey(r.station)], p = TOWN_CENTER[r.k];
+  let hop = null;
+  if (list) list.forEach(s => { if ((!p || C.distKm([s.lat, s.lng], p) <= NEAR_KM) && (hop == null || s.hop < hop)) hop = s.hop; });
+  return c[key] = hop;
+}
+function clearStation() {
+  STN = null; S.stn = ""; S.stnN = "";
+  document.getElementById("fStnN").value = ""; drawStation(); stnMsg("");
+}
+async function applyStation(fit = true) {
+  const D = await loadStations();
+  let i = STN_LABEL[S.stn];
+  if (i == null) i = D.h.findIndex(h => C.stationKey(h[0]) === C.stationKey(S.stn));
+  if (i < 0 || i == null) { stnMsg("その駅が見つかりません。候補から選んでください。"); return; }
+  const n = +S.stnN, hops = C.stationsWithin(D.a, i, n), keys = {}, pts = [];
+  Object.entries(hops).forEach(([id, hop]) => { const h = D.h[id]; pts.push([h[1], h[2]]);
+    (keys[C.stationKey(h[0])] ||= []).push({ hop, lat: h[1], lng: h[2] }); });
+  const list = Object.values(CITY_INFO).filter(c => c.bbox && pts.some(p => c.bbox[0] - 0.01 <= p[1] && c.bbox[2] + 0.01 >= p[1] && c.bbox[1] - 0.01 <= p[0] && c.bbox[3] + 0.01 >= p[0])).map(c => c.code);
+  if (!list.length) { stnMsg("この駅のまわりは、まだ相場のデータがありません（いまは1都3県の一部）。"); return; }
+  if (list.length > MAX_CIRCLE_CITIES) { stnMsg("範囲が広すぎます。駅の数を減らしてください。"); return; }
+  STN = { i, n, hops, keys, pts, cache: {} };
+  S.center = null; S.kms = []; syncKm(); circleMsg(""); drawCircle();
+  S.cities = S.keep ? [...new Set([...S.cities, ...list])] : list;
+  S.sel = null; stnMsg(`${Object.keys(hops).length}駅が範囲に入ります。`);
+  drawStation();
+  await applyCities(false);
+  if (fit) fitTo(L.latLngBounds(pts).pad(0.12));
+}
+
+// ---------- 円（半径）。国のデータは町ごとなので、町の代表点が円の中にある町と、中心が入っている町を数える ----------
+let INSIDE = null;          // 町 → 中心からの距離（km）。円を使わないときは null
+const TOWN_RINGS = {};      // 町 → 外側の線の並び
+const TOWN_CENTER = {};     // 町 → 代表点
+const circleOn = () => !!(S.center && S.km);
+function computeInside() {
+  if (STN) { const out = {}; ALL.forEach(r => { const h = rowHop(r); if (h != null && (out[r.k] == null || h < out[r.k])) out[r.k] = h; }); INSIDE = out; return; }
+  if (!circleOn()) { INSIDE = null; return; }
+  const km = +S.km, out = {};
+  S.cities.forEach(code => { const c = CITY[code]; if (!c) return;
+    c.towns.forEach(t => { const p = TOWN_CENTER[t.key]; if (!p) return;
+      const d = C.distKm(S.center, p);
+      if (d <= km) out[t.key] = d;
+      else if (TOWN_RINGS[t.key].some(r => C.inRing(S.center, r))) out[t.key] = 0; }); });
+  INSIDE = out;
+}
+function citiesInCircle() {
+  const km = +S.km, dLat = km / 111, dLng = km / (111 * Math.cos(S.center[0] * Math.PI / 180));
+  return Object.values(CITY_INFO).filter(i => i.bbox && i.bbox[0] <= S.center[1] + dLng && i.bbox[2] >= S.center[1] - dLng &&
+    i.bbox[1] <= S.center[0] + dLat && i.bbox[3] >= S.center[0] - dLat).map(i => i.code);
+}
+const MAX_CIRCLE_CITIES = 40;
+function circleMsg(t) { document.getElementById("circleMsg").textContent = t || ""; }
+function applyCircle(fit = true) {
+  if (!circleOn()) { drawCircle(); update(); return; }
+  if (STN) clearStation();   // 円と駅数は切りかえ
+  const list = citiesInCircle();
+  if (!list.length) { circleMsg("この場所は、まだ相場のデータがありません（いまは1都3県の一部）。"); S.center = null; drawCircle(); update(); return; }
+  if (list.length > MAX_CIRCLE_CITIES) { circleMsg("範囲が広すぎます。半径を小さくしてください。"); return; }
+  S.cities = S.keep ? [...new Set([...S.cities, ...list])] : list;
+  S.sel = null;
+  circleMsg("");
+  applyCities(false).then(() => { if (fit) fitCircle(); });
+}
+// 範囲が入る大きさに地図を合わせる。画面の準備前（地図の大きさが0）だと最大まで拡大してしまうので、準備を待つ
+function fitTo(bounds, tries = 20) {
+  map.invalidateSize();
+  const s = map.getSize();
+  if ((s.x < 50 || s.y < 50) && tries > 0) { setTimeout(() => fitTo(bounds, tries - 1), 300); return; }
+  map.fitBounds(bounds, { padding: [20, 20], maxZoom: 16 });
+}
+function fitCircle() { if (circleOn()) fitTo(L.latLng(S.center).toBounds(+S.km * 2000)); }
+// 選んだ半径（複数）を整える。S.km はいちばん外の半径
+function syncKm() {
+  S.kms = [...new Set((S.kms || []).map(String))].sort((a, b) => a - b);
+  S.km = S.kms.length ? S.kms[S.kms.length - 1] : "";
+  document.querySelectorAll("#fKms input").forEach(i => { i.checked = S.kms.includes(i.value); });
+}
+const ringList = km => S.kms && S.kms.length > 1 ? S.kms.map(Number) : [0.5, 1, 1.5, 2, 3, 5, 10].filter(d => d <= km);
+function setCenter(lat, lng) { S.center = [lat, lng]; if (!S.km) { S.kms = ["1"]; syncKm(); } applyCircle(); }
+
+// ---------- 地図 ----------
+const map = L.map("map", { zoomControl: true, zoomSnap: 0.25, preferCanvas: true }).setView([35.645, 139.66], 12);
+// 重ねる順番：町の色の上に用途地域、その上に円。どちらも押せないので、下の町を押せる
+[["zoning", 450], ["circlePane", 460]].forEach(([name, z]) => { const p = map.createPane(name); p.style.zIndex = z; p.style.pointerEvents = "none"; });
+const renderer = L.canvas({ padding: 0.4 });
+L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png", {
+  maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>'
+}).addTo(map);
+map.attributionControl.setPrefix(false);
+const LAYERS = {};            // コード → 町の形のまとまり
+const TOWN_BOUNDS = {};       // 町 → 地図上の範囲（自分の記録の印を置く場所）
+const mineLayer = L.layerGroup().addTo(map);
+function cityLayer(c) {
+  if (LAYERS[c.code]) return LAYERS[c.code];
+  const g = L.featureGroup();
+  for (const [ti, sname, polys] of c.geo) {
+    const latlngs = polys.map(poly => poly.map(C.decodeRing));
+    const l = L.polygon(latlngs.length === 1 ? latlngs[0] : latlngs, { renderer, weight: 0.6, color: "#ffffff", fillOpacity: 0.72, fillColor: NODATA });
+    const key = c.towns[ti].key;
+    l.townKey = key;
+    l.on("click", e => { if (PICKING) { L.DomEvent.stop(e); endPick(); setCenter(e.latlng.lat, e.latlng.lng); return; } if (INSIDE && INSIDE[key] == null) return; select(key); });
+    l.bindTooltip(() => {
+      const t = TOWN[key], nm = `${esc(sname)}<span class="muted">（${esc(c.name)}）</span>`;
+      if (INSIDE && INSIDE[key] == null) return `${nm}<br>円の外`;
+      if (!t) return `${nm}<br>この条件の取引なし`;
+      return `${nm}<br>${mainName()}：${fmtMain(t.med)}<br>${t.n}件${t.n < MIN_N ? "（参考値）" : ""}`;
+    }, { sticky: true });
+    g.addLayer(l);
+    (TOWN_RINGS[key] ||= []).push(...latlngs.map(p => p[0]));
+    const b = l.getBounds();
+    TOWN_BOUNDS[key] = TOWN_BOUNDS[key] ? TOWN_BOUNDS[key].extend(b) : L.latLngBounds(b.getSouthWest(), b.getNorthEast());
+  }
+  Object.keys(TOWN_RINGS).forEach(k => { if (!TOWN_CENTER[k]) TOWN_CENTER[k] = C.centroid(TOWN_RINGS[k]); });
+  return (LAYERS[c.code] = g);
+}
+function showLayers() {
+  Object.entries(LAYERS).forEach(([code, g]) => { const on = S.cities.includes(code); if (on && !map.hasLayer(g)) g.addTo(map); if (!on && map.hasLayer(g)) map.removeLayer(g); });
+}
+function fitCities() {
+  map.invalidateSize();
+  let b = null;
+  S.cities.forEach(code => { const i = CITY_INFO[code]; if (!i || !i.bbox) return;
+    const bb = L.latLngBounds([i.bbox[1], i.bbox[0]], [i.bbox[3], i.bbox[2]]); b = b ? b.extend(bb) : bb; });
+  if (b) map.fitBounds(b, { padding: [10, 10] });
+}
+let circleLayer = null, centerMark = null, PICKING = false;
+function drawCircle() {
+  if (circleLayer) { map.removeLayer(circleLayer); circleLayer = null; }
+  if (centerMark) { map.removeLayer(centerMark); centerMark = null; }
+  if (!circleOn()) return;
+  centerMark = L.circleMarker(S.center, { radius: 5, color: "#a3402a", weight: 2, fillColor: "#fff", fillOpacity: 1, interactive: false, pane: "circlePane" }).addTo(map);
+  if (S.lyCircle === false) return;
+  circleLayer = L.layerGroup(S.kms.flatMap(v => {
+    const km = +v, top = [S.center[0] + km / 111, S.center[1]];
+    return [L.circle(S.center, { radius: km * 1000, color: "#a3402a", weight: 2, fill: false, interactive: false, pane: "circlePane" }),
+      L.marker(top, { interactive: false, pane: "circlePane", icon: L.divIcon({ className: "", iconSize: null, html: `<span class="ringlabel">${km < 1 ? km * 1000 + "m" : km + "km"}</span>` }) })];
+  })).addTo(map);
+}
+let stationLayer = null;
+function drawStation() {
+  if (stationLayer) { map.removeLayer(stationLayer); stationLayer = null; }
+  if (!STN || S.lyStn === false) return;
+  const D = STATIONS, items = [], ids = Object.keys(STN.hops).map(Number), showName = ids.length <= 40;
+  ids.forEach(i => D.a[i].forEach(j => { if (i < j && STN.hops[j] != null) items.push(L.polyline([[D.h[i][1], D.h[i][2]], [D.h[j][1], D.h[j][2]]], { color: "#2a4570", weight: 1.5, opacity: 0.7, interactive: false, pane: "circlePane" })); }));
+  ids.forEach(i => { const h = D.h[i], top = i === STN.i;
+    const m = L.circleMarker([h[1], h[2]], { radius: top ? 7 : 5, color: top ? "#a3402a" : "#2a4570", weight: 2, fillColor: "#fff", fillOpacity: 1, interactive: false, pane: "circlePane" });
+    items.push(m);
+    if (showName) items.push(L.marker([h[1], h[2]], { interactive: false, pane: "circlePane", icon: L.divIcon({ className: "", iconSize: null, iconAnchor: [-8, 8], html: `<span class="ringlabel" style="color:${top ? "#a3402a" : "#2a4570"}">${esc(h[0])}</span>` }) })); });
+  stationLayer = L.layerGroup(items).addTo(map);
+}
+function endPick() { PICKING = false; document.getElementById("map").classList.remove("picking"); document.getElementById("fPick").classList.remove("on"); }
+map.on("click", e => { if (PICKING) { endPick(); setCenter(e.latlng.lat, e.latlng.lng); } });
+window.addEventListener("resize", () => map.invalidateSize());
+
+// ---------- 地図に重ねる（用途地域・市街化調整区域）。物件調査のデータを読みこんで使う ----------
+const ZONE_GROUPS = [["low", "低層住居", "#2e9e6b"], ["mid", "中高層住居", "#9ad27a"], ["res", "住居", "#f2d24b"], ["com", "商業", "#e8788a"], ["ind", "工業", "#8a7fd1"]];
+const ZONE_COLOR = Object.fromEntries(ZONE_GROUPS.map(g => [g[0], g[2]])), CHOSEI_COLOR = "#a3402a";
+const zoneGroup = z => z.low ? "low" : z.mid ? "mid" : z.kind;
+const zoneRenderer = L.canvas({ pane: "zoning" });
+const ZTILES = {}; let zoneLayer = null, zoneSeq = 0, surveyReady = null;
+const loadScript = src => new Promise((ok, ng) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ng; document.head.appendChild(s); });
+const ensureSurvey = () => surveyReady ||= loadScript("../../物件調査/survey_core.js").then(() => loadScript("../../物件調査/data/tiles/index.js"));
+async function zoneTile(key) {
+  if (ZTILES[key]) return ZTILES[key];
+  await loadScript(`../../物件調査/data/tiles/${key}.js`);
+  const raw = window.SURVEY_TILES && window.SURVEY_TILES[key];
+  ZTILES[key] = raw ? SURVEY.prepareTile(window.SURVEY_INDEX, key, raw) : {};
+  if (raw) delete window.SURVEY_TILES[key];
+  return ZTILES[key];
+}
+// タイルの枠で切る（タイルどうしの重なりで色が濃くならないように）。r は [経度,緯度,…]、返すのは [[緯度,経度],…]
+function clipToTile(r, [w, s, e, n]) {
+  let pts = []; for (let i = 0; i + 1 < r.length; i += 2) pts.push([r[i], r[i + 1]]);
+  const edge = (inside, cross) => { const out = []; pts.forEach((p, i) => { const q = pts[(i + 1) % pts.length];
+    if (inside(p)) out.push(p); if (inside(p) !== inside(q)) out.push(cross(p, q)); }); pts = out; };
+  const atX = x => (p, q) => [x, p[1] + (q[1] - p[1]) * (x - p[0]) / (q[0] - p[0])], atY = y => (p, q) => [p[0] + (q[0] - p[0]) * (y - p[1]) / (q[1] - p[1]), y];
+  edge(p => p[0] >= w, atX(w)); if (pts.length) edge(p => p[0] <= e, atX(e)); if (pts.length) edge(p => p[1] >= s, atY(s)); if (pts.length) edge(p => p[1] <= n, atY(n));
+  return pts.map(p => [p[1], p[0]]);
+}
+function layerKeysHtml() {
+  let h = "";
+  if (S.lyZone) h += ZONE_GROUPS.map(g => `<span class="sw" style="background:${g[2]}"></span>${g[1]}`).join("<br>");
+  if (S.lyChosei) h += (h ? "<br>" : "") + `<span class="sw" style="background:${CHOSEI_COLOR}"></span>市街化調整区域`;
+  document.getElementById("layerKeys").innerHTML = h;
+}
+async function drawZoning() {
+  const seq = ++zoneSeq, msg = t => { document.getElementById("layerMsg").textContent = t; };
+  layerKeysHtml();
+  const clear = () => { if (zoneLayer) { map.removeLayer(zoneLayer); zoneLayer = null; } };
+  if (!S.lyZone && !S.lyChosei) { clear(); msg(""); return; }
+  try {
+    await ensureSurvey();
+    const idx = window.SURVEY_INDEX, b = map.getBounds();
+    const keys = SURVEY.tilesForBounds(idx.meta.grid, b.getWest(), b.getSouth(), b.getEast(), b.getNorth(), 160);
+    if (!keys) { clear(); msg("地図を拡大すると出ます。"); return; }
+    msg("読みこみ中…");
+    const use = keys.filter(k => SURVEY.hasTile(idx, k)), dbs = await Promise.all(use.map(zoneTile));
+    if (seq !== zoneSeq) return;
+    const group = [], style = { renderer: zoneRenderer, stroke: false, fillOpacity: +S.lyAlpha, interactive: false };
+    const add = (f, color, rect) => { const rings = f.rings.map(r => clipToTile(r, rect)).filter(r => r.length > 2); if (rings.length) group.push(L.polygon(rings, { ...style, fillColor: color })); };
+    dbs.forEach(db => { if (!db.meta) return;
+      if (S.lyZone) (db.youto || []).forEach(f => { const z = SURVEY.ZONES[f.p[0]]; if (z) add(f, ZONE_COLOR[zoneGroup(z)], db.meta.clip); });
+      if (S.lyChosei) (db.senbiki || []).forEach(f => { if (f.p[0] === 23) add(f, CHOSEI_COLOR, db.meta.clip); });
+    });
+    clear(); zoneLayer = L.layerGroup(group).addTo(map);
+    msg("形の目安です。正確には役所へ。");
+  } catch (e) { clear(); msg("用途地域のデータを読めませんでした。"); }
+}
+map.on("moveend", drawZoning);
+document.getElementById("legend").onclick = e => e.currentTarget.classList.toggle("small");
+if (window.innerWidth < 760) document.getElementById("legend").classList.add("small");   // スマホでは最初は小さく
+
+let breaks = [];
+function colorMetric(t) { return S.color === "price" ? t.med : S.color === "liq" ? t.liq : t.perYear; }
+function computeBreaks() {
+  const vals = Object.values(TOWN).filter(t => t.n >= MIN_N).map(colorMetric).filter(v => v != null);
+  breaks = [1, 2, 3, 4, 5].map(i => quant(vals, i / 6));
+}
+function colorFor(t) {
+  if (!t) return NODATA;
+  const v = colorMetric(t); if (v == null) return NODATA;
+  let i = 0; while (i < breaks.length && v > breaks[i]) i++;
+  return RAMP[i];
+}
+function paint() {
+  let selLayers = [];
+  S.cities.forEach(code => { const g = LAYERS[code]; if (!g) return;
+    g.eachLayer(l => {
+      const k = l.townKey, t = TOWN[k], sel = k === S.sel;
+      const out = INSIDE && INSIDE[k] == null;
+      const hideTown = S.lyTown === false;   // 色を消しても、町の境と選んでいる町は線で見えるようにする
+      l.setStyle({ fillColor: out ? NODATA : colorFor(t), fillOpacity: hideTown ? 0 : out ? 0.15 : t && t.n < MIN_N ? 0.35 : 0.72,
+        color: sel ? "#a3402a" : hideTown ? "#77736b" : "#ffffff", weight: sel ? 3 : 0.6, dashArray: t && t.n < MIN_N ? "3 3" : null });
+      if (sel) selLayers.push(l);
+    }); });
+  selLayers.forEach(l => l.bringToFront());
+  const fmtB = v => S.color === "price" ? (isTotalType() ? fmtMan(v) : man(conv(v)).toFixed(0) + "万") : v < 1 ? v.toFixed(2) : v.toFixed(1);
+  const title = S.color === "price" ? mainName() + (isTotalType() ? "" : "（" + unitLabel() + "あたり）")
+    : S.color === "liq" ? "流動性（1000世帯あたりの年間件数）" : "1年あたりの件数";
+  let h = `<b>${title}</b>`;
+  if (breaks.length && breaks[0] != null) {
+    RAMP.forEach((c, i) => {
+      const lo = i === 0 ? null : breaks[i - 1], hi = breaks[i];
+      const txt = i === 0 ? `〜${fmtB(hi)}` : i === RAMP.length - 1 ? `${fmtB(lo)}〜` : `${fmtB(lo)}〜${fmtB(hi)}`;
+      h += `<div class="row"><i style="background:${c}"></i>${txt}</div>`;
+    });
+  }
+  h += `<div class="row"><i class="few" style="background:${RAMP[2]};opacity:.5"></i>${MIN_N}件未満（参考値）</div>`;
+  h += `<div class="row"><i style="background:${NODATA}"></i>取引なし</div>`;
+  if (S.mine && MINE.length) h += `<div class="row"><i class="mine"></i>自分の記録（数字は件数）</div>`;
+  document.getElementById("legend").innerHTML = h;
+  paintMine();
+}
+
+// ---------- 自分の記録（国のデータに無い借地・底地・再建築不可などの成約を自分で入れる） ----------
+let MINE = [];
+try { MINE = JSON.parse(localStorage.getItem("soubaMine") || "[]"); } catch (e) { MINE = []; }
+const saveMine = () => { try { localStorage.setItem("soubaMine", JSON.stringify(MINE)); } catch (e) { alert("この端末に保存できませんでした。CSVに書き出して控えてください。"); } };
+const mineKey = r => r.city + "|" + r.town;
+const fmtRent = v => v == null ? "—" : Math.round(v).toLocaleString() + "円";
+function mineByTown() { const g = {}; MINE.forEach(r => { (g[mineKey(r)] ||= []).push(r); }); return g; }
+function paintMine() {
+  mineLayer.clearLayers();
+  if (!S.mine) return;
+  const g = mineByTown();
+  Object.entries(g).forEach(([k, list]) => {
+    const b = TOWN_BOUNDS[k];
+    if (!b || !S.cities.includes(k.split("|")[0])) return;
+    const m = L.marker(b.getCenter(), { icon: L.divIcon({ className: "", iconSize: [22, 22], iconAnchor: [11, 11],
+      html: `<div style="width:20px;height:20px;border:2px solid var(--accent);background:#fff;color:var(--accent);border-radius:50%;font:600 11px/16px var(--font);text-align:center">${list.length}</div>` }) });
+    const sale = list.filter(r => !C.isRentKind(r.kind)), rent = list.filter(r => C.isRentKind(r.kind));
+    const u = median(sale.map(C.myUnit).filter(v => v)), rs = C.rentSummary(rent);
+    m.bindTooltip(`${esc(townName(k))}：自分の記録 ${list.length}件` + (sale.length ? `<br>売買の単価（中央値） ${u ? fmtUnit(u) : "—"}` : "") + (rent.length ? `<br>賃料（中央値） ${fmtRent(rs.total)}/月` : "") + `<br>${esc([...new Set(list.map(r => r.kind))].join("・"))}`);
+    m.on("click", () => select(k));
+    m.addTo(mineLayer);
+  });
+}
+
+// ---------- 右（スマホは下）の詳細 ----------
+function breakdown(rows, keyFn, order, labels, valFn = mainVal, total = isTotalType()) {
+  const g = {};
+  for (const r of rows) { const k = keyFn(r); if (k == null || k === "") continue; (g[k] ||= []).push(valFn(r)); }
+  const list = order.filter(k => g[k]).map(k => ({ k, label: labels ? labels[k] : k, n: g[k].length, med: median(g[k]) }));
+  if (!list.length) return `<p class="muted">データなし</p>`;
+  const max = Math.max(...list.map(x => x.med));
+  const f = v => total ? fmtMan(v) : fmtUnitHtml(v);
+  return `<table><thead><tr><th></th><th>件数</th><th>${total ? "総額" : "単価"}（中央値）</th><th></th></tr></thead><tbody>` +
+    list.map(x => `<tr class="${x.n < MIN_N ? "few" : ""}"><td>${x.label}</td><td>${x.n}</td><td>${f(x.med)}</td>` +
+      `<td class="bar"><div class="barw"><span style="width:${(x.med / max * 100).toFixed(0)}%"></span></div></td></tr>`).join("") +
+    `</tbody></table>`;
+}
+const ageBin = r => r.age == null ? null : r.age <= 10 ? "〜10年" : r.age <= 20 ? "11〜20年" : r.age <= 30 ? "21〜30年" : r.age <= 40 ? "31〜40年" : "41年〜";
+const walkBin = r => r.walk == null ? null : r.walk <= 5 ? "〜5分" : r.walk <= 10 ? "6〜10分" : r.walk <= 15 ? "11〜15分" : "16分〜";
+function areaBin(r) {
+  const a = r.area;
+  if (S.type === "中古マンション等") return a < 40 ? "40㎡未満" : a < 60 ? "40〜60㎡" : a < 80 ? "60〜80㎡" : "80㎡〜";
+  return a < 100 ? "100㎡未満" : a < 150 ? "100〜150㎡" : a < 200 ? "150〜200㎡" : "200㎡〜";
+}
+const PLAN_LABEL = { "1R1K": "1R・1K・1DK", "1LDK": "1LDK・2DK", "2LDK": "2LDK", "3LDK": "3LDK", "4LDK": "4LDK〜" };
+const STRUCT_LABEL = { RC: "RC", SRC: "SRC", S: "鉄骨", "木造": "木造" };
+const SHAPE_LABEL = { seikei: "整形（長方形・正方形など）", fusei: "不整形・台形", fukuro: "袋地等（旗竿をふくむ）" };
+const ROAD_LABEL = { public: "公道", private: "私道", none: "道路に接していない" };
+const WIDTH_LABEL = { lt4: "4m未満", "4to6": "4〜6m", ge6: "6m以上" };
+const FRONT_LABEL = { lt2: "2m未満（旗竿のおそれ）", "2to4": "2〜4m", ge4: "4m以上" };
+const pct = v => (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + "%";
+
+// 更地（ふつうの土地）の相場：この町の「土地」の取引から。整形・特別な事情なしで5件あれば、それを使う
+function baseLand(k) {
+  const code = k ? k.split("|")[0] : S.cities[0];
+  const rows = (CITY[code] ? CITY[code].rows : []).filter(r => r.type === "宅地(土地)" && (() => { const [a, b] = C.range(S.year); return r.y >= a && r.y <= b; })());
+  const tries = [
+    [r => r.k === k && C.shapeGroup(r.shape) === "seikei" && !C.isSpecial(r), "この町の土地（整形・特別な事情なし）"],
+    [r => r.k === k && !C.isSpecial(r), "この町の土地（形を問わず・特別な事情なし）"],
+    [r => C.shapeGroup(r.shape) === "seikei" && !C.isSpecial(r), cityName(code) + "全体の土地（整形・特別な事情なし）"],
+  ];
+  for (const [f, label] of tries) {
+    if (!k && label.startsWith("この町")) continue;
+    const rs = rows.filter(f);
+    if (rs.length >= MIN_N) return { unit: median(rs.map(r => r.unit)), n: rs.length, label, area: median(rs.map(r => r.area)) };
+  }
+  return null;
+}
+
+function renderPanel() {
+  const P = document.getElementById("panel");
+  const tabs = `<div class="tabs segscroll"><span class="seg" id="segTab">` +
+    [["market", "町の相場"], ["calc", "目安の計算"], ["mine", "自分の記録" + (MINE.length ? `（${MINE.length}）` : "")]].map(([v, t]) => `<button data-v="${v}" class="${S.tab === v ? "on" : ""}">${t}</button>`).join("") + `</span></div>`;
+  let body;
+  if (S.tab === "calc") body = calcHtml();
+  else if (S.tab === "mine") body = mineHtml();
+  else body = S.sel ? detailHtml() : listHtml();
+  P.innerHTML = tabs + body + sources();
+  P.querySelectorAll("#segTab button").forEach(b => b.onclick = () => { S.tab = b.dataset.v; save(); renderPanel(); P.scrollTop = 0; });
+  if (S.tab === "calc") bindCalc(P);
+  else if (S.tab === "mine") bindMine(P);
+  else bindMarket(P);
+}
+function bindMarket(P) {
+  const b = document.getElementById("back"); if (b) b.onclick = () => select(null);
+  P.querySelectorAll("#townList tbody tr").forEach(tr => tr.onclick = () => select(tr.dataset.k, true));
+  const g = document.getElementById("goCalc"); if (g) g.onclick = () => { S.tab = "calc"; CS.unitAuto = true; saveCalc(); renderPanel(); };
+  const m = document.getElementById("goMine"); if (m) m.onclick = () => { S.tab = "mine"; renderPanel(); };
+}
+function detailHtml() {
+  const k = S.sel, t = TOWN[k];
+  let h = `<button id="back" class="btn link">← 町の一覧へ</button><h2>${esc(wardOf(k))} ${esc(townName(k))}</h2>`;
+  h += `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div>`;
+  if (!t) return h + `<p class="warnline">この条件では取引がありません。条件をゆるめてください。</p>` + cpCompareHtml(ALL.filter(r => r.k === k)) + mineInTown(k);
+  if (t.n < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満なので「参考値」です。数字が大きくぶれることがあります。</p>`;
+  const y = C.yoy(ALL, k, S, QUARTERS);
+  const liqText = t.liq == null ? "世帯数のデータなし"
+    : (t.stars ? `${LIQ.n}町中 ${t.rank}位／1000世帯あたり 年${t.liq.toFixed(1)}件` : `1000世帯あたり 年${t.liq.toFixed(1)}件（件数が少なく★なし）`);
+  const fy = FULL.length >= 2 ? `${FULL[FULL.length - 1]}年÷${FULL[FULL.length - 1] - 1}年` : "";
+  h += `<div class="figures">
+    <div class="figure main"><div class="k">${mainName()}</div><div class="v">${fmtMain(t.med)}</div>
+      <div class="s">真ん中の半分：${isTotalType() ? fmtMan(t.q1) + "〜" + fmtMan(t.q3) : man(conv(t.q1)).toFixed(0) + "〜" + man(conv(t.q3)).toFixed(0) + "万円/" + unitLabel()}</div></div>
+    <div class="figure"><div class="k">件数</div><div class="v">${t.n}<small>件</small></div><div class="s">1年あたり ${t.perYear.toFixed(1)}件</div></div>
+    <div class="figure"><div class="k">流動性</div><div class="v stars">${t.stars ? "★".repeat(t.stars) + "☆".repeat(3 - t.stars) : "—"}</div>
+      <div class="s">${liqText}</div></div>
+    <div class="figure"><div class="k">前年比（${fy}）</div>` +
+    (y ? `<div class="v ${y.p >= 0 ? "up" : "down"}">${pct(y.p)}</div><div class="s">件数 ${pct(y.c)}（${y.n1}→${y.n2}件）</div>`
+       : `<div class="v">—</div><div class="s">どちらかの年が${MIN_N}件未満</div>`) + `</div></div>`;
+  h += liqExplain();
+  const rows = t.rows;
+  if (isTotalType()) {
+    h += `<p class="muted">土地の単価（建物こみ・中央値）：${fmtUnit(median(rows.map(r => r.unit)))}　土地の広さ（中央値）：${fmtArea(median(rows.map(r => r.area)))}　延床（中央値）：${fmtArea(median(rows.filter(r => r.floor).map(r => r.floor)))}</p>`;
+  } else {
+    h += `<p class="muted">総額の中央値：${fmtMan(median(rows.map(r => r.price)))}　広さの中央値：${fmtArea(median(rows.map(r => r.area)))}</p>`;
+  }
+  if (C.isLandish(S.type)) h += `<div class="btnrow"><button class="btn" id="goCalc">この町の相場で「目安の計算」をする</button></div>`;
+  if (S.type === "宅地(土地と建物)" || S.type === "宅地(土地と建物・戸建以外)") h += oldHouseHtml(k, rows);
+  if (S.type !== "宅地(土地)") {
+    if (S.type === "中古マンション等") h += `<h3>間取り別</h3>` + breakdown(rows, r => C.planGroup(r.plan), Object.keys(PLAN_LABEL), PLAN_LABEL);
+    h += `<h3>築年数別</h3>` + breakdown(rows, ageBin, ["〜10年", "11〜20年", "21〜30年", "31〜40年", "41年〜"]);
+    h += `<h3>構造別</h3>` + breakdown(rows, r => C.structGroup(r.struct), Object.keys(STRUCT_LABEL), STRUCT_LABEL);
+  }
+  if (C.isLandish(S.type)) h += landDiffHtml(k, rows);
+  h += `<h3>駅からの距離別（徒歩）</h3>` + breakdown(rows, walkBin, ["〜5分", "6〜10分", "11〜15分", "16分〜"]);
+  h += `<h3>広さ別</h3>` + breakdown(rows, areaBin, S.type === "中古マンション等" ? ["40㎡未満", "40〜60㎡", "60〜80㎡", "80㎡〜"] : ["100㎡未満", "100〜150㎡", "150〜200㎡", "200㎡〜"]);
+  const yrs = []; for (let yy = Y0; yy <= Y1; yy++) yrs.push(String(yy));
+  const yl = {}; yrs.forEach(yy => { yl[yy] = yy + "年" + (+yy === Y1 && Q1 < 4 ? `（1〜${Q1 * 3}月）` : ""); });
+  h += `<h3>年ごと</h3>` + breakdown(rows, r => String(r.y), yrs, yl);
+  const st = {}; rows.forEach(r => { if (r.station) st[r.station] = (st[r.station] || 0) + 1; });
+  h += `<h3>よく出てくる最寄駅</h3><p>` + Object.entries(st).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s, n]) => `${esc(s)}（${n}件）`).join("、") + `</p>`;
+  return h + cpCompareHtml(ALL.filter(r => r.k === k)) + mineInTown(k);
+}
+// 都市計画ごとの比較。いまの「都市計画」の切りかえに関係なく、ほかの条件で比べる
+const CP_LABEL = { low: "低層住居", mid: "中高層住居", res: "住居", com: "商業", ind: "工業", chosei: "市街化調整区域", other: "非線引き・都市計画区域外など", none: "記載なし" };
+function cpCompareHtml(base) {
+  const s2 = { ...S, cp: "" }, rows = base.filter(r => C.pass(r, s2));
+  if (!rows.length) return "";
+  return `<h3>都市計画ごとの相場</h3>` + breakdown(rows, r => C.cpGroup(r.cp), Object.keys(CP_LABEL), CP_LABEL);
+}
+// 調整区域を除いているときは、何件除いたかを見せる（黙って数字を変えない）
+function choseiNote() {
+  if (S.cp !== "noChosei") return "";
+  const s2 = { ...S, cp: "" }, rows = scopeRows().filter(r => r.cp === "調整区域" && C.pass(r, s2));
+  if (!rows.length) return "";
+  const v = median(rows.map(mainVal));
+  return `<p class="muted small">市街化調整区域の取引 ${rows.length.toLocaleString()}件（中央値 ${isTotalType() ? fmtMan(v) : man(conv(v)).toFixed(1) + "万円/" + unitLabel()}）は除いています。入れるときは「都市計画」を切りかえてください。</p>`;
+}
+// 古家付きの可能性がある取引と、解体費を足した「更地にしたら」の単価
+function oldHouseHtml(k, rows) {
+  const o = C.oldHouseStats(rows);
+  let h = `<h3>古家付きの可能性がある取引（木造・築${C.OLD_HOUSE_AGE}年以上）</h3>`;
+  if (!o.n) return h + `<p class="muted">いまの条件では見つかりません。</p>`;
+  const bl = baseLand(k);
+  h += `<table><tbody>
+    <tr><td>件数</td><td>${o.n}件${o.n < MIN_N ? "（参考値）" : ""}</td></tr>
+    <tr><td>総額（中央値）</td><td>${fmtMan(o.price)}</td></tr>
+    <tr><td class="wrap">土地の単価（建物こみ・そのまま）</td><td>${fmtUnitHtml(o.asIs)}</td></tr>
+    <tr><td class="wrap">解体費を足した「更地にしたら」</td><td>${o.sarachiLo ? fmtUnitHtml(o.sarachiLo) + "〜" + fmtUnitHtml(o.sarachiHi) : "延床の記録なし"}</td></tr>
+    <tr><td class="wrap">くらべる：この辺りの土地の相場</td><td>${bl ? fmtUnitHtml(bl.unit) + `<span class="alt">${esc(bl.label)}・${bl.n}件</span>` : "土地の取引が少なく出せません"}</td></tr>
+  </tbody></table>
+  <p class="note">古家付きの土地は、買う人が解体費（木造 ${DEMO_TXT("木造")}・鉄骨 ${DEMO_TXT("S")}・RC ${DEMO_TXT("RC")}、延床1坪あたりの一般的な目安）を見こんで値段を決めることが多いため、解体費を足すと更地の相場に近づくことがあります。国のデータに「古家付き」の印は無いので、木造で築${C.OLD_HOUSE_AGE}年以上の取引を「可能性あり」として分けています。解体費を足しても土地の相場と大きく離れるときは、借地・再建築不可・形・道路など、ほかの理由がまざっているかもしれません。</p>`;
+  return h;
+}
+const DEMO_TXT = s => C.DEMOLISH[s].map(v => v / 1e4).join("〜") + "万円";
+// 土地の条件（形・道路・間口）で、相場がどれくらい変わるか
+function landDiffHtml(k, rows) {
+  // 広さのちがう土地を総額でくらべても意味が薄いので、ここはいつも土地㎡あたりの単価でくらべる
+  const u = r => r.unit, sub = isTotalType() ? `<p class="muted small">ここは土地㎡あたりの単価（建物こみ）でくらべています。</p>` : "";
+  let h = `<h3>土地の形別</h3>` + sub + breakdown(rows, r => C.shapeGroup(r.shape), Object.keys(SHAPE_LABEL), SHAPE_LABEL, u, false);
+  h += `<h3>前面道路別</h3>` + breakdown(rows, C.roadGroup, Object.keys(ROAD_LABEL), ROAD_LABEL, u, false);
+  h += `<h3>道路の幅別</h3>` + breakdown(rows, r => C.widthBin(r.rwidth), Object.keys(WIDTH_LABEL), WIDTH_LABEL, u, false);
+  h += `<h3>間口別</h3>` + breakdown(rows, r => C.frontBin(r.front), Object.keys(FRONT_LABEL), FRONT_LABEL, u, false);
+  // 町だけだと件数が少ないので、市区町村全体でもくらべる（整形・公道・4m以上などを100とした割合）
+  const code = k.split("|")[0];
+  const cr = (CITY[code] ? CITY[code].rows : []).filter(r => C.pass(r, S, { land: true }));
+  const ratio = (keyFn, base, labels) => {
+    const g = {}; cr.forEach(r => { const x = keyFn(r); if (x) (g[x] ||= []).push(r.unit); });
+    const b = g[base] ? median(g[base]) : null;
+    if (!b || g[base].length < MIN_N) return "";
+    return Object.keys(labels).filter(x => g[x]).map(x => `<tr class="${g[x].length < MIN_N ? "few" : ""}"><td class="wrap">${labels[x]}</td><td>${g[x].length}</td><td>${x === base ? "100" : Math.round(median(g[x]) / b * 100)}</td></tr>`).join("");
+  };
+  const body = ratio(r => C.shapeGroup(r.shape), "seikei", SHAPE_LABEL) + ratio(C.roadGroup, "public", ROAD_LABEL) +
+    ratio(r => C.widthBin(r.rwidth), "ge6", WIDTH_LABEL) + ratio(r => C.frontBin(r.front), "ge4", FRONT_LABEL);
+  if (body) h += `<h3>${esc(cityName(code))}全体で見た差（土地㎡あたりの単価・基準＝100）</h3>
+    <table><thead><tr><th>条件</th><th>件数</th><th>単価の割合</th></tr></thead><tbody>${body}</tbody></table>
+    <p class="muted small">基準：整形／公道／幅6m以上／間口4m以上をそれぞれ100とした中央値の割合です。立地のちがいもまざるので、傾向を見る目安にしてください。土地の形と間口は「取引価格」の情報にだけあります（成約価格には無い）。</p>`;
+  return h;
+}
+function mineInTown(k) {
+  const list = MINE.filter(r => mineKey(r) === k);
+  let h = `<h3>自分の記録（この町）</h3>`;
+  if (!list.length) return h + `<p class="muted">まだありません。借地・底地・再建築不可など、国のデータに無い成約は「自分の記録」に入れておけます。</p><div class="btnrow"><button class="btn" id="goMine">自分の記録を開く</button></div>`;
+  const t = TOWN[k], bl = baseLand(k);
+  h += `<table class="mine"><thead><tr><th>時期</th><th>種類・条件</th><th class="num">価格</th><th class="num">単価</th></tr></thead><tbody>` +
+    list.map(r => C.isRentKind(r.kind)
+      ? `<tr><td>${esc(r.date)}</td><td class="wrap">${esc(mineTags(r))}</td><td class="num">${fmtRent(C.rentTotal(r))}/月</td><td class="num">${C.rentUnit(r) ? Math.round(C.rentUnit(r)).toLocaleString() + "円/㎡" : "—"}</td></tr>`
+      : `<tr><td>${esc(r.date)}</td><td class="wrap">${esc(mineTags(r))}</td><td class="num">${fmtMan(r.price)}</td><td class="num">${C.myUnit(r) ? fmtUnitHtml(C.myUnit(r)) : "—"}</td></tr>`).join("") + `</tbody></table>`;
+  const u = median(list.filter(r => !C.isRentKind(r.kind)).map(C.myUnit).filter(v => v));
+  if (u && bl) h += `<p class="muted">自分の記録の単価（中央値）は、この辺りの土地の相場（${esc(bl.label)}）の <b>${Math.round(u / bl.unit * 100)}%</b> です。</p>`;
+  else if (u && t && !isTotalType()) h += `<p class="muted">自分の記録の単価（中央値）は、いまの条件の相場の <b>${Math.round(u / t.med * 100)}%</b> です。</p>`;
+  return h;
+}
+const mineTags = r => [r.kind, r.rebuildNG ? "再建築不可" : "", r.slope ? "高低差あり" : "", r.shape && r.shape !== "整形" ? r.shape : "",
+  r.letter ? "借地権割合" + r.letter : ""].filter(Boolean).join("・");
+function condText() {
+  const a = [];
+  const sel = id => { const e = document.getElementById(id); return e && e.value && !e.closest("label[hidden]") ? e.options[e.selectedIndex].text : null; };
+  a.push(document.getElementById("fYear").options[document.getElementById("fYear").selectedIndex].text);
+  if (circleOn()) a.push("半径" + (+S.km < 1 ? +S.km * 1000 + "m" : S.km + "km"));   // 集計はいちばん外の半径まで
+  if (STN) a.push(`${S.stn}から${S.stnN}駅先まで`);
+  ["fSrc", "fStation", "fWalk", "fArea", "fPlan", "fStruct", "fAge", "fHouse", "fShape", "fRoad", "fWidth", "fFront", "fCp", "fJijo"].forEach(id => {
+    const v = sel(id); if (v && document.getElementById(id).value !== "all") a.push(v); });
+  return a.join("・");
+}
+// 円の中の相場をまとめる。町ごとの取引を合わせて、距離ごとに比べる
+// 半径の賃貸：国の町ごとの賃料データは無いので、自分の記録（賃貸）を円の中で集計する
+function circleRentHtml(km) {
+  const all = MINE.filter(r => C.isRentKind(r.kind));
+  let h = `<h3>賃貸の相場（自分の記録）</h3>`;
+  if (!all.length) return h + `<p class="muted">国の公開データには町ごとの賃料がありません。「自分の記録」で種類を「賃貸」にして成約例を入れると、ここに半径の賃料が出ます。CSVでまとめて読みこめます。</p><div class="btnrow"><button class="btn" id="goMine">自分の記録を開く</button></div>`;
+  const inn = all.filter(r => INSIDE[mineKey(r)] != null), out = all.length - inn.length;
+  if (!inn.length) return h + `<p class="muted">範囲の中に賃貸の記録がありません（入れた記録は全部で${all.length}件）。町名が地図と同じ書き方でないと、範囲の中に数えられません。</p>`;
+  const rs = C.rentSummary(inn);
+  if (rs.n < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満なので「参考値」です。</p>`;
+  h += `<div class="figures"><div class="figure main"><div class="k">賃料＋共益費（中央値）</div><div class="v">${fmtRent(rs.total)}<small>/月</small></div><div class="s">広さで割ると ${rs.unit ? Math.round(rs.unit).toLocaleString() + "円/㎡" : "—"}${rs.unitLow ? `（真ん中の半分：${Math.round(rs.unitLow).toLocaleString()}〜${Math.round(rs.unitHigh).toLocaleString()}円/㎡）` : ""}</div></div>
+    <div class="figure"><div class="k">件数</div><div class="v">${rs.n}<small>件</small></div><div class="s">範囲の外の記録 ${out}件</div></div></div>`;
+  const rg = STN ? [] : ringList(km);
+  if (rg.length > 1) h += `<table><thead><tr><th>中心から</th><th>件数</th><th>賃料＋共益費（中央値）</th><th>㎡あたり（中央値）</th></tr></thead><tbody>` +
+    rg.map(d => { const c = C.rentSummary(inn.filter(r => INSIDE[mineKey(r)] <= d)); return `<tr class="${c.n < MIN_N ? "few" : ""}"><td>${d < 1 ? d * 1000 + "m" : d + "km"}以内</td><td>${c.n}</td><td>${c.n ? fmtRent(c.total) : "—"}</td><td>${c.unit ? Math.round(c.unit).toLocaleString() + "円" : "—"}</td></tr>`; }).join("") + `</tbody></table>`;
+  return h + `<p class="muted small">あなたが入れた成約例だけの集計です。広さや築年がそろっていないと、数字はぶれます。データはこの端末の中にだけあります。ほかのサイトの掲載情報を写すときは、そのサイトの規約を確かめてください。</p>`;
+}
+function circleHtml(list) {
+  const rows = list.flatMap(([, t]) => t.rows);
+  const km = +S.km, label = km < 1 ? km * 1000 + "m" : km + "km";
+  let h = `<h2>${STN ? `${esc(S.stn)}から${S.stnN}駅先まで` : `半径${label}`}の相場</h2><div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div>`;
+  if (!rows.length) return h + `<p class="warnline">この範囲と条件では売買の取引がありません。半径を広げるか、条件をゆるめてください。</p>` + circleRentHtml(km);
+  if (rows.length < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満なので「参考値」です。数字が大きくぶれることがあります。</p>`;
+  const vals = rows.map(mainVal), yrs = C.yearsInRange(S.year, QUARTERS);
+  h += `<div class="figures"><div class="figure main"><div class="k">${mainName()}</div><div class="v">${fmtMain(median(vals))}</div>
+    <div class="s">真ん中の半分：${isTotalType() ? fmtMan(quant(vals, .25)) + "〜" + fmtMan(quant(vals, .75)) : man(conv(quant(vals, .25))).toFixed(0) + "〜" + man(conv(quant(vals, .75))).toFixed(0) + "万円/" + unitLabel()}</div></div>
+    <div class="figure"><div class="k">件数</div><div class="v">${rows.length.toLocaleString()}<small>件</small></div><div class="s">1年あたり ${(rows.length / yrs).toFixed(1)}件・${list.length}町</div></div></div>`;
+  const rings = STN ? [] : ringList(km);
+  if (STN) {
+    const hopLabel = {}, hopOrder = []; for (let d = 0; d <= +S.stnN; d++) { hopOrder.push(String(d)); hopLabel[d] = d ? `${d}駅先` : "この駅"; }
+    h += `<h3>駅の数ごとの比較</h3>` + breakdown(rows, r => String(rowHop(r)), hopOrder, hopLabel);
+    const byStation = {}; rows.forEach(r => { (byStation[r.station] ||= []).push(r); });
+    const names = Object.keys(byStation).sort((a, b) => rowHop(byStation[a][0]) - rowHop(byStation[b][0]) || byStation[b].length - byStation[a].length).slice(0, 30);
+    h += `<h3>駅ごとの相場</h3>` + breakdown(rows, r => r.station, names);
+  }
+  if (rings.length > 1) {
+    const f = v => isTotalType() ? fmtMan(v) : fmtUnitHtml(v);
+    h += `<h3>距離ごとの比較</h3><table><thead><tr><th>中心から</th><th>件数</th><th>${isTotalType() ? "総額" : "単価"}（中央値）</th></tr></thead><tbody>` +
+      rings.map(d => { const r = rows.filter(x => INSIDE[x.k] <= d), v = r.map(mainVal);
+        return `<tr class="${r.length < MIN_N ? "few" : ""}"><td>${d < 1 ? d * 1000 + "m" : d + "km"}以内</td><td>${r.length}</td><td>${r.length ? f(median(v)) : "—"}</td></tr>`; }).join("") + `</tbody></table>`;
+  }
+  if (S.type === "中古マンション等") h += `<h3>間取り別</h3>` + breakdown(rows, r => C.planGroup(r.plan), Object.keys(PLAN_LABEL), PLAN_LABEL);
+  if (S.type !== "宅地(土地)") h += `<h3>築年数別</h3>` + breakdown(rows, ageBin, ["〜10年", "11〜20年", "21〜30年", "31〜40年", "41年〜"]);
+  h += `<h3>駅からの距離別（徒歩）</h3>` + breakdown(rows, walkBin, ["〜5分", "6〜10分", "11〜15分", "16分〜"]);
+  const yl = {}, yy = []; for (let y = Y0; y <= Y1; y++) { yy.push(String(y)); yl[y] = y + "年" + (y === Y1 && Q1 < 4 ? `（1〜${Q1 * 3}月）` : ""); }
+  h += `<h3>年ごと</h3>` + breakdown(rows, r => String(r.y), yy, yl);
+  const st = {}; rows.forEach(r => { if (r.station) st[r.station] = (st[r.station] || 0) + 1; });
+  const top = Object.entries(st).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  if (top.length) h += `<h3>よく出てくる最寄駅</h3><p>` + top.map(([s, n]) => `${esc(s)}（${n}件）`).join("、") + `</p>`;
+  h += cpCompareHtml(scopeRows());
+  h += circleRentHtml(km);
+  if (STN) return h + `<p class="muted small">取引データの「最寄駅」で数えています。線路の上の駅の数で、電車の所要時間や急行の停車駅とは関係ありません。乗りかえは同じ駅として数えます。駅のつながりは「国土数値情報（鉄道データ）」（国土交通省）をもとに作成した目安で、新幹線とケーブルカーは入れていません。相場感をつかむための目安です。</p>`;
+  h += `<p class="muted small">国のデータは町ごとで、物件の点の場所がありません。ここでは、町の代表点が円の中にある町と、中心が入っている町の取引を数えています。実際の距離とはずれます。相場感をつかむための目安です。</p>`;
+  return h;
+}
+function listHtml() {
+  // 件数が足りる町を先に、その中で高い順。参考値の町は下にまとめる
+  const list = Object.entries(TOWN).sort((a, b) => ((b[1].n >= MIN_N) - (a[1].n >= MIN_N)) || (b[1].med || 0) - (a[1].med || 0));
+  const mt = mineByTown();
+  if (INSIDE) list.sort((a, b) => INSIDE[a[0]] - INSIDE[b[0]]);
+  let h = (INSIDE ? circleHtml(list) : "") + choseiNote();
+  h += `<h2>町の一覧</h2><div class="muted">${C.TYPES[S.type].label}／${esc(condText())}<br>地図の町をタップ（クリック）すると、くわしい相場が出ます。</div>`;
+  const total = list.reduce((s, [, t]) => s + t.n, 0);
+  h += `<p class="muted">この条件の取引：${total.toLocaleString()}件・${list.length}町（${esc(S.cities.map(cityName).join("・"))}）</p>`;
+  const noData = S.cities.filter(c => CITY_INFO[c] && !CITY_INFO[c].n);
+  if (noData.length) h += `<p class="note caution">${esc(noData.map(cityName).join("・"))}は、まだ価格のデータを入れていません（町の形だけ出ています）。データは準備中です。</p>`;
+  const noType = S.cities.filter(c => CITY_INFO[c] && CITY_INFO[c].n && !CITY_INFO[c].byType[S.type]);
+  if (noType.length) h += `<p class="note caution">${esc(noType.map(cityName).join("・"))}は、「${C.TYPES[S.type].short}」の価格データがまだ入っていません（ほかの種類だけ入っています）。国のサイトで種類「${S.type === "中古マンション等" ? "中古マンション等" : "すべて"}」を選んでCSVを取り、置きなおしてください。</p>`;
+  if (!list.length) return h + `<p class="warnline">この条件では取引がありません。</p>`;
+  h += `<div class="tablewrap"><table id="townList"><thead><tr><th>町</th><th>件数</th><th>${isTotalType() ? "総額" : "単価"}</th><th>流動性</th></tr></thead><tbody>` +
+    list.map(([k, t]) => `<tr data-k="${esc(k)}" class="${t.n < MIN_N ? "few" : ""}"><td>${esc(townName(k))}<span class="muted">（${esc(wardOf(k))}${INSIDE ? "・約" + INSIDE[k].toFixed(1) + "km" : ""}）</span>${mt[k] ? `<span class="minemark">記録${mt[k].length}</span>` : ""}</td><td>${t.n}</td><td>${fmtMain(t.med)}</td><td class="stars">${t.n < MIN_N ? '<span class="muted">参考値</span>' : t.stars ? "★".repeat(t.stars) : '<span class="muted" title="世帯数のデータが無い町">—</span>'}</td></tr>`).join("") +
+    `</tbody></table></div>` + liqExplain();
+  return h;
+}
+function liqExplain() {
+  const f = v => v == null ? "—" : v.toFixed(1);
+  const where = S.cities.length > 1 ? `いま出している${S.cities.length}つの市区町村（${esc(S.cities.map(cityName).join("・"))}）の中で比べると` : `${esc(cityName(S.cities[0] || ""))}の中で比べると`;
+  return `<details class="explain"><summary>流動性の★はどう決めている？</summary>
+  <p>流動性は「その町で、どれくらい活発に売り買いされているか」の目安です。</p>
+  <ol>
+    <li>町ごとに、いまの条件（種類・期間・駅・広さなど）に合う取引の件数を数え、1年あたりにします。</li>
+    <li>町の大きさのちがいをならすため、その町の世帯数（国勢調査・令和2年）で割り、1000世帯あたりの件数にします。</li>
+    <li>件数が${MIN_N}件以上の町（いまは${LIQ.n}町）を多い順に並べ、上から3分の1を★★★、真ん中を★★、下の3分の1を★にします。</li>
+  </ol>
+  <p>いまの区切り：★★★＝年${f(LIQ.c2)}件以上／★★＝${f(LIQ.c1)}〜${f(LIQ.c2)}件／★＝${f(LIQ.c1)}件未満（1000世帯あたり）。</p>
+  <p>★1は「売れない」という意味ではなく、<b>${where}</b>取引が少なめ、という意味です。条件や表示する市区町村を変えると、比べる相手も変わるので★も変わります。</p>
+  <p class="for-staff">担当者向けの注意：新築マンションが多い町・一戸建ての多い町は世帯数に対して中古の取引が少なく出やすく、ワンルームの多い町は多く出やすいです。査定の説明に使うときは件数そのものと前年比もあわせて見てください。</p>
+  </details>`;
+}
+
+// ---------- 目安の計算（借地・底地・再建築不可・高低差・形・古家） ----------
+const CS = { unitAuto: true, unitM2: null, areaM2: 100, shape: "seikei", district: "futsu", kage: 0, sotei: null, front: null,
+  slope: "none", slopeLo: null, slopeHi: null, wallLo: 0, wallHi: 0, gake: 0, gakeDir: "北", rebuildNG: false, rebuildLo: null, rebuildHi: null,
+  right: "own", letter: "D", rightLo: null, rightHi: null, house: false, houseStruct: "木造", floorM2: 90, demoLo: null, demoHi: null,
+  kz: null, ktUse: false, ktOpen: false, ktMan: {}, v: 2 };
+// 目安の数字は 共通/hosei_data.js から読む（null のときは目安の値）。v2 より前に保存された値は、前の初期値なので捨てる
+try { const sv = JSON.parse(localStorage.getItem("soubaCalc") || "{}");
+  if (sv.v !== 2) { delete sv.slopeLo; delete sv.slopeHi; delete sv.rebuildLo; delete sv.rebuildHi; delete sv.rightLo; delete sv.rightHi; delete sv.demoLo; delete sv.demoHi; sv.v = 2; }
+  Object.assign(CS, sv); } catch (e) {}
+CS.ktMan = CS.ktMan || {};
+const saveCalc = () => { try { localStorage.setItem("soubaCalc", JSON.stringify(CS)); } catch (e) {} };
+// 土地の形（共通/katachi.js）：# か ? の kz・kzr・kzf・kzt で受けとる（# の shape・road・front とは別の名前）。受けとったら形の値を「目安の計算」に使う
+try {
+  const kl = window.KatachiUI ? window.KatachiUI.readLocation() : null;
+  if (kl) { const q = window.Katachi.toQuery(kl);
+    if (!(CS.ktUse && CS.kz === q)) { CS.kz = q; CS.ktUse = true; CS.ktMan = {}; CS.ktOpen = true; if (CS.shape === "seikei") CS.shape = "fusei"; } }
+} catch (e) {}
+const rightDefaults = r => C.DEFAULTS[r === "sokochi" ? "sokochi" : "shakuchi"].map(v => Math.round(v * 100));
+const slopeDefaults = t => C.slopeDefault(t).map(v => Math.round(v * 100));
+const rebuildDefaults = () => C.DEFAULTS.rebuild.map(v => Math.round(v * 100));
+function calcParams() {
+  const rd = rightDefaults(CS.right), dd = C.DEMOLISH[C.demolishKey(CS.houseStruct)], sd = slopeDefaults(CS.slope), bd = rebuildDefaults();
+  return { unitM2: CS.unitM2 || 0, areaM2: CS.areaM2 || 0, shape: CS.shape, district: CS.district, kagePct: CS.kage || 0, frontM: CS.front || 0,
+    slope: CS.slope, slopeLo: (CS.slopeLo ?? sd[0]) / 100, slopeHi: (CS.slopeHi ?? sd[1]) / 100, wallLo: (CS.wallLo || 0) * 1e4, wallHi: (CS.wallHi || 0) * 1e4,
+    gakeRatio: (CS.gake || 0) / 100, gakeDir: CS.gakeDir, rebuildNG: CS.rebuildNG, rebuildLo: (CS.rebuildLo ?? bd[0]) / 100, rebuildHi: (CS.rebuildHi ?? bd[1]) / 100,
+    right: CS.right, letter: CS.letter, rightLo: (CS.rightLo ?? rd[0]) / 100, rightHi: (CS.rightHi ?? rd[1]) / 100,
+    house: CS.house, floorM2: CS.floorM2 || 0, demoLo: (CS.demoLo ?? dd[0] / 1e4) * 1e4, demoHi: (CS.demoHi ?? dd[1] / 1e4) * 1e4 };
+}
+function calcHtml() {
+  const k = S.sel;
+  if (CS.unitAuto) { const bl = baseLand(k); CS.unitM2 = bl ? Math.round(bl.unit) : CS.unitM2; CS._base = bl ? `${bl.label}の中央値（${bl.n}件・${esc(condYear())}）` : "土地の取引が少なく、自動では出せません。単価を入れてください。"; }
+  const p = calcParams(), rd = rightDefaults(CS.right), dd = C.DEMOLISH[C.demolishKey(CS.houseStruct)].map(v => v / 1e4), sd = slopeDefaults(CS.slope), bd = rebuildDefaults();
+  const num = (id, v, step = "any", min = 0) => `<input type="number" id="${id}" value="${v == null ? "" : v}" step="${step}" min="${min}" inputmode="decimal">`;
+  const sel = (id, opts, v) => `<select id="${id}">` + opts.map(([a, b]) => `<option value="${a}"${String(a) === String(v) ? " selected" : ""}>${b}</option>`).join("") + `</select>`;
+  const u = CS.unitM2;
+  let h = `<h2>目安の計算</h2>
+  <div class="muted">${k ? esc(wardOf(k) + " " + townName(k)) : "町を選ぶと、その町の土地の相場が自動で入ります"}</div>
+  <p class="note caution">国のデータには借地・底地・再建築不可・高低差の区別が無いため、ここは目安の計算です。国税庁の表（相続税の評価のための補正率）と一般的な目安を掛け合わせています。実際の値段は、権利の中身・地主との関係・役所の判断で大きく変わります。最後は不動産会社・鑑定士・役所に確かめてください。</p>
+  <div class="formrows">
+    <div class="fr"><span class="lab">更地の単価</span>
+      <div class="iline">${num("cUnitM2", u ? (u / 1e4).toFixed(1) : "")} 万円/㎡ ${num("cUnitT", u ? (u * TSUBO / 1e4).toFixed(1) : "")} 万円/坪</div>
+      <span class="hint">${CS.unitAuto ? "自動：" + (CS._base || "") : "手で入れた値です。"} <button class="btn link" id="cAuto" type="button">町の相場にもどす</button></span></div>
+    <div class="fr"><span class="lab">土地の面積</span>
+      <div class="iline">${num("cAreaM2", CS.areaM2 ? +(+CS.areaM2).toFixed(2) : "")} ㎡ ${num("cAreaT", CS.areaM2 ? (CS.areaM2 / TSUBO).toFixed(2) : "")} 坪</div>
+      <span class="automark" id="cMkArea"${ktMark("area") ? "" : " hidden"}>土地の形から入れた・要確認</span></div>
+    <div class="fr"><span class="lab">土地の形</span>
+      <div class="iline">${sel("cShape", [["seikei", "整形（長方形・正方形）"], ["fusei", "不整形・台形"], ["hata", "旗竿（敷地延長）"]], CS.shape)}</div></div>
+    <div class="fr"${CS.shape === "seikei" ? " hidden" : ""}><span class="lab">かげ地割合</span>
+      <div class="iline">${num("cKage", CS.kage, "0.1")} %　または 想定整形地 ${num("cSotei", CS.sotei)} ㎡</div>
+      <span class="automark" id="cMkKage"${ktMark("kage") ? "" : " hidden"}>土地の形から入れた・要確認</span>
+      <span class="hint">土地をすっぽり囲む長方形（想定整形地）のうち、自分の土地でない部分の割合。（想定整形地 − 土地）÷ 想定整形地。手で入れるか、下の「形を図で入れる」で出せます。</span></div>
+    <div class="fr ktfr"${CS.shape === "seikei" ? " hidden" : ""}>
+      <details class="more" id="cKtBox"${CS.ktOpen ? " open" : ""}><summary>形を図で入れて、かげ地割合を出す（いびつな形・測量図の座標）</summary>
+        <p>形を選ぶ・地積測量図の座標を入れる・方眼で描く のどれかで形を入れると、国税庁の決め方でかげ地割合・想定整形地・面積・間口を上と下の欄に入れます（「土地の形から入れた・要確認」の印）。印の付いた欄を手で直すと、その欄は手で入れた値を使います。</p>
+        <div id="cKtSlot"></div><div id="cKtOut"></div></details></div>
+    <div class="fr"><span class="lab">間口</span>
+      <div class="iline">${num("cFront", CS.front, "0.1")} m</div><span class="automark" id="cMkFront"${ktMark("front") ? "" : " hidden"}>土地の形から入れた・要確認</span><span class="hint">道路に接している長さ。旗竿なら竿の部分の幅。空なら間口の補正はしません。</span></div>
+    <div class="fr"><span class="lab">地区区分</span>
+      <div class="iline">${sel("cDistrict", Object.entries(C.DISTRICTS), CS.district)}</div><span class="hint">路線価図の地区（ふつうの住宅地なら「普通住宅地区」）。</span></div>
+    <div class="fr"><span class="lab">高低差・擁壁</span>
+      <div class="iline">${sel("cSlope", [["none", "なし"], ["hinadan", "ひな壇・高低差あり（擁壁は使える）"], ["youheki", "擁壁のやり直しが要るかも"]], CS.slope)}</div>
+      ${CS.slope !== "none" ? `<div class="iline">相場の ${num("cSlopeLo", CS.slopeLo ?? sd[0], "1")}〜${num("cSlopeHi", CS.slopeHi ?? sd[1], "1")} %（一般的な目安）</div>` : ""}
+      ${CS.slope === "youheki" ? `<div class="iline">擁壁の工事費 ${num("cWallLo", CS.wallLo, "10")}〜${num("cWallHi", CS.wallHi, "10")} 万円</div>` : ""}
+      ${CS.slope === "youheki" ? `<span class="hint">目安の ${sd[0]}〜${sd[1]}% は、工事費を別に引かないときの値です。工事費を入れるときは、二重に引かないよう % を「ひな壇」の ${slopeDefaults("hinadan").join("〜")}% ほどに上げてください。工事費の目安は長さ1mあたり ${C.HOSEI.byId("youheki_cost").lo / 1e4}〜${C.HOSEI.byId("youheki_cost").hi / 1e4}万円（高さ2〜3m）。</span>` : ""}</div>
+    <div class="fr"><span class="lab">がけ地</span>
+      <div class="iline">土地のうち ${num("cGake", CS.gake, "1")} % が使えない斜面　向き ${sel("cGakeDir", [["南", "南"], ["東", "東"], ["西", "西"], ["北", "北"]], CS.gakeDir)}</div>
+      <span class="hint">国税庁の「がけ地補正率」を使います（10%未満なら補正なし）。</span></div>
+    <div class="fr"><span class="lab">再建築不可</span>
+      <div class="iline"><label class="iline"><input type="checkbox" id="cRebuild"${CS.rebuildNG ? " checked" : ""}> 建てかえができない</label>
+      ${CS.rebuildNG ? `相場の ${num("cRebLo", CS.rebuildLo ?? bd[0], "1")}〜${num("cRebHi", CS.rebuildHi ?? bd[1], "1")} %` : ""}</div>
+      <span class="hint">道路に2m以上接していないなど。多くの解説の目安は更地の${bd[0] / 10}〜${bd[1] / 10}割ですが、買取業者なら3〜5割、条件が悪いと2〜3割の取引もあります。</span></div>
+    <div class="fr"><span class="lab">権利</span>
+      <div class="iline">${sel("cRight", [["own", "所有権（ふつう）"], ["shakuchi", "借地権（土地を借りている）"], ["sokochi", "底地（貸している土地）"]], CS.right)}
+      ${CS.right !== "own" ? `借地権割合 ${sel("cLetter", Object.entries(C.LEASE).map(([a, v]) => [a, `${a}（${v * 100}%）`]), CS.letter)}` : ""}</div>
+      ${CS.right !== "own" ? `<div class="iline">税の評価の ${num("cRightLo", CS.rightLo ?? rd[0], "1")}〜${num("cRightHi", CS.rightHi ?? rd[1], "1")} %（市場の一般的な目安）</div>` : ""}
+      <span class="hint">借地権割合は国税庁の路線価図の記号（A＝90%〜G＝30%）。税の評価は 借地権＝更地×割合、底地＝更地×（1−割合）。</span></div>
+    <div class="fr"${CS.right === "sokochi" ? " hidden" : ""}><span class="lab">古家</span>
+      <div class="iline"><label class="iline"><input type="checkbox" id="cHouse"${CS.house ? " checked" : ""}> 古い建物があり、解体する</label></div>
+      ${CS.house ? `<div class="iline">構造 ${sel("cHStruct", [["木造", "木造"], ["S", "鉄骨"], ["RC", "RC・SRC"]], CS.houseStruct)} 延床 ${num("cFloorM2", CS.floorM2 ? +(+CS.floorM2).toFixed(2) : "")} ㎡ ${num("cFloorT", CS.floorM2 ? (CS.floorM2 / TSUBO).toFixed(2) : "")} 坪</div>
+      <div class="iline">解体費 ${num("cDemoLo", CS.demoLo ?? dd[0], "0.5")}〜${num("cDemoHi", CS.demoHi ?? dd[1], "0.5")} 万円/坪（延床）</div>` : ""}</div>
+  </div>`;
+  return h + `<div id="cResult">${calcResultHtml()}</div>`;
+}
+// 計算の結果の部分（形の部品が変わったときは、ここだけ描きなおす。入力中の欄から指が離れないように）
+function calcResultHtml() {
+  const p = calcParams();
+  if (!p.unitM2 || !p.areaM2) return `<p class="warnline">更地の単価と土地の面積を入れてください。</p>`;
+  let h = "";
+  const r = C.adjust(p);
+  h += `<h3>計算の結果</h3><div class="tablewrap"><table class="steps"><thead><tr><th>段</th><th class="num">低め</th><th class="num">高め</th></tr></thead><tbody>` +
+    r.steps.map(s => `<tr><td class="wrap">${s.label}<span class="alt">${esc(s.how)}</span></td><td class="num">${fmtMan(s.lo)}</td><td class="num">${fmtMan(s.hi)}</td></tr>`).join("") +
+    `<tr class="total"><td>目安</td><td class="num">${fmtMan(r.lo)}</td><td class="num">${fmtMan(r.hi)}</td></tr></tbody></table></div>`;
+  h += `<div class="figures"><div class="figure main"><div class="k">目安の価格</div><div class="v">${fmtMan(r.lo)}〜${fmtMan(r.hi)}</div>
+    <div class="s">更地の ${Math.round(r.pctLo * 100)}〜${Math.round(r.pctHi * 100)}%</div></div>
+    <div class="figure"><div class="k">土地の単価にすると</div><div class="v" style="font-size:17px">${man(conv(r.unitLo)).toFixed(1)}〜${man(conv(r.unitHi)).toFixed(1)}万円/${unitLabel()}</div>
+      <div class="s">${man(otherConv(r.unitLo)).toFixed(1)}〜${man(otherConv(r.unitHi)).toFixed(1)}万円/${otherLabel()}</div></div></div>`;
+  h += `<details class="explain"><summary>この計算の決まり（出典）</summary>
+    <ul>
+      <li>形：国税庁「不整形地補正率表」「間口狭小補正率表」（財産評価基本通達の付表・平成31年1月分以降用の調整率表）。不整形のときは 不整形地補正率×間口狭小補正率（最小0.60）。旗竿も同じやり方です。<b>相続税の評価の表</b>なので、実際の売買ではもっと下がることがあります。町の画面の「全体で見た差」も見てください。</li>
+      <li>がけ地：国税庁「がけ地補正率表」。</li>
+      <li>借地権・底地：国税庁 No.4611「借地権の評価」・No.4613「貸宅地の評価」（借地権＝更地×借地権割合、底地＝更地×（1−借地権割合））に、市場の一般的な目安（借地権は${C.DEFAULTS.shakuchi.map(v => Math.round(v * 100)).join("〜")}%、底地は${C.DEFAULTS.sokochi.map(v => Math.round(v * 100)).join("〜")}%）を掛けています。第三者に売る底地は更地の1〜2割になることも多い、と言われます。地主・借地人どうしの売買なら高くなります。</li>
+      <li>再建築不可（${C.DEFAULTS.rebuild.map(v => Math.round(v * 100)).join("〜")}%）・ひな壇（擁壁は使える：${C.DEFAULTS.slope.map(v => Math.round(v * 100)).join("〜")}%）・擁壁のやり直し（${C.DEFAULTS.youheki.map(v => Math.round(v * 100)).join("〜")}%）・解体費（木造 ${DEMO_TXT("木造")}／鉄骨 ${DEMO_TXT("S")}／RC ${DEMO_TXT("RC")}、延床1坪あたり）は、公的な基準が無いので一般的な目安です。塀・庭木・残置物・地中の埋設物の撤去は別にかかります。数字は、いくつもの不動産会社・鑑定・買取業者の解説を比べて決めました。</li>
+      <li>数字はどれも変えられます。自分の経験や「自分の記録」に合わせて直してください。</li>
+    </ul></details>`;
+  return h;
+}
+function condYear() { const e = document.getElementById("fYear"); return e.options[e.selectedIndex].text; }
+// ---------- 土地の形（共通/katachi_ui.js）：「目安の計算」の中の開け閉めの欄で使う ----------
+// パネルは入力のたびに描きなおすので、部品は1つの入れ物（KT_HOST）に作って、描きなおすたびに差しなおす
+let KT_UI = null, KT_HOST = null, KT_RES = null, KT_IGN = null;
+function ktMark(k) { return CS.ktUse && !CS.ktMan[k] && CS.shape !== "seikei"; }
+function ktBind(P) {
+  // 印の付いた欄を手で直したら、その欄は手入力を優先（描きなおしより先に動くよう、先に登録する）
+  [["cKage", "kage"], ["cSotei", "kage"], ["cAreaM2", "area"], ["cAreaT", "area"], ["cFront", "front"]].forEach(([id, k]) => {
+    const e = document.getElementById(id); if (e) e.addEventListener("change", () => { if (CS.ktUse) CS.ktMan[k] = true; }); });
+  const box = document.getElementById("cKtBox"), slot = document.getElementById("cKtSlot");
+  if (!box || !slot || !window.KatachiUI || !window.Katachi) return;
+  if (!KT_HOST) KT_HOST = document.createElement("div");
+  slot.appendChild(KT_HOST);
+  box.addEventListener("toggle", () => { CS.ktOpen = box.open; saveCalc(); if (box.open) ktMountS(); });
+  if (CS.ktOpen) ktMountS();
+  ktOut();
+  document.getElementById("cKtOut").addEventListener("click", ev => {
+    const b = ev.target.closest ? ev.target.closest("[data-kt]") : null; if (!b) return;
+    const a = b.getAttribute("data-kt");
+    if (a === "off") CS.ktUse = false;
+    else { CS.ktUse = true; CS.ktMan = {}; if (KT_RES) ktApplyS(KT_RES); }
+    saveCalc(); const y = P.scrollTop; renderPanel(); P.scrollTop = y;
+  });
+}
+function ktMountS() {
+  if (KT_UI || !KT_HOST) return;
+  const K = window.Katachi;
+  let land = CS.kz ? K.fromQuery(CS.kz) : null;
+  if (!land && CS.front > 0 && CS.areaM2 > 0) land = K.makeShape("rect", { W: CS.front, D: Math.round(CS.areaM2 / CS.front * 100) / 100 }, 4);   // 今の面積と間口に近い長方形から始める
+  KT_IGN = K.toQuery(land || K.makeShape("rect", { W: 10, D: 20 }, 4));
+  KT_UI = window.KatachiUI.mount(KT_HOST, { value: land, onChange: ktChangedS });
+}
+function ktChangedS(res, ui) {
+  KT_UI = ui; KT_RES = res;
+  const mine = KT_IGN != null && res.query === KT_IGN; KT_IGN = null;   // 最初に開いたときは、手で入れた欄を書きかえない
+  if (res.ok) CS.kz = res.query;
+  if (!mine && res.ok) CS.ktUse = true;
+  const full = CS.ktUse ? ktApplyS(res) : false;
+  saveCalc();
+  if (full) { const P = document.getElementById("panel"), y = P.scrollTop; renderPanel(); P.scrollTop = y; }
+  else ktRefresh();
+}
+// 形の値を入れる。戻り値 true＝土地の形の選びが変わった（画面をまるごと描きなおす）
+function ktApplyS(res) {
+  const v = C.fromKatachi(res); if (!v) return false;
+  const was = CS.shape;
+  if (!CS.ktMan.kage) { CS.kage = v.kagePct; CS.sotei = v.soteiM2; }
+  if (!CS.ktMan.area) CS.areaM2 = v.areaM2;
+  if (!CS.ktMan.front) CS.front = v.frontM;
+  if (v.flag) CS.shape = "hata"; else if (CS.shape === "hata") CS.shape = "fusei";
+  return CS.shape !== was;
+}
+function ktRefresh() {
+  const set = (id, v) => { const e = document.getElementById(id); if (e && document.activeElement !== e) e.value = v; };
+  set("cKage", CS.kage == null ? "" : CS.kage); set("cSotei", CS.sotei == null ? "" : CS.sotei);
+  set("cAreaM2", CS.areaM2 ? +(+CS.areaM2).toFixed(2) : ""); set("cAreaT", CS.areaM2 ? (CS.areaM2 / TSUBO).toFixed(2) : "");
+  set("cFront", CS.front == null ? "" : CS.front);
+  [["cMkKage", "kage"], ["cMkArea", "area"], ["cMkFront", "front"]].forEach(([id, k]) => { const e = document.getElementById(id); if (e) e.hidden = !ktMark(k); });
+  const r = document.getElementById("cResult"); if (r) r.innerHTML = calcResultHtml();
+  ktOut();
+}
+function ktOut() {
+  const o = document.getElementById("cKtOut"); if (!o) return;
+  if (!KT_RES) { o.innerHTML = ""; return; }
+  const v = C.fromKatachi(KT_RES);
+  if (!v) { o.innerHTML = `<p class="note alert">形が正しくないため、欄には入れていません（上の注意を見てください）。</p>`; return; }
+  const anyMan = ["kage", "area", "front"].some(k => CS.ktMan[k]);
+  o.innerHTML = `<p class="small">形から：かげ地割合 <b>${v.kagePct.toFixed(1)}%</b>（想定整形地 ${(+v.soteiM2).toFixed(2)}㎡）・面積 ${(+v.areaM2).toFixed(2)}㎡・間口 ${v.frontM}m${v.flag ? "（旗竿の竿の幅）" : ""}${CS.ktUse ? "" : "。いまは使っていません"}</p>
+    <div class="btnrow">${CS.ktUse ? `<button class="btn" type="button" data-kt="off">形の値を使わない（手入力にもどす）</button>` : `<button class="btn primary" type="button" data-kt="on">形の値を欄に入れる</button>`}${CS.ktUse && anyMan ? `<button class="btn" type="button" data-kt="re">手で直した欄も形の値にもどす</button>` : ""}</div>
+    <p class="muted small">国税庁の財産評価基本通達20の決め方の目安です（正面の道路は、図で選び直せます）。</p>`;
+}
+function bindCalc(P) {
+  ktBind(P);
+  const v = id => { const e = document.getElementById(id); return e ? e.value : null; };
+  const f = id => { const x = parseFloat(v(id)); return isFinite(x) ? x : null; };
+  const rerender = () => { saveCalc(); const y = P.scrollTop; renderPanel(); P.scrollTop = y; };
+  const on = (id, fn, ev = "change") => { const e = document.getElementById(id); if (e) e.addEventListener(ev, () => { fn(e); rerender(); }); };
+  on("cUnitM2", () => { CS.unitM2 = f("cUnitM2") * 1e4; CS.unitAuto = false; });
+  on("cUnitT", () => { CS.unitM2 = f("cUnitT") * 1e4 / TSUBO; CS.unitAuto = false; });
+  const a = document.getElementById("cAuto"); if (a) a.onclick = () => { CS.unitAuto = true; rerender(); };
+  on("cAreaM2", () => { CS.areaM2 = f("cAreaM2"); if (CS.sotei && CS.areaM2) CS.kage = Math.max(0, Math.round((CS.sotei - CS.areaM2) / CS.sotei * 100)); });
+  on("cAreaT", () => { CS.areaM2 = f("cAreaT") * TSUBO; });
+  on("cShape", e => { CS.shape = e.value; });
+  on("cKage", () => { CS.kage = f("cKage") || 0; CS.sotei = null; });
+  on("cSotei", () => { CS.sotei = f("cSotei"); if (CS.sotei && CS.areaM2) CS.kage = Math.max(0, Math.round((CS.sotei - CS.areaM2) / CS.sotei * 100)); });
+  on("cFront", () => { CS.front = f("cFront"); });
+  on("cDistrict", e => { CS.district = e.value; });
+  on("cSlope", e => { CS.slope = e.value; CS.slopeLo = CS.slopeHi = null; });
+  on("cSlopeLo", () => { CS.slopeLo = f("cSlopeLo"); }); on("cSlopeHi", () => { CS.slopeHi = f("cSlopeHi"); });
+  on("cWallLo", () => { CS.wallLo = f("cWallLo"); }); on("cWallHi", () => { CS.wallHi = f("cWallHi"); });
+  on("cGake", () => { CS.gake = f("cGake") || 0; }); on("cGakeDir", e => { CS.gakeDir = e.value; });
+  on("cRebuild", e => { CS.rebuildNG = e.checked; });
+  on("cRebLo", () => { CS.rebuildLo = f("cRebLo"); }); on("cRebHi", () => { CS.rebuildHi = f("cRebHi"); });
+  on("cRight", e => { CS.right = e.value; CS.rightLo = CS.rightHi = null; });
+  on("cLetter", e => { CS.letter = e.value; });
+  on("cRightLo", () => { CS.rightLo = f("cRightLo"); }); on("cRightHi", () => { CS.rightHi = f("cRightHi"); });
+  on("cHouse", e => { CS.house = e.checked; });
+  on("cHStruct", e => { CS.houseStruct = e.value; CS.demoLo = CS.demoHi = null; });
+  on("cFloorM2", () => { CS.floorM2 = f("cFloorM2"); }); on("cFloorT", () => { CS.floorM2 = f("cFloorT") * TSUBO; });
+  on("cDemoLo", () => { CS.demoLo = f("cDemoLo"); }); on("cDemoHi", () => { CS.demoHi = f("cDemoHi"); });
+}
+
+// ---------- 自分の記録の画面 ----------
+let MF = { userCity: false, date: "", city: "", town: "", kind: "土地", rebuildNG: false, slope: false, shape: "", areaM2: null, floorM2: null, priceMan: null, letter: "", memo: "" };
+function mineHtml() {
+  const k = S.sel;
+  // 場所は、自分で選びなおすまでは地図で選んでいる町に合わせる
+  if (!MF.userCity) { MF.city = k ? k.split("|")[0] : S.cities[0] || ""; MF.town = k ? townName(k) : ""; }
+  const towns = CITY[MF.city] ? CITY[MF.city].towns.map(t => t.name) : [];
+  const cityOpts = IDX.prefs.map(p => `<optgroup label="${p.name}">` + p.cities.map(([c, n]) => `<option value="${c}"${c === MF.city ? " selected" : ""}>${esc(n)}</option>`).join("") + `</optgroup>`).join("");
+  let h = `<h2>自分の記録</h2>
+  <p class="muted">借地・底地・再建築不可・高低差など、国のデータに無い成約を自分で入れておく表です。この端末（ブラウザ）の中にだけ保存されます。ほかの端末で使うときや控えには、CSVに書き出してください。</p>
+  <div class="formrows">
+    <div class="fr"><span class="lab">時期</span><div class="iline"><input type="month" id="mDate" value="${esc(MF.date)}"></div></div>
+    <div class="fr"><span class="lab">場所</span><div class="iline"><select id="mCity">${cityOpts}</select>
+      <input type="text" id="mTown" list="mTownList" value="${esc(MF.town)}" placeholder="町名（丁目なし）" style="width:9em"><datalist id="mTownList">${towns.map(t => `<option value="${esc(t)}">`).join("")}</datalist></div>
+      <span class="hint">町名は地図と同じ書き方にすると、地図の町に印が出ます（${CITY[MF.city] ? "候補から選べます" : "その市区町村を地図に出すと候補が出ます"}）。</span></div>
+    <div class="fr"><span class="lab">種類</span><div class="iline"><select id="mKind">${C.MY_KINDS.map(x => `<option${x === MF.kind ? " selected" : ""}>${x}</option>`).join("")}</select>
+      <label class="iline"><input type="checkbox" id="mRebuild"${MF.rebuildNG ? " checked" : ""}> 再建築不可</label>
+      <label class="iline"><input type="checkbox" id="mSlope"${MF.slope ? " checked" : ""}> 高低差あり</label></div></div>
+    <div class="fr"><span class="lab">土地の形</span><div class="iline"><select id="mShape">${["", "整形", "不整形", "旗竿"].map(x => `<option value="${x}"${x === MF.shape ? " selected" : ""}>${x || "（わからない）"}</option>`).join("")}</select>
+      借地権割合 <select id="mLetter"><option value="">—</option>${Object.keys(C.LEASE).map(x => `<option${x === MF.letter ? " selected" : ""}>${x}</option>`).join("")}</select></div></div>
+    <div class="fr"><span class="lab">面積</span><div class="iline"><input type="number" id="mAreaM2" value="${MF.areaM2 ?? ""}" step="any"> ㎡ <input type="number" id="mAreaT" value="${MF.areaM2 ? (MF.areaM2 / TSUBO).toFixed(2) : ""}" step="any"> 坪</div>
+      <span class="hint">土地の面積（マンションは専有面積）。</span></div>
+    <div class="fr"><span class="lab">延床面積</span><div class="iline"><input type="number" id="mFloor" value="${MF.floorM2 ?? ""}" step="any"> ㎡（建物があるとき）</div></div>
+    <div class="fr"><span class="lab">${C.isRentKind(MF.kind) ? "月額賃料" : "価格"}</span><div class="iline"><input type="number" id="mPrice" value="${MF.priceMan ?? ""}" step="any"> 万円${C.isRentKind(MF.kind) ? `　共益費 <input type="number" id="mFee" value="${MF.feeYen ?? ""}" step="any" style="width:6em"> 円/月` : ""}</div></div>
+    <div class="fr"><span class="lab">メモ</span><input type="text" id="mMemo" class="wide" value="${esc(MF.memo)}" placeholder="例：旧法借地・地代月2万円・残り12年"></div>
+  </div>
+  <div class="btnrow"><button class="btn primary" id="mAdd">記録に足す</button><span class="muted small" id="mMsg"></span></div>
+  <h3>入れた記録（${MINE.length}件）</h3>`;
+  if (MINE.length) {
+    h += `<div class="tablewrap"><table class="mine"><thead><tr><th>時期・場所</th><th>種類・条件</th><th class="num">価格／単価</th><th></th></tr></thead><tbody>` +
+      [...MINE].sort((a, b) => (b.date || "").localeCompare(a.date || "")).map(r => `<tr><td class="wrap">${esc(r.date)}<br>${esc(r.cityName || cityName(r.city))} ${esc(r.town)}</td>
+        <td class="wrap">${esc(mineTags(r))}${r.memo ? `<span class="alt">${esc(r.memo)}</span>` : ""}</td>
+        <td class="num">${C.isRentKind(r.kind) ? `${fmtRent(C.rentTotal(r))}/月<span class="alt">${C.rentUnit(r) ? Math.round(C.rentUnit(r)).toLocaleString() + "円/㎡" : ""}</span>` : `${fmtMan(r.price)}<span class="alt">${C.myUnit(r) ? fmtUnit(C.myUnit(r)) : ""}</span>`}</td>
+        <td><button class="del" data-id="${esc(r.id)}">消す</button></td></tr>`).join("") + `</tbody></table></div>`;
+  } else h += `<p class="muted">まだありません。</p>`;
+  h += `<div class="btnrow"><button class="btn" id="mExport"${MINE.length ? "" : " disabled"}>CSVに書き出す</button>
+    <span class="btn filebtn">CSVを読みこむ<input type="file" id="mImport" accept=".csv,text/csv"></span></div>
+    <p class="muted small">読みこみは「足す」だけです（同じIDの行は上書き）。CSVの列：${C.MY_COLS.map(c => c[1]).join("・")}。Excelで作ってもかまいません。</p>`;
+  return h;
+}
+function bindMine(P) {
+  const g = id => document.getElementById(id);
+  const keep = () => { MF.date = g("mDate").value; if (g("mTown").value.trim() !== MF.town) MF.userCity = true; MF.town = g("mTown").value.trim(); MF.kind = g("mKind").value; MF.rebuildNG = g("mRebuild").checked;
+    MF.slope = g("mSlope").checked; MF.shape = g("mShape").value; MF.letter = g("mLetter").value; MF.memo = g("mMemo").value;
+    const a = parseFloat(g("mAreaM2").value); MF.areaM2 = isFinite(a) ? a : null; const fl = parseFloat(g("mFloor").value); MF.floorM2 = isFinite(fl) ? fl : null;
+    const p = parseFloat(g("mPrice").value); MF.priceMan = isFinite(p) ? p : null;
+    const fe = g("mFee") ? parseFloat(g("mFee").value) : NaN; MF.feeYen = isFinite(fe) ? fe : null; };
+  g("mKind").onchange = () => { keep(); const y = P.scrollTop; renderPanel(); P.scrollTop = y; };
+  g("mAreaM2").oninput = () => { const a = parseFloat(g("mAreaM2").value); g("mAreaT").value = isFinite(a) ? (a / TSUBO).toFixed(2) : ""; };
+  g("mAreaT").oninput = () => { const t = parseFloat(g("mAreaT").value); g("mAreaM2").value = isFinite(t) ? +(t * TSUBO).toFixed(2) : ""; };
+  g("mCity").onchange = () => { keep(); MF.userCity = true; MF.city = g("mCity").value; MF.town = ""; loadCity(MF.city).catch(() => {}).then(() => { const y = P.scrollTop; renderPanel(); P.scrollTop = y; }); };
+  g("mAdd").onclick = () => {
+    keep();
+    if (!(MF.priceMan > 0)) { g("mMsg").textContent = (C.isRentKind(MF.kind) ? "月額賃料" : "価格") + "を入れてください。"; return; }
+    MINE.push({ id: "m" + Date.now().toString(36), date: MF.date, city: MF.city, cityName: cityName(MF.city), town: MF.town, kind: MF.kind,
+      rebuildNG: MF.rebuildNG, slope: MF.slope, shape: MF.shape, area: MF.areaM2, floor: MF.floorM2, price: Math.round(MF.priceMan * 1e4), letter: MF.letter, memo: MF.memo, fee: C.isRentKind(MF.kind) ? MF.feeYen : null });
+    saveMine(); MF.priceMan = null; MF.feeYen = null; MF.memo = ""; MF.areaM2 = null; MF.floorM2 = null;
+    paint(); renderPanel();
+  };
+  P.querySelectorAll("button.del").forEach(b => b.onclick = () => {
+    if (!confirm("この記録を消しますか？（元にもどせません。先にCSVに書き出しておくと安心です）")) return;
+    MINE = MINE.filter(r => r.id !== b.dataset.id); saveMine(); paint(); renderPanel();
+  });
+  g("mExport").onclick = () => {
+    const blob = new Blob([C.toCSV(MINE)], { type: "text/csv" });
+    const a = document.createElement("a"), d = new Date();
+    a.href = URL.createObjectURL(blob); a.download = `自分の記録_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}.csv`;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  };
+  g("mImport").onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const list = C.fromCSV(String(rd.result));
+        const pos = {}; MINE.forEach((r, i) => { pos[r.id] = i; });
+        list.forEach(r => { if (pos[r.id] != null) MINE[pos[r.id]] = r; else MINE.push(r); });
+        saveMine(); paint(); renderPanel();
+        document.getElementById("mMsg") && (document.getElementById("mMsg").textContent = `${list.length}件を読みこみました。`);
+      } catch (err) { alert("読みこめませんでした：" + err.message); }
+    };
+    rd.readAsText(file);
+  };
+}
+
+function sources() {
+  const from = IDX.from ? `${IDX.from[0]}年${QLABEL[IDX.from[1]]}` : "", to = IDX.to ? `${IDX.to[0]}年${QLABEL[IDX.to[1]]}` : "";
+  return `<footer class="src disclaimer">
+  ・価格：出典 国土交通省「不動産情報ライブラリ」（https://www.reinfolib.mlit.go.jp/）の取引価格情報・成約価格情報をもとに、この道具で集計・加工して作成（${from}〜${to}分）。<br>
+  ・町の形と世帯数：「令和2年国勢調査 小地域（町丁・字等）境界データ」（総務省統計局 e-Stat）。<br>
+  ・地図：国土地理院。<br>
+  ・戸建＝成約価格の「土地と建物」（サイトの説明で戸建のこと）＋取引価格のうち用途が「住宅」のもの。アパート・店舗・ビルなどは「アパート・店舗等」に分けています。<br>
+  ・土地の形・間口は取引価格の情報にだけあり、成約価格にはありません。形や間口でしぼると、取引価格だけの数字になります。<br>
+  ・国のデータには借地・底地・再建築不可・高低差（擁壁・ひな壇）・古家付きの区別がありません。「目安の計算」は国税庁の表と一般的な目安による計算です。<br>
+  ・補正の表：国税庁「土地及び土地の上に存する権利の評価についての調整率表（平成31年1月分以降用）」、No.4611 借地権の評価、No.4613 貸宅地の評価、路線価図の説明（借地権割合 A〜G）。<br>
+  ・成約価格と取引価格に同じ取引が入っている場合があります。件数を見るときは「データの種類」をどちらか一方にするのがおすすめです。<br>
+  ・この地図は相場の目安です。実際の価格は物件ごとにちがいます（鑑定評価ではありません）。最後の判断は不動産会社・不動産鑑定士・役所に確かめてください。</footer>`;
+}
+
+function select(k, fly) {
+  S.sel = k; paint(); renderPanel();
+  if (k && fly && TOWN_BOUNDS[k]) map.fitBounds(TOWN_BOUNDS[k], { maxZoom: 15, padding: [30, 30] });
+  const P = document.getElementById("panel");
+  P.scrollTop = 0;
+  if (k && window.innerWidth < 760) P.scrollIntoView({ behavior: "smooth" });   // スマホは下の詳細まで動かす
+}
+
+// ---------- 画面の部品 ----------
+function fillSelect(id, opts, val) {
+  const e = document.getElementById(id);
+  e.innerHTML = opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("");
+  e.value = opts.some(o => o[0] === val) ? val : opts[0][0];
+  return e.value;
+}
+function yearOptions() {
+  const last = Q1 < 4 ? `${Y1}年${Q1 * 3}月` : `${Y1}年`;
+  const o = [[`${Y0}-${Y1}`, `全期間（${Y0}〜${last}）`]];
+  if (FULL.length) o.push([`${FULL[FULL.length - 1]}-${Y1}`, `直近（${FULL[FULL.length - 1]}〜${last}）`]);
+  for (let y = Y1; y >= Y0; y--) o.push([`${y}-${y}`, `${y}年` + (y === Y1 && Q1 < 4 ? `（1〜${Q1 * 3}月）` : "")]);
+  return o;
+}
+function refreshOptions() {
+  S.area = fillSelect("fArea", AREA_BINS[S.type], S.area);
+  const cnt = {}; ALL.forEach(r => { if (r.type === S.type && r.station) cnt[r.station] = (cnt[r.station] || 0) + 1; });
+  const st = Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([s, n]) => [s, `${s}（${n}件）`]);
+  S.station = fillSelect("fStation", [["", "すべて"], ...st], S.station);
+  S.year = fillSelect("fYear", yearOptions(), S.year);
+  // 種類ごとに、使える条件だけを出す
+  const kind = kindOf();
+  document.querySelectorAll("#filters [data-for]").forEach(e => { e.hidden = !e.dataset.for.split(" ").includes(kind); });
+  const used = { plan: ["mansion"], struct: ["mansion", "house", "other"], age: ["mansion", "house", "other"], house: ["house"],
+    shape: ["house", "land", "other"], road: ["house", "land", "other"], width: ["house", "land", "other"], front: ["house", "land", "other"] };
+  Object.entries(used).forEach(([key, kinds]) => { if (!kinds.includes(kind)) S[key] = ""; });
+  [["fPlan", "plan"], ["fStruct", "struct"], ["fAge", "age"], ["fWalk", "walk"], ["fSrc", "src"], ["fColor", "color"], ["fHouse", "house"],
+    ["fShape", "shape"], ["fRoad", "road"], ["fWidth", "width"], ["fFront", "front"], ["fCp", "cp"], ["fJijo", "jijo"]].forEach(([id, key]) => { document.getElementById(id).value = S[key]; });
+  document.getElementById("fMine").checked = !!S.mine;
+  document.getElementById("fKeep").checked = !!S.keep;
+  document.querySelectorAll("#segType button").forEach(b => b.classList.toggle("on", b.dataset.v === S.type));
+  document.querySelectorAll("#segUnit button").forEach(b => b.classList.toggle("on", b.dataset.v === S.unit));
+}
+function refreshArea() {
+  const prefSel = document.getElementById("fPref"), citySel = document.getElementById("fCity");
+  const cur = S.cities[S.cities.length - 1];
+  const pref = (CITY_INFO[cur] || {}).pref || IDX.prefs[0].code;
+  prefSel.innerHTML = IDX.prefs.map(p => `<option value="${p.code}">${p.name}（${p.cities.filter(c => c[2]).length}/${p.cities.length}）</option>`).join("");
+  prefSel.value = prefSel.dataset.v || pref;
+  const p = IDX.prefs.find(x => x.code === prefSel.value);
+  citySel.innerHTML = `<option value="">— 選ぶ —</option>` + p.cities.map(([c, n, cnt]) => `<option value="${c}">${esc(n)}${cnt ? `（${cnt.toLocaleString()}件）` : "（価格データなし）"}</option>`).join("");
+  citySel.value = S.cities.includes(cur) && CITY_INFO[cur].pref === p.code ? cur : "";
+  document.getElementById("cityChips").innerHTML = S.cities.map(c => `<span class="chip">${esc(cityName(c))}${S.cities.length > 1 ? `<button data-c="${c}" title="外す" aria-label="${esc(cityName(c))}を外す">×</button>` : ""}</span>`).join("");
+  document.querySelectorAll("#cityChips button").forEach(b => b.onclick = () => { S.cities = S.cities.filter(c => c !== b.dataset.c); applyCities(); });
+  const per = IDX.from ? `${IDX.from[0]}年${QLABEL[IDX.from[1]]}〜${IDX.to[0]}年${QLABEL[IDX.to[1]]}` : "";
+  document.getElementById("subTitle").textContent = `${S.cities.map(cityName).join("・")}／${per}`;
+}
+function update() { aggregate(); if (S.sel && INSIDE && INSIDE[S.sel] == null) S.sel = null; computeBreaks(); drawCircle(); paint(); renderPanel(); save(); }
+let loadSeq = 0;
+async function applyCities(fit = true) {
+  const my = ++loadSeq;
+  const L1 = document.getElementById("loading"); L1.hidden = false;
+  try { await Promise.all(S.cities.map(loadCity)); }
+  catch (e) { alert("市区町村のデータが読みこめませんでした（" + e.message + "）。scripts/build.py を動かしたか確かめてください。"); S.cities = S.cities.filter(c => CITY[c]); }
+  if (my !== loadSeq) return;
+  L1.hidden = true;
+  S.cities.forEach(code => cityLayer(CITY[code]));
+  showLayers();
+  if (S.sel && !S.cities.includes(S.sel.split("|")[0])) S.sel = null;
+  rebuildRows(); refreshArea(); refreshOptions();
+  if (fit) fitCities();
+  update();
+  if (HASH_SEL && TOWN_BOUNDS[HASH_SEL]) { const k = HASH_SEL; HASH_SEL = null; select(k, true); }
+}
+
+document.querySelectorAll("#segType button").forEach(b => b.onclick = () => { S.type = b.dataset.v; refreshOptions(); update(); });
+document.querySelectorAll("#segUnit button").forEach(b => b.onclick = () => { S.unit = b.dataset.v; refreshOptions(); update(); });
+const bind = (id, key) => document.getElementById(id).onchange = e => { S[key] = e.target.value; update(); };
+[["fColor", "color"], ["fSrc", "src"], ["fYear", "year"], ["fStation", "station"], ["fWalk", "walk"], ["fArea", "area"], ["fPlan", "plan"],
+  ["fStruct", "struct"], ["fAge", "age"], ["fHouse", "house"], ["fShape", "shape"], ["fRoad", "road"], ["fWidth", "width"], ["fFront", "front"],
+  ["fCp", "cp"], ["fJijo", "jijo"]].forEach(([id, key]) => bind(id, key));
+document.getElementById("fMine").onchange = e => { S.mine = e.target.checked; save(); paint(); };
+// 地図に重ねるものの切りかえ
+if (innerWidth < 700) document.getElementById("layerBox").classList.add("closed");
+document.getElementById("layerTtl").onclick = () => document.getElementById("layerBox").classList.toggle("closed");
+const syncLegend = () => { document.getElementById("legend").style.display = S.lyTown === false ? "none" : ""; };   // 色を消したら凡例もしまう
+syncLegend();
+[["lyTown", () => { syncLegend(); paint(); }], ["lyCircle", () => drawCircle()], ["lyStn", () => drawStation()], ["lyZone", () => drawZoning()], ["lyChosei", () => drawZoning()]].forEach(([id, fn]) => {
+  const e = document.getElementById(id); e.checked = S[id] !== false && !!S[id];
+  e.onchange = () => { S[id] = e.checked; save(); fn(); };
+});
+document.getElementById("lyAlpha").value = S.lyAlpha;
+document.getElementById("lyAlpha").onchange = e => { S.lyAlpha = +e.target.value; save(); drawZoning(); };
+document.getElementById("fKeep").onchange = e => { S.keep = e.target.checked; save(); };
+document.getElementById("fPref").onchange = e => { e.target.dataset.v = e.target.value; refreshArea(); };
+document.getElementById("fCity").onchange = e => {
+  const c = e.target.value; if (!c) return;
+  document.getElementById("fPref").dataset.v = "";
+  S.cities = S.keep ? [...S.cities.filter(x => x !== c), c] : [c];
+  S.center = null; S.kms = []; syncKm(); circleMsg(""); clearStation();   // 市区町村で選びなおしたら円も駅数もやめる
+  applyCities();
+};
+if (!(S.kms && S.kms.length) && S.km) S.kms = [S.km];
+syncKm();
+// 駅の数で見る
+document.getElementById("fStnName").value = S.stn || "";
+document.getElementById("fStnN").value = S.stnN || "";
+document.getElementById("fStnName").addEventListener("focus", () => loadStations().catch(() => stnMsg("駅のデータを読めませんでした。")), { once: true });
+const stnChange = () => {
+  S.stn = document.getElementById("fStnName").value.trim(); S.stnN = document.getElementById("fStnN").value;
+  if (!S.stn || !S.stnN) { if (STN) { clearStation(); update(); } return; }
+  applyStation().catch(() => stnMsg("駅のデータを読めませんでした。"));
+};
+document.getElementById("fStnName").addEventListener("change", stnChange);
+document.getElementById("fStnN").addEventListener("change", stnChange);
+document.getElementById("fKms").onchange = () => { S.kms = [...document.querySelectorAll("#fKms input:checked")].map(i => i.value); syncKm(); if (S.km && !S.center) { circleMsg("中心の住所を入れるか、「地図を押して決める」を押してください。"); return; } applyCircle(); };
+document.getElementById("fPick").onclick = e => { PICKING = !PICKING; document.getElementById("map").classList.toggle("picking", PICKING); e.target.classList.toggle("on", PICKING); circleMsg(PICKING ? "地図の中心にしたい場所を押してください。" : ""); };
+async function searchAddr() {
+  const q = document.getElementById("fAddr").value.trim(); if (!q) return;
+  circleMsg("探しています…");
+  try {
+    const res = await fetch("https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(q)), list = await res.json();
+    if (!list || !list.length) { circleMsg("見つかりませんでした。市区町村の名前から入れてみてください。"); return; }
+    const [lng, lat] = list[0].geometry.coordinates;
+    circleMsg(list[0].properties.title + " を中心にしました。");
+    S.center = [lat, lng]; if (!S.km) { S.kms = ["1"]; syncKm(); }
+    const m = document.getElementById("circleMsg").textContent;
+    applyCircle(); if (S.center) circleMsg(m);
+  } catch (err) { circleMsg("住所を探せませんでした（国土地理院の住所検索につながりません）。地図を押して決めてください。"); }
+}
+document.getElementById("fAddrGo").onclick = searchAddr;
+document.getElementById("fAddr").addEventListener("keydown", e => { if (e.key === "Enter") searchAddr(); });
+document.getElementById("toggleFilters").onclick = e => {
+  const f = document.getElementById("filters"), open = f.classList.toggle("open");
+  e.target.setAttribute("aria-expanded", open); e.target.textContent = open ? "条件を閉じる ▴" : "条件をしぼる ▾";
+  setTimeout(() => map.invalidateSize(), 50);
+};
+
+refreshArea();
+refreshOptions();
+requestAnimationFrame(() => { (S.stn && S.stnN ? applyStation() : circleOn() ? applyCircle() : applyCities(true)); drawZoning(); });   // 画面の大きさが決まってから地図を合わせる
+</script>
+</body>
+</html>

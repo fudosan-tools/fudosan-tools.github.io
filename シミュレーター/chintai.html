@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>賃貸の初期費用シミュレーター</title>
+<link rel="stylesheet" href="../共通/common.css">
+<style>
+/* このページだけで足した部品（共通に入れる候補：日付入力・下の合計バー・費用の行） */
+input[type=date] { font: inherit; font-size: 15px; color: var(--ink); background: var(--sheet);
+  border: 1px solid var(--rule-strong); border-radius: 2px; padding: 7px 10px; width: 100%; min-width: 0; }
+.legend-tags { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: baseline; margin: 8px 0 0; font-size: 13px; color: var(--ink-2); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 8px 0 4px; }
+.toolbar .lab { font-size: 13px; color: var(--ink-2); }
+.seg.wrap { flex-wrap: wrap; }
+
+/* 費用の行 */
+.grp { font-size: 13px; color: var(--ink-2); margin: 26px 0 0; padding-bottom: 6px; border-bottom: 1px solid var(--rule-strong); letter-spacing: .04em; }
+.item { display: grid; grid-template-columns: minmax(0, 1fr) 280px 120px 64px; gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--rule); align-items: start; }
+.item .nm { font-weight: 600; font-size: 15px; line-height: 1.5; }
+.item .tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; font-weight: 400; }
+.onoff { font: inherit; font-size: 13px; letter-spacing: .06em; width: 64px; min-height: 36px; border: 1px solid var(--rule-strong); border-radius: 2px;
+  background: var(--sheet); color: var(--ink-2); cursor: pointer; }
+.onoff[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.onoff:disabled { cursor: default; background: none; border-style: dashed; color: var(--muted); font-size: 12px; }
+.item .ctl { display: flex; align-items: center; gap: 6px; }
+.item .ctl input[type=number] { width: 110px; flex: none; padding: 6px 8px; text-align: right; }
+.item .ctl .u { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.item .ctl .seg { flex: none; }
+.item .ctl .seg button { padding: 5px 9px; white-space: nowrap; }
+.formrows .unit-input > span { min-width: 2.6em; }
+.item .amt { text-align: right; font-weight: 600; font-size: 15px; white-space: nowrap; }
+.item .amt small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); }
+.item .why { grid-column: 1 / -1; margin: 2px 0 0; font-size: 13px; color: var(--ink-2); line-height: 1.7; }
+.item .warn { grid-column: 1 / -1; margin: 4px 0 0; }
+.item .warn:empty { display: none; }
+.item.off .nm, .item.off .amt { color: var(--muted); }
+.item.off .amt { text-decoration: line-through; font-weight: 400; }
+.item.auto .ctl { font-size: 13px; color: var(--ink-2); }
+.minus { color: var(--ok); }
+
+/* 下に出しっぱなしの合計 */
+.sumbar { position: sticky; bottom: 0; z-index: 900; background: var(--paper); border-top: 1px solid var(--ink); margin-top: 28px;
+  display: flex; flex-wrap: wrap; gap: 4px 24px; align-items: baseline; padding: 10px 0; font-size: 13px; color: var(--ink-2); }
+.sumbar b { font-size: 18px; color: var(--accent); font-weight: 600; margin-left: 4px; }
+.sumbar span.s b { font-size: 14px; color: var(--ink); }
+
+/* 表 */
+td.l, th.l { text-align: left; }
+td .tag { margin-right: 2px; }
+td.sub { color: var(--muted); font-size: 12.5px; text-align: left; }
+tr.sep td { border-top: 1px solid var(--rule-strong); }
+.future input[type=number] { width: 90px; padding: 5px 8px; text-align: right; }
+
+/* チェックリスト */
+.checklist { list-style: none; padding: 0; margin: 4px 0 8px; }
+.checklist li { border-bottom: 1px solid var(--rule); }
+.checklist .check { min-height: 36px; font-size: 14px; }
+.checklist .check input { margin-top: 5px; flex: none; }
+.checklist .check small { display: block; color: var(--muted); font-size: 12px; }
+.hint-list { padding-left: 1.2em; margin: 6px 0; }
+.hint-list li { margin: 6px 0; }
+.say { display: block; color: var(--ink-2); font-size: 13px; }
+
+@media (max-width: 760px) {
+  .item { grid-template-columns: minmax(0, 1fr) auto 64px; }
+  .item .nm { grid-column: 1 / 3; }
+  .item .onoff { grid-column: 3; grid-row: 1; }
+  .item .ctl { grid-column: 1 / -1; flex-wrap: wrap; }
+  .item .amt { grid-column: 1 / -1; text-align: left; }
+  .item .ctl input[type=number] { width: 92px; }
+}
+@media print {
+  .sumbar, .presets, .item .ctl .seg { display: none !important; }
+  .item { break-inside: avoid; }
+  .staff-box { break-inside: avoid-page; }
+}
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="chintai"></nav>
+
+<main class="page">
+  <header class="page-head">
+    <div class="eyebrow">賃貸 ／ 契約のときに払うお金</div>
+    <h1>賃貸の初期費用シミュレーター</h1>
+    <p class="lead">部屋を借りるときに、契約のときにまとめて払うお金（初期費用）の目安を出します。はじめは<strong>すべての項目がオン</strong>になっていて、「だいたいの最大額」が分かります。いらない項目を外したり、金額を変えたりして、見積書と見くらべてください。</p>
+    <dl class="legend-tags">
+      <dt><span class="tag must">必ずかかる</span></dt><dd>ほぼどの部屋でもかかるお金です。</dd>
+      <dt><span class="tag opt">外せることがある</span></dt><dd>任意（自分で選べる）ことが多いお金です。契約の前なら断れる場合があります。</dd>
+      <dt><span class="tag ask">仲介会社に相談</span></dt><dd>物件や会社で決まり方がちがい、確認や相談で変わることがあるお金です。</dd>
+      <dt><span class="tag info">戻るお金</span></dt><dd>退去のときに、差し引きのうえ戻ってくる可能性があるお金です。</dd>
+    </dl>
+  </header>
+
+  <!-- 01 条件 -->
+  <section>
+    <h2><span class="no">01</span>部屋の条件</h2>
+    <div class="cols">
+      <div class="formrows">
+        <div class="fr">
+          <label class="lab" for="rent">月の賃料（家賃）</label>
+          <div class="unit-input"><input type="number" id="rent" min="0" step="1000" value="80000" inputmode="numeric"><span>円</span></div>
+        </div>
+        <div class="fr">
+          <label class="lab" for="fee">管理費・共益費</label>
+          <div class="unit-input"><input type="number" id="fee" min="0" step="500" value="5000" inputmode="numeric"><span>円／月</span></div>
+          <span class="hint">廊下の電気やそうじなどに使われるお金</span>
+        </div>
+        <div class="fr">
+          <span class="lab">広さ</span>
+          <div class="unit-input"><input type="number" id="m2" min="0" step="0.01" value="25" inputmode="decimal" aria-label="広さ（㎡）"><span>㎡</span><input type="number" id="tsubo" min="0" step="0.01" value="7.56" inputmode="decimal" aria-label="広さ（坪）"><span>坪</span></div>
+          <span class="hint">1坪＝3.30578㎡。どちらに入れても、もう片方が変わります</span>
+        </div>
+        <div class="fr">
+          <label class="lab" for="layout">間取り</label>
+          <select id="layout">
+            <option value="1R">ワンルーム</option>
+            <option value="1K" selected>1K</option>
+            <option value="1DK">1DK</option>
+            <option value="1LDK">1LDK</option>
+            <option value="2DK">2K・2DK</option>
+            <option value="2LDK">2LDK</option>
+            <option value="3LDK">3DK・3LDK</option>
+            <option value="4LDK">4LDK以上</option>
+          </select>
+          <span class="hint">退去時クリーニング・引っ越し代のはじめの目安に使います（金額を自分で変えたら、そちらを使います）</span>
+        </div>
+      </div>
+      <div class="formrows">
+        <div class="fr">
+          <label class="lab" for="movein">入居日</label>
+          <input type="date" id="movein">
+          <span class="hint">家賃が始まる日。月の途中なら、その月の日割り家賃＋翌月分を最初に払うのが一般的です</span>
+        </div>
+        <div class="fr">
+          <span class="lab">日割りの計算</span>
+          <div class="seg" id="divSeg" role="group" aria-label="日割りの計算のしかた">
+            <button type="button" data-v="actual" class="on">その月の日数で割る</button><button type="button" data-v="30">30日で割る</button>
+          </div>
+          <span class="hint">会社によってちがいます。見積書でどちらか確認してください</span>
+        </div>
+        <div class="fr">
+          <span class="lab">翌月分の家賃</span>
+          <label class="check"><input type="checkbox" id="nextMonth" checked><span>契約のときにまとめて払う</span></label>
+          <span class="hint">月の途中から住む場合。多くの会社はこの払い方です</span>
+        </div>
+        <div class="fr">
+          <label class="lab" for="free">フリーレント</label>
+          <div class="unit-input"><input type="number" id="free" min="0" max="6" step="0.5" value="0" inputmode="decimal"><span>か月</span></div>
+          <span class="hint">家賃がただになる期間。最初に払う家賃から差し引きます（管理費は無料にならないことが多いので引きません）</span>
+        </div>
+      </div>
+    </div>
+    <p class="small muted" id="unitprice">—</p>
+    <p class="note" id="dateNote"></p>
+  </section>
+
+  <!-- 02 結果 -->
+  <section>
+    <h2><span class="no">02</span>初期費用の目安</h2>
+    <p class="small" id="condSum"></p>
+    <div class="figures">
+      <div class="figure main"><div class="k">いまの選択での合計</div><div class="v" id="fNow">—</div><div class="s" id="fNowS"></div></div>
+      <div class="figure"><div class="k">全部オンにしたとき（最大の目安）</div><div class="v" id="fMax">—</div><div class="s" id="fMaxS"></div></div>
+      <div class="figure"><div class="k">「外せることがある」を全部外したとき</div><div class="v" id="fMin">—</div><div class="s" id="fMinS"></div></div>
+      <div class="figure"><div class="k">うち、退去時に戻る可能性があるお金</div><div class="v" id="fRef">—</div><div class="s">敷金など。修理代などを差し引いて戻ります</div></div>
+    </div>
+    <p class="small muted" id="moveTotal"></p>
+    <p class="note caution for-client">ここに出る金額は目安です。実際の金額は、仲介会社（部屋を紹介してくれる不動産会社）に「初期費用の見積書」をもらって確かめてください。分からない項目は、その場で聞いて大丈夫です。</p>
+  </section>
+
+  <!-- 03 項目 -->
+  <section>
+    <h2><span class="no">03</span>払うお金の項目</h2>
+    <div class="toolbar presets no-print">
+      <span class="lab">よくある組み合わせ</span>
+      <div class="seg wrap" id="presetSeg" role="group" aria-label="よくある組み合わせ">
+        <button type="button" data-p="max" class="on">全部入り（最大）</button><button type="button" data-p="normal">一般的な例</button><button type="button" data-p="zero">敷金・礼金なし物件</button><button type="button" data-p="low">少なめの例（相談のあと）</button>
+      </div>
+    </div>
+    <p class="small muted no-print">一般的な例：敷金1・礼金1・仲介手数料1か月＋税・保証料50%、任意のオプションなし。敷金・礼金なし物件：その分、保証料やクリーニング代・オプションが付くことが多い例。少なめの例：礼金0・仲介手数料0.5か月＋税・任意のオプションなし（相談で下がった場合の例です）。</p>
+    <div class="toolbar no-print">
+      <button type="button" class="btn" id="allOn">全部オン</button>
+      <button type="button" class="btn" id="optOff">「外せることがある」を全部オフ</button>
+      <span class="small muted">金額は「賃料の◯か月」か「円」で入れられます（右の切りかえ）。円は税こみの金額で入れてください。</span>
+    </div>
+    <div id="items"></div>
+
+    <div class="sumbar" aria-live="polite">
+      <span>いまの合計<b id="barNow">—</b><span class="small" id="barCount"></span></span>
+      <span class="s">全部オン<b id="barMax">—</b></span>
+      <span class="s">外せる物を外す<b id="barMin">—</b></span>
+    </div>
+  </section>
+
+  <!-- 04 内わけ -->
+  <section>
+    <h2><span class="no">04</span>内わけ</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th class="l">項目</th><th class="l">目印</th><th class="l">計算のもと</th><th>金額</th></tr></thead>
+        <tbody id="breakdown"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 05 将来 -->
+  <section>
+    <h2><span class="no">05</span>住んでからかかるお金（初期費用とは別）</h2>
+    <p class="small muted">契約のときではなく、あとから払うお金です。契約書・重要事項説明書（契約の前に受ける大事な説明）に書かれているので、あわせて確認してください。</p>
+    <div class="tablewrap future">
+      <table>
+        <thead><tr><th class="l">項目</th><th class="l">入力</th><th>金額の目安</th><th class="l">説明</th></tr></thead>
+        <tbody>
+          <tr><td>更新料<br><span class="tag ask">仲介会社に相談</span></td>
+            <td class="l"><div class="unit-input"><input type="number" id="fuRenew" min="0" step="0.1" value="1"><span>か月（賃料）</span></div></td>
+            <td id="fuRenewA">—</td><td class="sub">2年ごとが多い。首都圏では多く、無い地域・物件もあります。更新料の約束は、高すぎなければ有効と考えられています。</td></tr>
+          <tr><td>更新事務手数料<br><span class="tag ask">仲介会社に相談</span></td>
+            <td class="l"><div class="unit-input"><input type="number" id="fuAdmin" min="0" step="0.05" value="0.25"><span>か月＋税</span></div></td>
+            <td id="fuAdminA">—</td><td class="sub">管理会社が更新の手続きで受け取るお金。無い物件もあります。</td></tr>
+          <tr><td>保証会社の更新料<br><span class="tag must">必ずかかる</span></td>
+            <td class="l"><div class="unit-input"><input type="number" id="fuGuar" min="0" step="1000" value="10000"><span>円／年</span></div></td>
+            <td id="fuGuarA">—</td><td class="sub">保証会社を使う場合。1年ごとに1万円、または賃料等の10%程度が多い目安です。</td></tr>
+          <tr><td>火災保険の更新<br><span class="tag must">必ずかかる</span></td>
+            <td class="l small">初期費用と同じ額</td>
+            <td id="fuFireA">—</td><td class="sub">2年ごとが多い。切れたままにすると契約違反になることがあります。</td></tr>
+          <tr><td>短期解約違約金<br><span class="tag ask">仲介会社に相談</span></td>
+            <td class="l"><div class="unit-input"><input type="number" id="fuPenalty" min="0" step="0.5" value="1"><span>か月（賃料）</span></div></td>
+            <td id="fuPenaltyA">—</td><td class="sub">「1年未満で出ると賃料1か月分」などの約束。敷金・礼金なし物件やフリーレントの物件に多いので、有無と期間を必ず確認。</td></tr>
+          <tr><td>退去時の原状回復（元にもどす工事）<br><span class="tag ask">仲介会社に相談</span></td>
+            <td class="l small">—</td><td>使い方しだい</td>
+            <td class="sub">ふつうに暮らしてできた傷み・古くなった分は貸主の負担、借りた人の不注意でできた傷は借りた人の負担が原則です（国土交通省のガイドライン）。</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="figures" style="margin-top:14px">
+      <div class="figure"><div class="k">2年後の更新のときの目安</div><div class="v" id="fRenew">—</div><div class="s">更新料＋更新事務手数料＋火災保険</div></div>
+      <div class="figure"><div class="k">2年間の住まいのお金の目安</div><div class="v" id="f2y">—</div><div class="s" id="f2yS">初期費用＋家賃・管理費24か月分など</div></div>
+    </div>
+  </section>
+
+  <!-- 06 お客様向け -->
+  <section class="for-client">
+    <h2><span class="no">06</span>はじめて部屋を借りる方へ</h2>
+    <p>分からないことは、遠慮せず仲介会社（部屋を紹介してくれる不動産会社）に聞いてください。聞くこと自体で失礼になることはありません。次のことを聞いておくと安心です。</p>
+    <ul class="hint-list">
+      <li><strong>「初期費用の見積書をください」</strong><span class="say">項目ごとの金額が書かれた紙（またはデータ）をもらい、このページと見くらべます。</span></li>
+      <li><strong>「この中で、任意（自分で選べる）のものはどれですか」</strong><span class="say">消毒・害虫駆除・消火器・24時間サポートなどは任意のことが多いです。外せないと言われたら、理由を書面で確認します。</span></li>
+      <li><strong>「火災保険は自分で選んだものでもいいですか」</strong><span class="say">必要な補償（借家人賠償など）を満たせば、自分で選べることがあります。</span></li>
+      <li><strong>「保証会社は必須ですか。連帯保証人を立てた場合はどうなりますか」</strong></li>
+      <li><strong>「退去するときにかかるお金は、何がありますか」</strong><span class="say">クリーニング代・短期解約違約金・敷金の戻り方は、入居前に確かめておくと、あとでもめにくくなります。</span></li>
+    </ul>
+    <h3>相談で変わることがある項目</h3>
+    <ul class="hint-list">
+      <li>礼金：空室が長い部屋や、時期（夏・冬など引っ越しが少ない時期）によっては下げてもらえることがあります。</li>
+      <li>仲介手数料：借りる人の負担は、原則は賃料の0.5か月分＋消費税までです。1か月分＋消費税を求められたら、承諾するかどうかを自分で決めてよいお金です。</li>
+      <li>入居日：家賃が始まる日を数日ずらすだけで、最初に払う家賃が変わります。いまの住まいとの家賃の二重払いの期間も考えて決めます。</li>
+      <li>フリーレント：家賃が一定期間ただになる代わりに、早く出たときの違約金がつくことが多いので、両方を見てから決めます。</li>
+    </ul>
+    <p class="note">相談しても話が通じないときは、お住まいの地域の消費生活センター（消費者ホットライン188）や、都道府県の不動産の相談窓口に聞くことができます。</p>
+  </section>
+
+  <!-- 06 担当者向け -->
+  <section class="for-staff">
+    <h2><span class="no">06</span>担当者用チェックリスト</h2>
+    <div class="toolbar no-print"><button type="button" class="btn primary" onclick="window.print()">チェックリストを印刷</button><span class="small muted">印刷では上のメニューと切りかえボタンが消えます</span></div>
+    <div class="staff-box">
+      <div class="t">お客様に聞くこと</div>
+      <ul class="checklist">
+        <li><label class="check"><input type="checkbox"><span>入居したい日・いまの住まいを出る日<small>家賃の二重払いの期間、日割りの計算に使う</small></span></label></li>
+        <li><label class="check"><input type="checkbox"><span>初期費用と月々の予算の上限</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>連帯保証人を頼める人がいるか（続柄・収入の書類が出せるか）</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>勤務先・収入を示す書類、本人確認の書類（審査用）</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>ペット・楽器・同居する人の有無</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>車・バイク・自転車の台数（駐車場・駐輪場）</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>インターネットの必要性（物件の設備で足りるか）</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>外したいオプション（消毒・害虫駆除・消火器・24時間サポートなど）</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>火災保険を自分で選びたいか</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>引っ越しの手配、家具・家電・カーテン・照明の準備</span></label></li>
+      </ul>
+    </div>
+    <div class="staff-box">
+      <div class="t">重要事項説明・契約の前に、貸主・管理会社に確認すること</div>
+      <ul class="checklist">
+        <li><label class="check"><input type="checkbox"><span>初期費用の見積書（項目ごと、税こみ・税ぬきの別、だれに払うお金か）</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>付帯商品（消毒・害虫駆除・消火器・安心サポート）が任意か必須か<small>必須なら理由を確認し、お客様に書面で示す</small></span></label></li>
+        <li><label class="check"><input type="checkbox"><span>仲介手数料の額と、0.5か月分＋税を超える場合の借主の承諾<small>報酬告示：居住用は、依頼を受けるときに承諾を得た場合に限り、一方から1か月分＋税まで</small></span></label></li>
+        <li><label class="check"><input type="checkbox"><span>仲介会社が受け取る他の名目のお金（事務手数料など）が報酬の上限の内側か</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>家賃の発生日（契約開始日）、日割りの計算方法（実日数か30日か）、翌月分の扱い</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>保証会社の指定・プラン（初回・更新料）、連帯保証人の要否<small>個人の連帯保証人には極度額（保証の上限額）を契約書に書く必要がある（2020年4月からの民法）</small></span></label></li>
+        <li><label class="check"><input type="checkbox"><span>火災保険の指定の有無、必要な補償（借家人賠償・個人賠償の金額）、他社の保険でよいか</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>鍵交換の有無と費用の負担者</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>敷金の返し方、敷引き・償却（戻らない分）の有無と額</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>退去時クリーニング費・原状回復の特約（特別な約束）の内容<small>東京都の物件は、条例による説明書面で、原状回復・入居中の修繕の原則と特約の内容を説明する</small></span></label></li>
+        <li><label class="check"><input type="checkbox"><span>更新料・更新事務手数料・契約期間</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>短期解約違約金の有無・期間・額、フリーレントの条件</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>町内会費・自治会費の有無と集め方</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>ペット・楽器・駐車場・駐輪場の条件と追加費用</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>電気・ガス（都市ガスかプロパンか）・水道の手続き先、インターネット設備</span></label></li>
+        <li><label class="check"><input type="checkbox"><span>入居時の部屋の状態の確認（写真・物件状況確認書）</span></label></li>
+      </ul>
+    </div>
+    <p class="note caution">特約は何でも有効になるわけではありません。通常の原状回復を超える負担を借主に課す特約は、①必要性と合理的な理由があり暴利的でない、②借主がその負担を分かっている、③借主が負担する意思を示している、の3つがそろわないと無効とされることがあります（国土交通省・東京都のガイドライン）。消費者の利益を一方的に害する条項や、平均的な損害を超える違約金は、消費者契約法で無効になることがあります。個別の判断は弁護士などの専門家に確認してください。</p>
+  </section>
+
+  <div class="disclaimer">
+    <p><strong>この計算は目安です。</strong>初期費用の項目と金額は、物件・地域・貸主・管理会社・仲介会社によって大きく変わります。契約の前に、必ず仲介会社から「初期費用の見積書」をもらい、重要事項説明書・契約書の内容と照らして確かめてください。法律の当てはめや特約が有効かどうかの最終的な判断は、弁護士・宅地建物取引士などの専門家や、消費生活センターに相談してください。円未満は切り捨てて計算しています。</p>
+    <p>金額の目安（保証料・火災保険・オプション類・引っ越し代など）は、公開資料や一般的な例をもとにした「一般的な目安」で、公的な決まりではありません。</p>
+    <p>出典（2026年10月21日に確認）</p>
+    <ul>
+      <li>国土交通省「宅地建物取引業者が宅地又は建物の売買等に関して受けることができる報酬の額」（昭和45年建設省告示第1552号、令和6年7月1日改正施行）と改正の説明資料 <a href="https://www.mlit.go.jp/tochi_fudousan_kensetsugyo/const/content/001749923.pdf" target="_blank" rel="noopener">mlit.go.jp</a></li>
+      <li>国税庁 タックスアンサー No.7107「駐車場を借りたときの契約書」（建物・施設の賃貸借契約書は印紙税の課税対象外） <a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/inshi/7107.htm" target="_blank" rel="noopener">nta.go.jp</a></li>
+      <li>東京都「賃貸住宅トラブル防止ガイドライン」第4版（令和4年12月） <a href="https://www.juutakuseisaku.metro.tokyo.lg.jp/documents/d/juutakuseisaku/310-6-jyuutaku" target="_blank" rel="noopener">juutakuseisaku.metro.tokyo.lg.jp</a></li>
+      <li>国土交通省「原状回復をめぐるトラブルとガイドライン（再改訂版）」平成23年8月 <a href="https://www.mlit.go.jp/jutakukentiku/house/jutakukentiku_house_tk3_000020.html" target="_blank" rel="noopener">mlit.go.jp</a></li>
+      <li>家賃債務保証の保証料の幅（初回は賃料等の30〜100%程度、更新は10%か1万円程度）：島田市「家賃債務保証制度の概要」 <a href="https://www.city.shimada.shizuoka.jp/fs/4/0/2/5/9/7/_/seidogaiyou.pdf" target="_blank" rel="noopener">city.shimada.shizuoka.jp</a></li>
+      <li>消費者契約法（第9条・第10条）、民法（第465条の2 個人根保証の極度額） <a href="https://laws.e-gov.go.jp/" target="_blank" rel="noopener">e-Gov法令検索</a></li>
+      <li>更新料の約束の有効性（最高裁 平成23年7月15日判決）：全日本不動産協会の解説 <a href="https://www.zennichi.or.jp/law_faq/%E6%9B%B4%E6%96%B0%E6%96%99%E3%81%AB%E9%96%A2%E3%81%99%E3%82%8B%E6%9C%80%E9%AB%98%E8%A3%81%E5%88%A4%E6%B1%BA/" target="_blank" rel="noopener">zennichi.or.jp</a>／自治会の加入・退会（最高裁 平成17年4月26日判決）：佐倉市の手引き <a href="https://www.city.sakura.lg.jp/material/files/group/16/tebiki_mondai_2022.pdf" target="_blank" rel="noopener">city.sakura.lg.jp</a></li>
+    </ul>
+  </div>
+</main>
+
+<script src="../共通/common.js"></script>
+<script>
+// CALC-START ここから下は計算だけ（画面に触らない。node でテストする）
+var CHINTAI = (function () {
+  "use strict";
+  var TAX = 1.1;
+  function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); } // m は 1〜12
+  function floorYen(x) { return Math.floor(x + 1e-6); }
+
+  // 最初に払う家賃・管理費（日割り＋翌月分）とフリーレントの差し引き
+  // o = {rent, fee, y, m, d, div:"actual"|"30", nextMonth:true/false, freeMonths}
+  function frontRent(o) {
+    var dim = daysInMonth(o.y, o.m);
+    var r = { dim: dim, days: 0, full: false, rentPart: 0, feePart: 0, nextRent: 0, nextFee: 0, free: 0 };
+    if (o.d === 1) {
+      r.full = true; r.days = dim; r.rentPart = o.rent; r.feePart = o.fee;
+    } else {
+      var days = dim - o.d + 1;
+      var div = o.div === "30" ? 30 : dim;
+      r.days = days;
+      r.rentPart = floorYen(o.rent * days / div);
+      r.feePart = floorYen(o.fee * days / div);
+      if (o.nextMonth) { r.nextRent = o.rent; r.nextFee = o.fee; }
+    }
+    var rentTotal = r.rentPart + r.nextRent;
+    r.free = Math.min(rentTotal, floorYen(Math.max(0, o.freeMonths || 0) * o.rent));
+    return r;
+  }
+
+  // 1つの項目の金額。it = {unit:"m"|"y", m, y, base:"rent"|"rentfee", tax}
+  function itemAmount(it, ctx) {
+    if (it.unit === "y") return Math.max(0, Math.round(Number(it.y) || 0));
+    var base = it.base === "rentfee" ? ctx.rent + ctx.fee : ctx.rent;
+    var a = (Number(it.m) || 0) * base;
+    if (it.tax) a = a * TAX;
+    return Math.max(0, floorYen(a));
+  }
+
+  // 仲介手数料（税こみ）の上限チェック。居住用・借主側
+  function brokerCheck(amount, rent) {
+    var limit = floorYen(rent * TAX), half = floorYen(rent * 0.5 * TAX);
+    if (amount > limit) return "over";
+    if (amount > half) return "consent";
+    return "ok";
+  }
+
+  // 合計。rows = [{amount, on, tag, refund, fixed}]（fixed は日割り家賃など外せない行）
+  function totals(rows) {
+    var t = { now: 0, max: 0, noOpt: 0, refund: 0 };
+    rows.forEach(function (r) {
+      var a = r.amount || 0;
+      t.max += a;
+      if (r.fixed || r.on) {
+        t.now += a;
+        if (r.tag !== "opt" || r.fixed) t.noOpt += a;
+        if (r.refund) t.refund += a;
+      }
+    });
+    return t;
+  }
+
+  function months(total, monthly) { return monthly > 0 ? total / monthly : 0; }
+
+  // 2年間の住まいのお金の目安
+  // 初期費用のうち家賃・管理費以外 ＋ (賃料＋管理費)×24 − フリーレント ＋ 保証会社の更新料（1回）
+  function twoYears(o) {
+    var nonRent = o.initialTotal - o.frontRentFee + o.free; // free は初期費用から引かれているので戻す
+    return nonRent + (o.rent + o.fee) * 24 - o.free + (o.guarRenew || 0);
+  }
+
+  return { TAX: TAX, daysInMonth: daysInMonth, frontRent: frontRent, itemAmount: itemAmount,
+    brokerCheck: brokerCheck, totals: totals, months: months, twoYears: twoYears, floorYen: floorYen };
+})();
+if (typeof module !== "undefined") module.exports = CHINTAI;
+// CALC-END
+</script>
+<script>
+(function () {
+  "use strict";
+  if (typeof document === "undefined") return;
+  var $ = function (id) { return document.getElementById(id); };
+  var yen = function (n) { return Math.round(n).toLocaleString("ja-JP") + "円"; };
+  var man = function (n) { return (n / 10000).toLocaleString("ja-JP", { maximumFractionDigits: 1, minimumFractionDigits: 1 }); };
+  var TAGS = { must: "必ずかかる", opt: "外せることがある", ask: "仲介会社に相談", info: "原則かからない", ref: "戻るお金", note: "参考" };
+
+  // 間取りで変わる、はじめの金額の目安
+  var CLEAN = { "1R": 33000, "1K": 33000, "1DK": 44000, "1LDK": 44000, "2DK": 55000, "2LDK": 60500, "3LDK": 71500, "4LDK": 82500 };
+  var MOVE = { "1R": 60000, "1K": 60000, "1DK": 80000, "1LDK": 100000, "2DK": 120000, "2LDK": 150000, "3LDK": 180000, "4LDK": 220000 };
+
+  // 項目の一覧（全部入り＝はじめの状態）
+  // g: どのまとまりか / tag: 目印 / unit: m=賃料の◯か月, y=円 / base: rent=賃料, rentfee=賃料＋管理費 / tax: 消費税を足す
+  var GROUPS = [
+    ["base", "物件で決まるお金（敷金・礼金・家賃）"],
+    ["broker", "仲介会社に払うお金"],
+    ["guard", "保証と保険"],
+    ["option", "入居のときのオプション（付帯サービス）"],
+    ["cond", "条件によってかかるお金（ペット・車・ネットなど）"],
+    ["misc", "書類・その他"],
+    ["move", "引っ越しと暮らしの準備（参考・初期費用とは別枠）"]
+  ];
+  var ITEMS = [
+    { id: "shikikin", g: "base", name: "敷金（保証金）", tag: "ask", refund: true, unit: "m", m: 1, y: 0, base: "rent",
+      why: "家賃の払い忘れや、借りた人の責任で直す部分の費用にあてるため貸主に預けるお金で、残りは退去時に戻ります。物件の条件で決まりますが、相談で減ることもあります。「敷引き・償却（戻らない分）」の約束があるときは、その額を確認してください。" },
+    { id: "reikin", g: "base", name: "礼金", tag: "ask", unit: "m", m: 1, y: 0, base: "rent",
+      why: "貸主へのお礼として払うお金で、戻りません。物件の条件ですが、空室が長い部屋などでは下げてもらえることがあります。" },
+    { id: "hiwari", g: "base", name: "日割り家賃（入居する月の分）", tag: "must", auto: true,
+      why: "入居する月の家賃を、住む日数の分だけ払います。月の日数で割るか30日で割るかは会社でちがいます。" },
+    { id: "zenyachin", g: "base", name: "翌月分の家賃（前家賃）", tag: "must", auto: true,
+      why: "家賃は前払いが一般的なので、翌月分も契約のときに払うことが多いです（上の条件で切りかえられます）。" },
+    { id: "kanrihi", g: "base", name: "管理費・共益費（日割り＋翌月分）", tag: "must", auto: true,
+      why: "共用部分の電気やそうじなどの費用です。家賃と同じように前払いします。" },
+    { id: "chukai", g: "broker", name: "仲介手数料", tag: "ask", unit: "m", m: 1, y: 0, base: "rent", tax: true, broker: true,
+      why: "部屋を紹介した不動産会社への手数料です（か月で入れると消費税10%を足します）。法律の上限は、貸主と借主の合計で賃料1か月分＋消費税。住まいの場合、借りる人から受け取れるのは原則0.5か月分＋消費税までで、依頼のときに借りる人が承諾していれば1か月分＋消費税まで受け取れます。" },
+    { id: "jimu", g: "broker", name: "事務手数料・書類作成費", tag: "ask", unit: "y", m: 0.1, y: 11000, base: "rent",
+      why: "仲介会社がなかだちに関して受け取るお金は、名前が何であっても仲介手数料の上限の内側でなければならない決まりです（頼んで出してもらった特別な広告の費用などは別）。だれに払う、何のお金かを確認してください。" },
+    { id: "hoshou", g: "guard", name: "保証会社の初回保証料", tag: "ask", unit: "m", m: 1, y: 0, base: "rentfee",
+      why: "家賃を払えなくなったときに立て替える会社への料金で、賃料＋管理費の30〜100%程度が多い目安です（1か月＝100%）。加入が条件の物件が多い一方、連帯保証人を立てれば不要・安いプランを選べる物件もあります。" },
+    { id: "kasai", g: "guard", name: "火災保険（借家人賠償つき・2年）", tag: "must", unit: "y", m: 0.25, y: 20000, base: "rent",
+      why: "火事や水もれで部屋や下の階に損害を出したときの備えで、加入が契約の条件になっていることがほとんどです。必要な補償を満たせば、自分で選んだ保険でよいこともあります。" },
+    { id: "kagi", g: "guard", name: "鍵交換", tag: "ask", unit: "y", m: 0.25, y: 22000, base: "rent",
+      why: "前に住んでいた人の鍵を使えなくするための交換です。国や東京都のガイドラインでは貸主の負担が妥当とされていますが、契約の特約で借主の負担になっていることが多いです。防犯のため、交換そのものはしてもらうのがおすすめです。" },
+    { id: "shodoku", g: "option", name: "室内消毒・消臭・抗菌", tag: "opt", unit: "y", m: 0.25, y: 22000, base: "rent",
+      why: "入居前に薬剤をまくサービスで、任意のことが多く、契約前なら断れる場合があります。「外せない」と言われたら、理由と金額を書面で確認してください。" },
+    { id: "gaichu", g: "option", name: "害虫駆除（くん煙など）", tag: "opt", unit: "y", m: 0.2, y: 16500, base: "rent",
+      why: "任意のことが多いサービスです。市販のくん煙剤を自分で使えば安くすむこともあります。" },
+    { id: "shokaki", g: "option", name: "消火器（消火剤）の購入", tag: "opt", unit: "y", m: 0.2, y: 16500, base: "rent",
+      why: "部屋に置く消火具の購入です。契約の条件でなければ任意のことが多いです。建物に必要な消火設備は、ふつう貸主・管理会社の側で用意します。" },
+    { id: "support", g: "option", name: "24時間サポート（安心サポート・2年）", tag: "opt", unit: "y", m: 0.2, y: 16500, base: "rent",
+      why: "鍵をなくした・水が出ないなどのときの電話窓口です。任意のことが多いですが、加入が条件の物件もあります。火災保険やカードについているサービスと重なっていないか確認してください。" },
+    { id: "pet", g: "cond", name: "ペットの追加敷金", tag: "opt", refund: true, unit: "m", m: 1, y: 0, base: "rent",
+      why: "ペットを飼う場合だけかかります。追加の敷金は、退去時に戻らない（償却）約束のこともあるので確認してください。" },
+    { id: "parking", g: "cond", name: "駐車場（初月分・保証金・手数料）", tag: "opt", unit: "y", m: 0.4, y: 30000, base: "rent",
+      why: "車を置く場合だけ。初月分・保証金・契約手数料などで、駐車場の月額の2〜3か月分前後が目安です。" },
+    { id: "bike", g: "cond", name: "駐輪場・バイク置き場", tag: "opt", unit: "y", m: 0.05, y: 3000, base: "rent",
+      why: "自転車・バイクを置く場合だけ。無料の物件もあります。" },
+    { id: "net", g: "cond", name: "インターネットの初期費用", tag: "opt", unit: "y", m: 0.3, y: 22000, base: "rent",
+      why: "工事費・事務手数料など。インターネット無料の物件や、回線会社の割引で0円になることもあります。" },
+    { id: "chonaikai", g: "cond", name: "町内会費・自治会費（1年分の例）", tag: "ask", unit: "y", m: 0.05, y: 3600, base: "rent",
+      why: "地域の町内会に払う会費です。町内会への加入は本来は任意ですが、管理費といっしょに集めている物件もあるので、有無と払い方を確認してください。" },
+    { id: "cleaning", g: "misc", name: "退去時クリーニング費の前払い", tag: "ask", unit: "y", m: 0.4, y: 33000, base: "rent", byLayout: CLEAN,
+      why: "退去時の部屋のそうじ代を、契約のときに先に払う約束の物件があります。払う時期（入居時か退去時か）と額、退去時にまた請求されないかを確認してください。" },
+    { id: "shorui", g: "misc", name: "書類代（住民票・印鑑証明・収入の証明など）", tag: "must", unit: "y", m: 0.02, y: 1500, base: "rent",
+      why: "審査や契約のために役所などで取る書類です。1通300円前後が多く、市区町村でちがいます。" },
+    { id: "inshi", g: "misc", name: "印紙代（収入印紙）", tag: "info", unit: "y", m: 0, y: 0, base: "rent",
+      why: "建物の賃貸借契約書は、印紙税がかからない文書です（国税庁）。駐車場も「区画を借りる」契約ならかかりません。印紙代を求められたら、何の書類か確認してください。" },
+    { id: "hikkoshi", g: "move", name: "引っ越し代", tag: "note", sep: true, unit: "y", m: 1, y: 60000, base: "rent", byLayout: MOVE,
+      why: "荷物の量・距離・時期（3〜4月は高い）で大きく変わります。何社か見積もりをとると安心です。" },
+    { id: "kagu", g: "move", name: "家具・家電", tag: "note", sep: true, unit: "y", m: 2, y: 200000, base: "rent",
+      why: "そろえる量しだいです。いま使っている物を持っていけば0円にできます。" },
+    { id: "curtain", g: "move", name: "カーテン・照明", tag: "note", sep: true, unit: "y", m: 0.4, y: 30000, base: "rent",
+      why: "照明やカーテンが付いていない部屋が多いです。窓の大きさを測ってから買うとむだがありません。" },
+    { id: "kaisen", g: "move", name: "電気・ガス・水道の使い始め", tag: "note", sep: true, unit: "y", m: 0, y: 0, base: "rent",
+      why: "手続きの料金はふつうかかりません。ガスは使い始めに立ち会いが必要です。プロパンガスでは保証金を求められることがあります。" }
+  ];
+
+  // 「よくある組み合わせ」：書いていない項目は全部入りのまま
+  var PRESETS = {
+    max: {},
+    normal: { reikin: { m: 1 }, chukai: { m: 1 }, hoshou: { m: 0.5 }, shodoku: { on: false }, gaichu: { on: false }, shokaki: { on: false },
+      support: { on: false }, jimu: { on: false }, pet: { on: false }, parking: { on: false }, bike: { on: false }, net: { on: false } },
+    zero: { shikikin: { m: 0 }, reikin: { m: 0 }, chukai: { m: 1 }, hoshou: { m: 1 }, gaichu: { on: false }, shokaki: { on: false },
+      jimu: { on: false }, pet: { on: false }, parking: { on: false }, bike: { on: false }, net: { on: false } },
+    low: { reikin: { m: 0 }, chukai: { m: 0.5 }, hoshou: { m: 0.5 }, shodoku: { on: false }, gaichu: { on: false }, shokaki: { on: false },
+      support: { on: false }, jimu: { on: false }, pet: { on: false }, parking: { on: false }, bike: { on: false }, net: { on: false },
+      kagu: { on: false }, curtain: { on: false } }
+  };
+
+  var state = {};
+  function resetState(presetName) {
+    var p = PRESETS[presetName] || {};
+    var layout = $("layout").value;
+    ITEMS.forEach(function (it) {
+      var s = { on: true, unit: it.unit, m: it.m, y: it.byLayout ? it.byLayout[layout] : it.y, edited: false };
+      var o = p[it.id];
+      if (o) { if (o.on === false) s.on = false; if (o.m != null) { s.m = o.m; s.unit = "m"; } }
+      state[it.id] = s;
+    });
+  }
+
+  function ctx() {
+    return { rent: Math.max(0, Number($("rent").value) || 0), fee: Math.max(0, Number($("fee").value) || 0) };
+  }
+
+  function tagHtml(it) {
+    var h = '<span class="tag ' + (it.tag === "note" ? "info" : it.tag) + '">' + TAGS[it.tag] + "</span>";
+    if (it.refund) h += ' <span class="tag info">' + TAGS.ref + "</span>";
+    return h;
+  }
+
+  // 項目の行を作る（1回だけ）
+  function build() {
+    var box = $("items"), html = "";
+    GROUPS.forEach(function (g) {
+      html += '<div class="grp">' + g[1] + "</div>";
+      ITEMS.filter(function (it) { return it.g === g[0]; }).forEach(function (it) {
+        html += '<div class="item' + (it.auto ? " auto" : "") + '" data-id="' + it.id + '">';
+        html += '<div class="nm">' + it.name + '<span class="tags">' + tagHtml(it) + "</span></div>";
+        if (it.auto) {
+          html += '<div class="ctl" data-k="calc">—</div>';
+        } else if (it.id === "inshi") {
+          html += '<div class="ctl"><span class="u">原則 0円</span></div>';
+        } else {
+          html += '<div class="ctl"><input type="number" data-k="val" min="0" aria-label="' + it.name + 'の金額"><span class="u" data-k="u"></span>' +
+            '<div class="seg" role="group" aria-label="単位"><button type="button" data-u="m">か月</button><button type="button" data-u="y">円</button></div></div>';
+        }
+        html += '<div class="amt" data-k="amt">—</div>';
+        html += it.auto ? '<button type="button" class="onoff" disabled aria-label="' + it.name + 'は外せません">必須</button>'
+          : '<button type="button" class="onoff" data-k="on" aria-pressed="true" aria-label="' + it.name + 'を合計に入れる">ON</button>';
+        html += '<p class="why">' + it.why + "</p>";
+        html += '<div class="warn" data-k="warn"></div>';
+        html += "</div>";
+      });
+    });
+    box.innerHTML = html;
+
+    box.addEventListener("change", onItemEvent);
+    box.addEventListener("input", onItemEvent);
+    box.addEventListener("click", function (e) {
+      var ob = e.target.closest("button.onoff[data-k=on]");
+      if (ob) {
+        var oid = ob.closest(".item").getAttribute("data-id");
+        state[oid].on = !state[oid].on;
+        clearPreset(); update(); return;
+      }
+      var b = e.target.closest("button[data-u]");
+      if (!b) return;
+      var row = b.closest(".item"), id = row.getAttribute("data-id"), s = state[id], it = byId(id);
+      var u = b.getAttribute("data-u");
+      if (u === s.unit) return;
+      var c = ctx(), amount = CHINTAI.itemAmount({ unit: s.unit, m: s.m, y: s.y, base: it.base, tax: it.tax }, c);
+      var base = it.base === "rentfee" ? c.rent + c.fee : c.rent;
+      if (u === "y") { s.y = amount; } else { s.m = base > 0 ? Math.round(amount / (base * (it.tax ? CHINTAI.TAX : 1)) * 100) / 100 : 0; }
+      s.unit = u; s.edited = true;
+      clearPreset();
+      syncRow(row, it, true);
+      update();
+    });
+  }
+  function byId(id) { for (var i = 0; i < ITEMS.length; i++) if (ITEMS[i].id === id) return ITEMS[i]; return null; }
+
+  function onItemEvent(e) {
+    var row = e.target.closest(".item");
+    if (!row) return;
+    var id = row.getAttribute("data-id"), s = state[id], k = e.target.getAttribute("data-k");
+    if (k === "val") {
+      var v = Math.max(0, Number(e.target.value) || 0);
+      if (s.unit === "m") s.m = v; else s.y = v;
+      s.edited = true;
+    } else return;
+    clearPreset();
+    update();
+  }
+
+  function clearPreset() { document.querySelectorAll("#presetSeg button").forEach(function (b) { b.classList.remove("on"); }); }
+
+  // 行の入力欄を state に合わせる（入力中の欄は上書きしない）
+  function syncRow(row, it, force) {
+    var s = state[it.id];
+    var ob = row.querySelector('button[data-k="on"]');
+    if (ob) { ob.setAttribute("aria-pressed", s.on ? "true" : "false"); ob.textContent = s.on ? "ON" : "OFF"; }
+    row.classList.toggle("off", !it.auto && !s.on);
+    var inp = row.querySelector('input[data-k="val"]');
+    if (inp) {
+      if (force || document.activeElement !== inp) inp.value = s.unit === "m" ? s.m : s.y;
+      inp.step = s.unit === "m" ? "0.05" : "500";
+      row.querySelector('[data-k="u"]').textContent = s.unit === "m" ? (it.base === "rentfee" ? "か月（賃料＋管理費）" : "か月") + (it.tax ? "＋税" : "") : "円";
+      row.querySelectorAll("button[data-u]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-u") === s.unit); });
+    }
+  }
+
+  function readDate() {
+    var v = $("movein").value, p = v ? v.split("-").map(Number) : null;
+    if (!p || p.length !== 3 || !p[0]) { var t = new Date(); return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() }; }
+    return { y: p[0], m: p[1], d: p[2] };
+  }
+
+  var lastRows = [];
+  function update() {
+    var c = ctx(), dt = readDate();
+    var div = $("divSeg").querySelector("button.on").getAttribute("data-v");
+    var fr = CHINTAI.frontRent({ rent: c.rent, fee: c.fee, y: dt.y, m: dt.m, d: dt.d, div: div, nextMonth: $("nextMonth").checked,
+      freeMonths: Math.max(0, Number($("free").value) || 0) });
+
+    var rows = [], amounts = {};
+    ITEMS.forEach(function (it) {
+      var s = state[it.id], a, basis;
+      if (it.id === "hiwari") {
+        a = fr.full ? 0 : fr.rentPart;
+        basis = fr.full ? "1日入居のため日割りなし" : yen(c.rent) + "×" + fr.days + "日÷" + (div === "30" ? 30 : fr.dim) + "日";
+      } else if (it.id === "zenyachin") {
+        a = fr.full ? fr.rentPart : fr.nextRent;
+        basis = fr.full ? "入居する月の1か月分" : (fr.nextRent ? "翌月の1か月分" : "翌月分は月々の支払いで払う");
+      } else if (it.id === "kanrihi") {
+        a = fr.feePart + fr.nextFee;
+        basis = fr.full ? "入居する月の1か月分" : yen(c.fee) + "×" + fr.days + "日÷" + (div === "30" ? 30 : fr.dim) + "日" + (fr.nextFee ? "＋翌月分" : "");
+      } else {
+        a = it.id === "inshi" ? 0 : CHINTAI.itemAmount({ unit: s.unit, m: s.m, y: s.y, base: it.base, tax: it.tax }, c);
+        basis = it.id === "inshi" ? "建物の賃貸借契約書は非課税" : s.unit === "m" ?
+          (it.base === "rentfee" ? "（賃料＋管理費）" : "賃料") + "×" + s.m + "か月" + (it.tax ? "×1.1（消費税）" : "") : "入力した金額";
+      }
+      amounts[it.id] = a;
+      rows.push({ it: it, amount: a, on: it.auto ? true : s.on, fixed: !!it.auto, tag: it.tag, refund: !!it.refund, basis: basis, sep: !!it.sep });
+    });
+
+    var initRows = rows.filter(function (r) { return !r.sep; }), moveRows = rows.filter(function (r) { return r.sep; });
+    var freeRow = { amount: -fr.free, on: true, fixed: true, tag: "must" };
+    var t = CHINTAI.totals(initRows.concat(fr.free ? [freeRow] : []));
+    var mt = CHINTAI.totals(moveRows);
+    var monthly = c.rent + c.fee;
+    lastRows = rows;
+
+    // 行ごとの表示
+    document.querySelectorAll("#items .item").forEach(function (row) {
+      var id = row.getAttribute("data-id"), it = byId(id), a = amounts[id];
+      syncRow(row, it, false);
+      if (it.auto) row.querySelector('[data-k="calc"]').textContent = rows.filter(function (r) { return r.it.id === id; })[0].basis;
+      var sub = "";
+      if (!it.auto && it.id !== "inshi" && state[id].unit === "y" && c.rent > 0) sub = "賃料の" + (a / c.rent).toFixed(2) + "か月";
+      if (!it.auto && it.id !== "inshi" && state[id].unit === "m") sub = it.tax ? "税こみ" : "";
+      row.querySelector('[data-k="amt"]').innerHTML = yen(a) + (sub ? "<small>" + sub + "</small>" : "");
+      var w = "";
+      if (it.broker && state[id].on && c.rent > 0) {
+        var chk = CHINTAI.brokerCheck(a, c.rent);
+        if (chk === "over") w = '<p class="note alert">上限（賃料1か月分＋消費税＝' + yen(CHINTAI.floorYen(c.rent * CHINTAI.TAX)) + '）を超えています。宅建業法の告示で、仲介会社はこれを超えて受け取れません。金額を確認してください。</p>';
+        else if (chk === "consent") w = '<p class="note caution">賃料0.5か月分＋消費税（' + yen(CHINTAI.floorYen(c.rent * 0.5 * CHINTAI.TAX)) + '）を超えています。この額を借りる人が払うのは、依頼のときに借りる人が承諾した場合に限られます。承諾するかどうかは自分で決めてかまいません。</p>';
+      }
+      if (id === "shikikin" && state[id].on && (state[id].unit === "m" ? state[id].m === 0 : state[id].y === 0))
+        w = '<p class="note caution">敷金なしでも、退去時の修理代（借りた人の責任の分）やクリーニング代は別に払います。退去のときのお金を用意しておいてください。</p>';
+      if (id === "hoshou" && state[id].on && state[id].unit === "m" && (state[id].m > 1.0 || (state[id].m > 0 && state[id].m < 0.3)))
+        w = '<p class="note">一般的な目安（賃料＋管理費の30〜100%）の外の値です。保証会社のプランを確認してください。</p>';
+      row.querySelector('[data-k="warn"]').innerHTML = w;
+    });
+
+    // 数字
+    var mo = function (x) { return "月々の家賃（管理費こみ）の" + CHINTAI.months(x, monthly).toFixed(1) + "か月分"; };
+    $("fNow").innerHTML = man(t.now) + "<small>万円</small>"; $("fNowS").textContent = yen(t.now) + "・" + mo(t.now);
+    $("fMax").innerHTML = man(t.max) + "<small>万円</small>"; $("fMaxS").textContent = yen(t.max) + "・" + mo(t.max);
+    $("fMin").innerHTML = man(t.noOpt) + "<small>万円</small>"; $("fMinS").textContent = yen(t.noOpt) + "・" + mo(t.noOpt);
+    $("fRef").innerHTML = man(t.refund) + "<small>万円</small>";
+    $("moveTotal").textContent = "引っ越し・家具などの参考の別枠（いま選んでいる分）：" + yen(mt.now) + "。初期費用とあわせると " + yen(t.now + mt.now) + " です。";
+    $("barNow").textContent = yen(t.now);
+    $("barCount").textContent = "（選択中 " + initRows.filter(function (r) { return r.on && !r.fixed; }).length + " 項目＋家賃分）"; $("barMax").textContent = yen(t.max); $("barMin").textContent = yen(t.noOpt);
+
+    // 入居日の説明
+    var dn = "";
+    if (fr.full) dn = dt.m + "月1日入居：日割りはなく、入居する月の1か月分を最初に払います。";
+    else {
+      dn = dt.m + "月" + dt.d + "日入居：日割りは" + fr.days + "日分（" + dt.m + "月は" + fr.dim + "日まで）" + ($("nextMonth").checked ? "、翌月分もあわせて払います。" : "。");
+      if (fr.days <= 10 && $("nextMonth").checked) dn += "月末近くの入居なので、最初に約" + (1 + fr.days / fr.dim).toFixed(1) + "か月分の家賃を払うことになります。";
+    }
+    if (fr.free) dn += " フリーレントで " + yen(fr.free) + " を差し引いています。早く出たときの違約金の約束がないか確認してください。";
+    $("dateNote").textContent = dn;
+
+    $("condSum").textContent = "条件：賃料 " + yen(c.rent) + "／管理費 " + yen(c.fee) + "／入居 " + dt.y + "年" + dt.m + "月" + dt.d + "日／" +
+      $("layout").options[$("layout").selectedIndex].text + "・" + FUDOSAN.area(Number($("m2").value) || NaN, 2);
+
+    // 単価
+    var m2 = Number($("m2").value) || 0;
+    if (m2 > 0 && c.rent > 0) {
+      var per = c.rent / m2, perAll = monthly / m2;
+      $("unitprice").textContent = "広さ " + FUDOSAN.area(m2, 2) + "。賃料の単価は " + Math.round(per).toLocaleString("ja-JP") + "円/㎡（" +
+        Math.round(per * FUDOSAN.TSUBO).toLocaleString("ja-JP") + "円/坪）、管理費こみで " + Math.round(perAll).toLocaleString("ja-JP") + "円/㎡（" +
+        Math.round(perAll * FUDOSAN.TSUBO).toLocaleString("ja-JP") + "円/坪）。近くの似た部屋とくらべる目安になります。";
+    } else $("unitprice").textContent = "広さと賃料を入れると、1㎡・1坪あたりの賃料が出ます。";
+
+    // 内わけの表
+    var tb = "";
+    initRows.forEach(function (r) {
+      if (!r.on) return;
+      tb += "<tr><td>" + r.it.name + '</td><td class="l">' + tagHtml(r.it) + '</td><td class="sub">' + r.basis + "</td><td>" + yen(r.amount) + "</td></tr>";
+    });
+    if (fr.free) tb += '<tr><td>フリーレント（差し引き）</td><td class="l"><span class="tag ask">仲介会社に相談</span></td><td class="sub">賃料×' + $("free").value + 'か月（最初に払う家賃まで）</td><td class="minus">−' + yen(fr.free) + "</td></tr>";
+    tb += '<tr class="total"><td>初期費用の合計（いまの選択）</td><td></td><td class="sub">' + mo(t.now) + "</td><td>" + yen(t.now) + "</td></tr>";
+    var mv = moveRows.filter(function (r) { return r.on; });
+    if (mv.length) {
+      mv.forEach(function (r, i) {
+        tb += "<tr" + (i === 0 ? ' class="sep"' : "") + "><td>" + r.it.name + '</td><td class="l"><span class="tag info">参考</span></td><td class="sub">別枠</td><td>' + yen(r.amount) + "</td></tr>";
+      });
+      tb += '<tr class="total"><td>引っ越しまで含めた合計</td><td></td><td></td><td>' + yen(t.now + mt.now) + "</td></tr>";
+    }
+    $("breakdown").innerHTML = tb;
+
+    // 将来のお金
+    var renew = CHINTAI.floorYen(c.rent * (Number($("fuRenew").value) || 0));
+    var adm = CHINTAI.floorYen(c.rent * (Number($("fuAdmin").value) || 0) * CHINTAI.TAX);
+    var guar = Math.round(Number($("fuGuar").value) || 0);
+    var fire = state.kasai.on ? amounts.kasai : 0;
+    var pen = CHINTAI.floorYen(c.rent * (Number($("fuPenalty").value) || 0));
+    $("fuRenewA").textContent = yen(renew); $("fuAdminA").textContent = yen(adm);
+    $("fuGuarA").textContent = state.hoshou.on ? yen(guar) + "／年" : "保証会社なし";
+    $("fuFireA").textContent = yen(fire); $("fuPenaltyA").textContent = yen(pen);
+    $("fRenew").innerHTML = man(renew + adm + fire) + "<small>万円</small>";
+    var frontRentFee = amounts.hiwari + amounts.zenyachin + amounts.kanrihi;
+    var two = CHINTAI.twoYears({ initialTotal: t.now, frontRentFee: frontRentFee, free: fr.free, rent: c.rent, fee: c.fee, guarRenew: state.hoshou.on ? guar : 0 });
+    $("f2y").innerHTML = man(two) + "<small>万円</small>";
+    $("f2yS").textContent = "初期費用（家賃分をのぞく）＋家賃・管理費24か月分" + (fr.free ? "−フリーレント" : "") + (state.hoshou.on ? "＋保証会社の更新料1回" : "") + "。引っ越し代・光熱費・更新料はふくみません。1か月あたり約" + man(two / 24) + "万円。";
+  }
+
+  // ---- はじめの準備 ----
+  function init() {
+    // 入居日のはじめの値：来月15日（月の途中の入居の例）
+    var t = new Date(), y = t.getFullYear(), m = t.getMonth() + 2;
+    if (m > 12) { m = 1; y++; }
+    $("movein").value = y + "-" + String(m).padStart(2, "0") + "-15";
+
+    resetState("max");
+    build();
+    ITEMS.forEach(function (it) { var row = document.querySelector('.item[data-id="' + it.id + '"]'); syncRow(row, it, true); });
+
+    ["rent", "fee", "movein", "free", "nextMonth", "fuRenew", "fuAdmin", "fuGuar", "fuPenalty"].forEach(function (id) {
+      $(id).addEventListener("input", update); $(id).addEventListener("change", update);
+    });
+    $("layout").addEventListener("change", function () {
+      var l = $("layout").value;
+      ITEMS.forEach(function (it) {
+        if (it.byLayout && !state[it.id].edited) { state[it.id].y = it.byLayout[l]; state[it.id].unit = "y";
+          syncRow(document.querySelector('.item[data-id="' + it.id + '"]'), it, true); }
+      });
+      update();
+    });
+    // ㎡ と 坪
+    $("m2").addEventListener("input", function () { var v = Number($("m2").value); $("tsubo").value = v > 0 ? (FUDOSAN.m2ToTsubo(v)).toFixed(2) : ""; update(); });
+    $("tsubo").addEventListener("input", function () { var v = Number($("tsubo").value); $("m2").value = v > 0 ? (FUDOSAN.tsuboToM2(v)).toFixed(2) : ""; update(); });
+
+    $("divSeg").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      $("divSeg").querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      update();
+    });
+    $("presetSeg").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      $("presetSeg").querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      resetState(b.getAttribute("data-p"));
+      ITEMS.forEach(function (it) { syncRow(document.querySelector('.item[data-id="' + it.id + '"]'), it, true); });
+      update();
+    });
+    $("allOn").addEventListener("click", function () {
+      ITEMS.forEach(function (it) { state[it.id].on = true; syncRow(document.querySelector('.item[data-id="' + it.id + '"]'), it, true); });
+      clearPreset(); update();
+    });
+    $("optOff").addEventListener("click", function () {
+      ITEMS.forEach(function (it) { if (it.tag === "opt") { state[it.id].on = false; syncRow(document.querySelector('.item[data-id="' + it.id + '"]'), it, true); } });
+      clearPreset(); update();
+    });
+    update();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
+})();
+</script>
+</body>
+</html>

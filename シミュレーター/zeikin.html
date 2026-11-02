@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>不動産の税の概算</title>
+<link rel="stylesheet" href="../共通/common.css">
+<style>
+[hidden] { display: none !important; }
+.iline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.iline input[type=number] { width: 9em; }
+.u { color: var(--ink-2); font-size: 13px; }
+td.wrap, th.wrap { white-space: normal; text-align: left; }
+td.how { color: var(--ink-2); font-size: 12px; text-align: left; white-space: normal; }
+#list th, #sell section th, #sell th { text-align: left; }
+#list table { min-width: 760px; }   /* スマホでは列をつぶさず、横に動かして読む */
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="zeikin"></nav>
+<main class="page">
+<div class="page-head">
+  <div class="eyebrow">お金の計算</div>
+  <h1>不動産の税の概算</h1>
+  <p class="lead">買うとき・持っている間・売るときにかかる税を整理し、公式の計算のしくみに数字を入れた<b>概算</b>を出します。</p>
+</div>
+<p class="note caution"><b>あくまで概算です。実際の税額や申告の内容を示すものではありません。</b>軽減には細かい条件があり、都道府県や市区町村で違うこともあります。個別の税額や申告のしかたは、税理士、税務署、都道府県税事務所、市区町村にご確認ください。</p>
+
+<div class="seg" id="tab" role="group" aria-label="場面"><button type="button" data-v="buy" class="on">買うとき</button><button type="button" data-v="hold">持っている間</button><button type="button" data-v="sell">売るとき</button><button type="button" data-v="list">税の一覧</button></div>
+
+<section id="buy">
+  <h2><span class="no">01</span>物件</h2>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="bDate">取得する日</label><input type="date" id="bDate"></div>
+    <div class="fr"><label class="lab" for="bLand">土地の評価額</label><div class="iline"><input type="number" id="bLand" min="0" step="any" value="2000"><span class="u">万円（固定資産税の評価額。買う値段ではありません）</span></div></div>
+    <div class="fr"><label class="lab" for="bLandM2">土地の面積</label><div class="iline"><input type="number" id="bLandM2" min="0" step="any" value="100"><span class="u">㎡</span></div></div>
+    <div class="fr"><label class="lab" for="bBldg">建物の評価額</label><div class="iline"><input type="number" id="bBldg" min="0" step="any" value="1000"><span class="u">万円</span></div></div>
+    <div class="fr"><label class="lab" for="bHouse">建物の使い方</label><select id="bHouse"><option value="self">個人が自分で住む</option><option value="rent">住宅だが貸す・自分では住まない</option><option value="biz">住宅でない（店舗・事務所など）</option></select></div>
+    <div class="fr"><label class="lab" for="bKind">新築か中古か</label><select id="bKind"><option value="used">中古</option><option value="new">新築</option></select></div>
+    <div class="fr"><label class="lab" for="bFloor">床面積</label><div class="iline"><input type="number" id="bFloor" min="0" step="any" value="70"><span class="u">㎡（マンションは1戸。共用部分の扱いで変わることがあります）</span></div></div>
+    <div class="fr" id="rBuilt"><label class="lab" for="bBuilt">新築された日</label><input type="date" id="bBuilt" value="2000-04-01"></div>
+    <div class="fr" id="rQuake"><span class="lab">耐震</span><label class="check"><input type="checkbox" id="bQuake"><span>新耐震基準に合う証明がある（1981年までの建物に必要）</span></label></div>
+    <div class="fr"><label class="lab" for="bCert">住宅の認定</label><select id="bCert"><option value="general">なし</option><option value="long">認定長期優良住宅</option><option value="lowCarbon">認定低炭素住宅</option><option value="resale">買取再販（業者が工事して売る中古）</option></select></div>
+    <div class="fr"><label class="lab" for="bType">建物の形</label><select id="bType"><option value="mansion">マンション</option><option value="house">戸建て</option></select></div>
+    <div class="fr"><label class="lab" for="bLoan">借入額</label><div class="iline"><input type="number" id="bLoan" min="0" step="any" value="0"><span class="u">万円</span></div></div>
+    <div class="fr"><label class="lab" for="bCause">取得の原因</label><select id="bCause"><option value="sale">売買</option><option value="inherit">相続（不動産取得税はかかりません）</option><option value="gift">贈与（別に贈与税がかかります）</option></select></div>
+  </div>
+  <h2><span class="no">02</span>概算</h2>
+  <div id="buyOut"></div>
+</section>
+
+<section id="hold" hidden>
+  <h2><span class="no">01</span>物件</h2>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="hLand">土地の評価額</label><div class="iline"><input type="number" id="hLand" min="0" step="any" value="3000"><span class="u">万円</span></div></div>
+    <div class="fr"><label class="lab" for="hLandM2">土地の面積</label><div class="iline"><input type="number" id="hLandM2" min="0" step="any" value="150"><span class="u">㎡</span></div></div>
+    <div class="fr"><label class="lab" for="hBldg">建物の評価額</label><div class="iline"><input type="number" id="hBldg" min="0" step="any" value="1000"><span class="u">万円</span></div></div>
+    <div class="fr"><span class="lab">住宅用地</span><label class="check"><input type="checkbox" id="hHouse" checked><span>1月1日に住宅が建っている土地（空地・店舗の土地は外す）</span></label></div>
+    <div class="fr"><label class="lab" for="hUnits">住宅の戸数</label><div class="iline"><input type="number" id="hUnits" min="1" step="1" value="1"><span class="u">戸</span></div></div>
+    <div class="fr"><label class="lab" for="hFloor">床面積の合計</label><div class="iline"><input type="number" id="hFloor" min="0" step="any" value="100"><span class="u">㎡</span></div></div>
+    <div class="fr"><span class="lab">新築の減額</span><label class="check"><input type="checkbox" id="hNew"><span>新築住宅の減額の期間中（税額の2分の1。居住部分120㎡まで）</span></label></div>
+    <div class="fr"><label class="lab" for="hFix">固定資産税の税率</label><div class="iline"><input type="number" id="hFix" min="0" step="0.01" value="1.4"><span class="u">%（標準。市町村で違うことがあります）</span></div></div>
+    <div class="fr"><label class="lab" for="hCity">都市計画税の税率</label><div class="iline"><input type="number" id="hCity" min="0" step="0.01" value="0.3"><span class="u">%（上限。市町村で決めます）</span></div></div>
+  </div>
+  <h2><span class="no">02</span>1年分の概算</h2>
+  <div id="holdOut"></div>
+  <h2><span class="no">03</span>売買のときの精算</h2>
+  <p class="small">法律の決まりではなく、取引の慣行と契約の合意で決めます。起算日も地域や契約で違うので、選べるようにしました。</p>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="pDate">引き渡しの日</label><input type="date" id="pDate" value="2026-07-01"></div>
+    <div class="fr"><label class="lab" for="pStart">起算日</label><select id="pStart"><option value="01-01">1月1日</option><option value="04-01">4月1日</option></select></div>
+  </div>
+  <div id="proOut"></div>
+</section>
+
+<section id="sell" hidden>
+  <h2><span class="no">01</span>売る物件（個人）</h2>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="sSale">売る金額</label><div class="iline"><input type="number" id="sSale" min="0" step="any" value="5000"><span class="u">万円</span></div></div>
+    <div class="fr"><label class="lab" for="sAcq">取得費</label><div class="iline"><input type="number" id="sAcq" min="0" step="any" value="3000"><span class="u">万円（買った値段や手数料。建物は減価償却の分を引いた額）</span></div></div>
+    <div class="fr"><label class="lab" for="sCost">譲渡費用</label><div class="iline"><input type="number" id="sCost" min="0" step="any" value="200"><span class="u">万円（仲介手数料・測量費・印紙代・取壊し費用など）</span></div></div>
+    <div class="fr"><label class="lab" for="sBuy">買った日</label><input type="date" id="sBuy" value="2010-04-01"></div>
+    <div class="fr"><label class="lab" for="sDate">売る日</label><input type="date" id="sDate"></div>
+    <div class="fr"><span class="lab">マイホーム</span><label class="check"><input type="checkbox" id="s3000"><span>3,000万円の特別控除の条件に当てはまる場合で計算する</span></label></div>
+    <div class="fr"><span class="lab">10年超の軽減</span><label class="check"><input type="checkbox" id="s10"><span>軽減税率の条件に当てはまる場合で計算する（3,000万円控除と一緒に使える）</span></label></div>
+  </div>
+  <h2><span class="no">02</span>概算</h2>
+  <div id="sellOut"></div>
+  <h3>ほかの特例（この計算には入れていません）</h3>
+  <div class="tablewrap"><table><thead><tr><th>特例</th><th>要点</th><th>期限</th></tr></thead><tbody>
+    <tr><td class="wrap">マイホームの買換え</td><td class="wrap">税をなくすのではなく先送り。居住10年以上、所有10年超、売値1億円以下など。3,000万円控除と一緒に使えません</td><td class="wrap">2027-12-31</td></tr>
+    <tr><td class="wrap">空き家の3,000万円</td><td class="wrap">1981-05-31以前の建物を相続し、耐震か取壊しをして売る。相続人3人以上は2,000万円。売値1億円以下、相続から3年目の12月31日まで</td><td class="wrap">2027-12-31</td></tr>
+    <tr><td class="wrap">相続財産の取得費加算</td><td class="wrap">相続税の一部を取得費に足せる。相続税の申告期限の翌日以後3年まで</td><td class="wrap">書かれていない</td></tr>
+    <tr><td class="wrap">売った会社（法人）</td><td class="wrap">この計算は使えません。法人税の計算になります</td><td class="wrap">―</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="list" hidden>
+  <h2>場面ごとの税の一覧</h2>
+  <div class="tablewrap"><table><thead><tr><th>場面</th><th>税</th><th>もとの金額</th><th>税率など</th><th>軽減の期限</th></tr></thead><tbody>
+    <tr><td class="wrap" rowspan="6">買うとき</td><td class="wrap">印紙税</td><td class="wrap">契約書の金額</td><td class="wrap"><a href="inshi.html">印紙代の計算</a></td><td class="wrap">2027-03-31</td></tr>
+    <tr><td class="wrap">登録免許税</td><td class="wrap">評価額／借入額</td><td class="wrap">土地の売買1.5%（本則2%）、建物の移転2%（住宅0.3%）、保存0.4%（住宅0.15%）、抵当権0.4%（住宅0.1%）、相続0.4%</td><td class="wrap">土地 2029-03-31／住宅 2027-03-31</td></tr>
+    <tr><td class="wrap">不動産取得税（都道府県）</td><td class="wrap">評価額</td><td class="wrap">住宅・土地3%、住宅でない家屋4%。宅地は2分の1。新築1,200万円の控除など</td><td class="wrap">3%・2分の1 は 2027-03-31</td></tr>
+    <tr><td class="wrap">消費税</td><td class="wrap">建物の代金</td><td class="wrap">10%（売主が事業者のとき）。土地と、個人が住む家の売却はかかりません</td><td class="wrap">―</td></tr>
+    <tr><td class="wrap">贈与税</td><td class="wrap">贈与を受けた額</td><td class="wrap">基礎控除110万円、10〜55%</td><td class="wrap">―</td></tr>
+    <tr><td class="wrap">相続税</td><td class="wrap">相続した財産</td><td class="wrap">基礎控除3,000万円＋600万円×法定相続人の数、10〜55%</td><td class="wrap">―</td></tr>
+    <tr><td class="wrap" rowspan="3">持っている間</td><td class="wrap">固定資産税（市町村）</td><td class="wrap">評価額（住宅用地は6分の1・3分の1）</td><td class="wrap">標準1.4%。新築は2分の1の減額</td><td class="wrap">新築の減額 2031-03-31</td></tr>
+    <tr><td class="wrap">都市計画税（市町村）</td><td class="wrap">評価額（住宅用地は3分の1・3分の2）</td><td class="wrap">上限0.3%</td><td class="wrap">―</td></tr>
+    <tr><td class="wrap">所得税・住民税（貸すとき）</td><td class="wrap">不動産所得</td><td class="wrap">ほかの所得と合わせて計算。この道具では出しません</td><td class="wrap">―</td></tr>
+    <tr><td class="wrap" rowspan="4">売るとき</td><td class="wrap">所得税・復興特別所得税・住民税</td><td class="wrap">売った金額−取得費−譲渡費用−特別控除</td><td class="wrap">長期20.315%、短期39.63%、マイホーム10年超14.21%（6,000万円以下の部分）</td><td class="wrap">上乗せの内訳は令和9年分から変わるが、合計は同じ</td></tr>
+    <tr><td class="wrap">印紙税</td><td class="wrap">契約書の金額</td><td class="wrap">買うときと同じ</td><td class="wrap">2027-03-31</td></tr>
+    <tr><td class="wrap">消費税</td><td class="wrap">建物の代金</td><td class="wrap">売主が課税事業者のとき</td><td class="wrap">―</td></tr>
+    <tr><td class="wrap">法人税など</td><td class="wrap">法人の所得</td><td class="wrap">法人が売るとき。この道具では出しません</td><td class="wrap">―</td></tr>
+  </tbody></table></div>
+  <h3>2027年3月31日で切れる特例が多いです</h3>
+  <p class="small">印紙税の軽減、不動産取得税の3%と土地の2分の1、住宅用家屋の登録免許税の軽減は、2026年11月時点で延長を要望している段階で、まだ決まっていません。結論は年末の税制改正大綱で分かるのがふつうです。</p>
+</section>
+
+<p class="muted small">根拠：<a href="https://www.tax.metro.tokyo.lg.jp/kazei/real_estate/fudosan">東京都 不動産取得税</a>／<a href="https://www.pref.kanagawa.jp/zei/kenzei/a001/b011/002.html">神奈川県 不動産取得税の軽減</a>／<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/inshi/7191.htm">国税庁 No.7191 登録免許税</a>／<a href="https://www.tax.metro.tokyo.lg.jp/kazei/real_estate/kotei_tosi">東京都 固定資産税・都市計画税</a>／<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/joto/3208.htm">国税庁 No.3208</a>・<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/joto/3302.htm">No.3302</a>・<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/joto/3305.htm">No.3305</a>・<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/joto/3258.htm">No.3258</a>／<a href="https://www.mof.go.jp/tax_policy/tax_reform/outline/fy2026/20251226taikou.pdf">令和8年度税制改正大綱</a>。2026年11月2日に確認。</p>
+</main>
+<script src="../共通/common.js"></script>
+<script src="zei_calc.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id), num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+  const fmt = v => Math.round(v).toLocaleString() + "円", man = id => num(id) * 1e4;
+  const d0 = new Date(), today = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, "0")}-${String(d0.getDate()).padStart(2, "0")}`;
+  $("bDate").value = today; $("sDate").value = today;
+  function buy() {
+    const use = $("bHouse").value, kind = $("bKind").value, cause = $("bCause").value;
+    $("rBuilt").hidden = kind === "new"; $("rQuake").hidden = kind === "new";
+    const date = $("bDate").value;
+    const reg = ZEI.registration({ date, landEval: man("bLand"), bldgEval: man("bBldg"), loan: man("bLoan"), kind, cause, selfUse: use === "self", floorM2: num("bFloor"), houseType: $("bType").value, cert: $("bCert").value });
+    const acq = cause === "inherit" ? null : ZEI.acquisition({ date, landEval: man("bLand"), landM2: num("bLandM2"), bldgEval: man("bBldg"), isHousing: use !== "biz", kind, floorM2: num("bFloor"), built: $("bBuilt").value, selfUse: use === "self", quakeOK: $("bQuake").checked, longLife: $("bCert").value === "long" });
+    const total = reg.total + (acq ? acq.total : 0);
+    let h = `<div class="figures"><div class="figure main"><div class="k">登録免許税＋不動産取得税の概算</div><div class="v">${fmt(total)}</div><div class="s">印紙税・消費税・司法書士の報酬は別です</div></div></div>`;
+    h += `<h3>登録免許税</h3><div class="tablewrap"><table class="steps"><tbody>` + reg.items.map(i => `<tr><td class="wrap">${i.name}</td><td class="num">${fmt(i.tax)}</td><td class="how">${fmt(i.base)}×${+(i.rate * 100).toFixed(2)}%（${i.why}）</td></tr>`).join("") + `</tbody></table></div>`;
+    if (use === "self" && num("bFloor") < 50 && cause === "sale") h += `<p class="muted small">登録免許税の住宅の軽減は、床面積50㎡以上が条件です（不動産取得税の40㎡とは違います）。</p>`;
+    if (reg.housing) h += `<p class="muted small">住宅の軽減には、市区町村長の証明書を登記のときに付ける必要があります。取得から1年以内の登記が条件です。中古は1982年以後の建物か、耐震基準に合うものです。</p>`;
+    if (acq) {
+      h += `<h3>不動産取得税（あとで都道府県から届きます）</h3><div class="tablewrap"><table class="steps"><tbody>
+        <tr><td class="wrap">土地</td><td class="num">${fmt(acq.landTax)}</td><td class="how">${acq.landFreeHit ? `課税標準が免税点（${fmt(acq.landFree)}）より小さい` : `${fmt(acq.landBase)}${acq.half ? "（評価額の2分の1）" : ""}×${acq.landRate * 100}%${acq.relief ? `−住宅用の土地の減額 ${fmt(acq.relief)}` : ""}`}</td></tr>
+        <tr><td class="wrap">建物</td><td class="num">${fmt(acq.bldgTax)}</td><td class="how">${acq.bldgFreeHit ? `課税標準が免税点（${fmt(acq.bldgFree)}）より小さい` : `${fmt(acq.bldgBase)}×${acq.bldgRate * 100}%`}（${acq.dedName}）</td></tr></tbody></table></div>`;
+      acq.notes.forEach(n => { h += `<p class="muted small">${n}</p>`; });
+      if (acq.relief) h += `<p class="muted small">住宅用の土地の減額は、土地と建物を取得する時期の条件があります。都道府県の確認が要ります。</p>`;
+      if ($("bCert").value === "resale") h += `<p class="muted small">買取再販の不動産取得税の減額は、この計算に入れていません。</p>`;
+    } else h += `<p class="muted small">相続では不動産取得税はかかりません。</p>`;
+    $("buyOut").innerHTML = h;
+  }
+  function hold() {
+    const r = ZEI.holding({ landEval: man("hLand"), landM2: num("hLandM2"), bldgEval: man("hBldg"), isHousing: $("hHouse").checked, units: num("hUnits"), floorM2: num("hFloor"), newHouse: $("hNew").checked, fixRate: num("hFix") / 100, cityRate: num("hCity") / 100 });
+    let h = `<div class="figures"><div class="figure main"><div class="k">1年分の合計（概算）</div><div class="v">${fmt(r.total)}</div><div class="s">固定資産税 ${fmt(r.fix)}＋都市計画税 ${fmt(r.city)}</div></div></div>`;
+    h += `<div class="tablewrap"><table class="steps"><tbody>
+      <tr><td class="wrap">土地のもと（固定資産税）</td><td class="num">${fmt(r.fixBase)}</td><td class="how">税額 ${fmt(r.landFix)}</td></tr>
+      <tr><td class="wrap">土地のもと（都市計画税）</td><td class="num">${fmt(r.cityBase)}</td><td class="how">税額 ${fmt(r.landCity)}</td></tr>
+      <tr><td class="wrap">建物（固定資産税）</td><td class="num">${fmt(r.bldgFix)}</td><td class="how">${r.reduced ? `新築の減額 −${fmt(r.reduced)}` : "評価額×税率"}</td></tr>
+      <tr><td class="wrap">建物（都市計画税）</td><td class="num">${fmt(r.bldgCity)}</td><td class="how">評価額×税率</td></tr></tbody></table></div>`;
+    if ($("hHouse").checked) h += `<p class="muted small">住宅1戸につき200㎡までは固定資産税6分の1・都市計画税3分の1、それをこえる部分は3分の1・3分の2です（床面積の10倍まで）。空家法の勧告を受けた土地は特例の外です。</p>`;
+    h += `<p class="muted small">実際の税額は、負担調整や市町村ごとの軽減（23区の都市計画税など）で違います。正しい額は納税通知書を見てください。免税点は土地30万円、家屋20万円です（令和9年度分から家屋30万円）。</p>`;
+    $("holdOut").innerHTML = h;
+    const p = $("pDate").value ? ZEI.proration({ date: $("pDate").value, annual: r.total, start: $("pStart").value }) : null;
+    $("proOut").innerHTML = p ? `<div class="figures"><div class="figure"><div class="k">買主の負担分</div><div class="v">${fmt(p.buyer)}</div><div class="s">${p.buyerDays}日／${p.days}日</div></div><div class="figure"><div class="k">売主の負担分</div><div class="v">${fmt(p.seller)}</div></div></div>` : "";
+  }
+  function sell() {
+    const r = ZEI.capitalGain({ sale: man("sSale"), acqCost: man("sAcq"), sellCost: man("sCost"), acqDate: $("sBuy").value, saleDate: $("sDate").value, deduct3000: $("s3000").checked, myHome10: $("s10").checked });
+    if (!r.ok) { $("sellOut").innerHTML = `<p class="note caution">${r.msg}</p>`; return; }
+    let h = `<div class="figures"><div class="figure main"><div class="k">税の概算（所得税＋復興特別所得税＋住民税）</div><div class="v">${fmt(r.tax)}</div><div class="s">${r.kind}</div></div>
+      <div class="figure"><div class="k">売る金額−譲渡費用−税</div><div class="v">${fmt(r.net)}</div><div class="s">ローンの残りは別です</div></div></div>`;
+    h += `<div class="tablewrap"><table class="steps"><tbody>
+      <tr><td class="wrap">売る金額</td><td class="num">${fmt(r.sale)}</td><td class="how"></td></tr>
+      <tr><td class="wrap">取得費</td><td class="num">−${fmt(r.acq)}</td><td class="how">${r.useGaisan ? "入れた額より大きいので、概算の5%を使用" : "入れた額"}</td></tr>
+      <tr><td class="wrap">譲渡費用</td><td class="num">−${fmt(r.cost)}</td><td class="how"></td></tr>
+      <tr><td class="wrap">利益</td><td class="num">${fmt(r.gain)}</td><td class="how"></td></tr>
+      <tr><td class="wrap">特別控除</td><td class="num">−${fmt(r.deduct)}</td><td class="how">マイホームの3,000万円（使うとき）</td></tr>
+      <tr><td class="wrap">税のもと</td><td class="num">${fmt(r.taxable)}</td><td class="how">売った年の1月1日で ${r.cls.long ? "5年超（長期）" : "5年以下（短期）"}</td></tr>
+      <tr><td class="wrap">所得税</td><td class="num">${fmt(r.income)}</td><td class="how"></td></tr>
+      <tr><td class="wrap">復興特別所得税など</td><td class="num">${fmt(r.surtax)}</td><td class="how">所得税の2.1%</td></tr>
+      <tr><td class="wrap">住民税</td><td class="num">${fmt(r.resident)}</td><td class="how"></td></tr></tbody></table></div>`;
+    if ($("s10").checked && !r.cls.over10) h += `<p class="note caution">売った年の1月1日で10年をこえていないので、10年超の軽減は計算に入れていません。</p>`;
+    if ($("s10").checked && !$("s3000").checked) h += `<p class="note caution">この計算では、10年超の軽減は3,000万円控除と一緒にチェックしたときだけ入れています。</p>`;
+    if ($("s3000").checked) h += `<p class="muted small">3,000万円の控除は、住まなくなって3年目の12月31日までに売るなどの条件があります。親子・夫婦などへの売却には使えません。控除を使うと、税が0円でも確定申告が要ります。</p>`;
+    h += `<p class="muted small">相続・贈与で取得した物件は、原則として亡くなった人などが取得した日から数えます。</p>`;
+    $("sellOut").innerHTML = h;
+  }
+  const all = () => { buy(); hold(); sell(); };
+  document.querySelectorAll("input,select").forEach(e => e.addEventListener("input", all));
+  const panes = ["buy", "hold", "sell", "list"];
+  $("tab").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    $("tab").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    panes.forEach(p => { $(p).hidden = p !== b.dataset.v; });
+  }));
+  all();
+})();
+</script>
+</body>
+</html>

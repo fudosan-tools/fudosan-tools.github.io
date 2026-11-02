@@ -1,0 +1,2 @@
+// 自動生成（scripts/build.py）。手で直さないこと。
+SOUBA.add({"code":"13199","name":"13199","pref":"東京都","towns":[],"geo":[],"rec":{"cols":["k","type","src","station","walk","price","area","floor","plan","year","struct","y","q","shape","front","rtype","rwidth","rdir","jijo","cp","bcr","far","renov"],"dicts":{"type":[],"src":[],"station":[],"plan":[],"struct":[],"shape":[],"rtype":[],"rdir":[],"jijo":[],"cp":[],"renov":[]},"rows":[]}});

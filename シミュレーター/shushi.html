@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>収益物件の収支シミュレーター</title>
+<link rel="stylesheet" href="../共通/common.css">
+<script src="../共通/common.js"></script>
+<style>
+/* このページだけで使う小さな部品（共通にないもの） */
+.top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 24px; align-items: start; }
+.top > .panel > h2:first-child, .stack > .panel > h2:first-child { margin-top: 0; }
+.formrows .fr .unit-input input { max-width: 12em; }
+.formrows .fr select { max-width: 24em; }
+input:disabled { color: var(--muted); background: var(--paper); }
+.out { font-size: 14px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.tall { max-height: 480px; overflow-y: auto; }
+.tall th { position: sticky; top: 0; z-index: 1; }
+td.l, th.l { text-align: left; }
+td.wrap { white-space: normal; min-width: 12em; text-align: left; }
+tr.neg td { color: var(--alert); }
+tr.big td { font-weight: 600; }
+.figure.lv-ok .v { color: var(--ok); } .figure.lv-warn .v { color: var(--caution); } .figure.lv-bad .v { color: var(--alert); }
+.chart { width: 100%; min-height: 240px; }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+.legend span::before { content: ""; display: inline-block; width: 12px; height: 10px; vertical-align: middle; margin-right: 6px; background: var(--c); }
+.legend span.line::before { height: 0; border-top: 2px solid var(--c); background: none; width: 18px; }
+.checklist { list-style: none; padding: 0; margin: 0; columns: 2 22em; column-gap: 32px; }
+.checklist li { break-inside: avoid; border-bottom: 1px solid var(--rule); }
+.checklist .check { min-height: 36px; }
+.checklist .check small { display: block; color: var(--muted); font-size: 12px; }
+.staff-box h3 { margin-top: 16px; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+@media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
+@media print {
+  .tall { max-height: none; overflow: visible; }
+  html.print-checklist .page > *:not(.print-target) { display: none !important; }
+  html.print-checklist .print-target { display: block !important; }
+  .checklist { columns: 2; }
+}
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="shushi"></nav>
+
+<main class="page">
+<div class="page-head">
+  <div class="eyebrow">お金の計算</div>
+  <h1>収益物件の収支シミュレーター</h1>
+  <p class="lead">人に貸す物件（アパート・区分マンションなど）で、家賃から経費・修繕・ローン返済を引いて「手元にいくら残るか（手残り）」を35年先まで計算します。<b>税金（所得税・住民税）を引く前の「税引前」の数字</b>です。</p>
+</div>
+
+<div class="top">
+  <section class="panel">
+    <h2><span class="no">01</span>物件とお金の用意</h2>
+    <div class="formrows">
+      <div class="fr"><label class="lab" for="price">物件の値段</label><span class="unit-input"><input type="number" id="price" data-s min="0" step="10" value="2000"><span>万円</span></span></div>
+      <div class="fr"><label class="lab" for="area">貸す部分の広さ</label>
+        <span class="unit-input"><input type="number" id="area" data-s min="0" step="0.1" value="80" aria-label="広さ（㎡）"><span>㎡</span><input type="number" id="areaTsubo" min="0" step="0.01" aria-label="広さ（坪）"><span>坪</span></span>
+        <span class="hint">一棟なら貸す部屋の広さの合計、区分なら専有面積。どちらに入れても、もう片方が変わります（1坪＝3.30578㎡）</span></div>
+      <div class="fr"><span class="lab">諸費用</span><label class="check"><input type="checkbox" id="autoCosts" data-s checked><span>「価格の7%」で自動に入れる</span></label></div>
+      <div class="fr"><label class="lab" for="costs">諸費用の額</label><span class="unit-input"><input type="number" id="costs" data-s min="0" step="1" value="140"><span>万円</span></span><span class="hint">仲介手数料・登記・税・保険など</span></div>
+      <div class="fr"><label class="lab" for="own">自己資金</label><span class="unit-input"><input type="number" id="own" data-s min="0" step="10" value="340"><span>万円</span></span><span class="hint">自分で出すお金</span></div>
+      <div class="fr"><span class="lab">借りるお金</span><span><b id="loanOut">—</b><br><span class="muted">＝ 物件の値段 ＋ 諸費用 − 自己資金</span></span></div>
+      <div class="fr"><label class="lab" for="rate">金利</label><span class="unit-input"><span>年</span><input type="number" id="rate" data-s min="0" max="20" step="0.05" value="2.0"><span>%</span></span><span class="hint">自動では取ってきません。金融機関から聞いた金利を入れてください</span></div>
+      <div class="fr"><label class="lab" for="years">返す年数</label><span class="unit-input"><input type="number" id="years" data-s min="1" max="50" step="1" value="25"><span>年</span></span></div>
+    </div>
+  </section>
+
+  <div class="stack">
+    <section class="panel">
+      <h2><span class="no">02</span>結果（1年目・税引前）</h2>
+      <div class="figures" id="kpis"></div>
+      <div class="figures" id="units" style="border-top:0"></div>
+      <div id="alerts"></div>
+      <p class="note caution">これは目安です。家賃・空室・経費・金利は物件と時期で大きく変わります。実際の数字は、売主・管理会社・金融機関・税理士に必ず確認してください。</p>
+    </section>
+  </div>
+</div>
+
+<div class="cols">
+<section>
+  <h2><span class="no">03</span>家賃と毎年の経費</h2>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="rentM">満室のときの家賃</label><span class="unit-input"><input type="number" id="rentM" data-s min="0" step="0.5" value="15"><span>万円/月</span></span><span class="hint">全部の部屋の合計</span></div>
+    <div class="fr"><label class="lab" for="vac">空室率</label><span class="unit-input"><input type="number" id="vac" data-s min="0" max="100" step="1" value="5"><span>%</span></span></div>
+    <div class="fr"><label class="lab" for="mgmt">管理会社への管理費</label><span class="unit-input"><input type="number" id="mgmt" data-s min="0" max="30" step="0.5" value="5"><span>%（入った家賃の）</span></span></div>
+    <div class="fr"><label class="lab" for="repairY">ふだんの修繕費</label><span class="unit-input"><input type="number" id="repairY" data-s min="0" step="1" value="10"><span>万円/年</span></span><span class="hint">退去のあとの原状回復・小さな故障など</span></div>
+    <div class="fr"><label class="lab" for="taxY">固定資産税・都市計画税</label><span class="unit-input"><input type="number" id="taxY" data-s min="0" step="1" value="10"><span>万円/年</span></span><span class="hint">固定資産税の通知書で確かめられます</span></div>
+    <div class="fr"><label class="lab" for="insY">火災保険など</label><span class="unit-input"><input type="number" id="insY" data-s min="0" step="0.5" value="2"><span>万円/年</span></span></div>
+    <div class="fr"><label class="lab" for="otherY">その他</label><span class="unit-input"><input type="number" id="otherY" data-s min="0" step="1" value="3"><span>万円/年</span></span><span class="hint">広告料・共用部の電気代など</span></div>
+    <div class="fr"><label class="lab" for="kumiaiM">区分の管理費＋修繕積立金</label><span class="unit-input"><input type="number" id="kumiaiM" data-s min="0" step="0.1" value="0"><span>万円/月</span></span><span class="hint">区分マンションで管理組合に払う分。一棟なら0</span></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">04</span>これから先の変化と修繕</h2>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="decline">家賃が下がる割合</label><span class="unit-input"><input type="number" id="decline" data-s min="-5" max="10" step="0.1" value="1"><span>%/年</span></span></div>
+    <div class="fr"><label class="lab" for="costUp">経費が上がる割合</label><span class="unit-input"><input type="number" id="costUp" data-s min="-5" max="10" step="0.1" value="1"><span>%/年</span></span></div>
+    <div class="fr"><label class="lab" for="vacUp">空室率が増える幅</label><span class="unit-input"><input type="number" id="vacUp" data-s min="0" max="5" step="0.1" value="0.3"><span>ポイント/年</span></span></div>
+    <div class="fr"><label class="lab" for="vacMax">空室率の上限</label><span class="unit-input"><input type="number" id="vacMax" data-s min="0" max="100" step="1" value="20"><span>%</span></span></div>
+    <div class="fr"><label class="lab" for="repairMode">修繕の考え方</label>
+      <select id="repairMode" data-s>
+        <option value="big">大規模修繕の年と金額を入れる</option>
+        <option value="reserve">毎年、家賃の◯%を修繕のために積み立てる</option>
+        <option value="both">両方（積み立てたお金から大規模修繕を払い、足りない分を手残りから）</option>
+      </select></div>
+    <div class="fr rm-big"><label class="lab" for="bigFirst">大規模修繕の最初の年</label><span class="unit-input"><input type="number" id="bigFirst" data-s min="1" max="35" step="1" value="10"><span>年目</span></span></div>
+    <div class="fr rm-big"><label class="lab" for="bigCycle">そのあと何年ごと</label><span class="unit-input"><input type="number" id="bigCycle" data-s min="0" max="35" step="1" value="12"><span>年ごと</span></span><span class="hint">0なら1回だけ</span></div>
+    <div class="fr rm-big"><label class="lab" for="bigAmt">1回の金額</label><span class="unit-input"><input type="number" id="bigAmt" data-s min="0" step="10" value="200"><span>万円</span></span><span class="hint">今の値段で。経費の上昇率で毎年ふえます</span></div>
+    <div class="fr rm-res"><label class="lab" for="reservePct">毎年の修繕積立</label><span class="unit-input"><input type="number" id="reservePct" data-s min="0" max="50" step="0.5" value="5"><span>%（入った家賃の）</span></span><span class="hint">5%は一般的な目安です。築年数が古い・設備が多い物件は高めに</span></div>
+  </div>
+  <p class="note">大規模修繕（外壁・屋根・配管など）の金額は、<a href="shuzen.html">修繕・リフォーム</a>のページで「直す場所を積み上げて」出した金額を入れると、考え方がそろいます。区分マンションの共用部分は管理組合の修繕積立金で直すので、ここは部屋の中の修繕だけにします。</p>
+</section>
+</div>
+
+<section>
+  <h2><span class="no">05</span>35年の手残り</h2>
+  <div id="chart" class="chart"></div>
+  <div class="legend"><span style="--c:var(--accent)">その年の手残り（プラス）</span><span style="--c:var(--alert)">その年の手残り（マイナス）</span><span class="line" style="--c:var(--ink)">手残りの累計（線）</span></div>
+  <h3>年ごとの表（朱色の行＝手残りの累計がマイナスの年）</h3>
+  <div class="tablewrap tall"><table id="yearTable"></table></div>
+  <p class="note">手残り（キャッシュフロー）＝ 実際に入った家賃 − 経費 − 修繕（大規模修繕・積立）− ローン返済。税金は引いていません。減価償却（帳簿上の経費）も入れていません。</p>
+</section>
+
+<section>
+  <h2><span class="no">06</span>ことばの説明</h2>
+  <div class="tablewrap"><table>
+    <tr><th>ことば</th><th class="l">意味</th><th class="l">目安（一般的な考え方）</th></tr>
+    <tr><td>表面利回り</td><td class="wrap">満室の年間家賃 ÷ 物件の値段</td><td class="wrap">広告によく出る数字。経費をふくまないので高く見える</td></tr>
+    <tr><td>実質利回り</td><td class="wrap">NOI ÷（物件の値段＋諸費用）</td><td class="wrap">本当のもうけの力に近い数字</td></tr>
+    <tr><td>NOI</td><td class="wrap">実際に入った家賃 − 経費（ローン返済・修繕の積立の前）</td><td class="wrap">物件そのものがかせぐお金</td></tr>
+    <tr><td>返済比率</td><td class="wrap">1年のローン返済 ÷ 満室の年間家賃</td><td class="wrap">50%以下だと余裕があると言われることが多い</td></tr>
+    <tr><td>DSCR</td><td class="wrap">NOI ÷ 1年のローン返済</td><td class="wrap">1.0未満は家賃で返済をまかなえない。1.3以上だと安心と言われることが多い</td></tr>
+    <tr><td>家賃の坪単価</td><td class="wrap">満室の月の家賃 ÷ 貸す部分の広さ（坪）</td><td class="wrap">まわりの同じような部屋の募集家賃とくらべて、今の家賃が高すぎないかを見る</td></tr>
+    <tr><td>レントロール</td><td class="wrap">部屋ごとの家賃・入居日・契約の条件の一覧表</td><td class="wrap">売主・管理会社からもらう。収支の数字のもとになる</td></tr>
+  </table></div>
+</section>
+
+<section class="for-client">
+  <h2><span class="no">07</span>担当者に聞いてみてください</h2>
+  <ul class="small">
+    <li>今の家賃が、まわりの相場とくらべて高すぎないか（入れかわると下がることがある）</li>
+    <li>空いている部屋が、どのくらいの期間空いているか</li>
+    <li>これまでにどんな修繕をしたか、これから大きな修繕が近いか</li>
+    <li>税金（所得税・住民税）を引いたあとにいくら残りそうか（税理士への相談）</li>
+  </ul>
+</section>
+
+<section class="for-staff print-target" id="staffSec">
+  <h2><span class="no">07</span>担当者向け：収益物件の確認チェックリスト</h2>
+  <div class="staff-box">
+    <div class="t">チェックリスト（売主・管理会社・役所で確認）</div>
+    <p class="muted" style="margin:0">物件名：＿＿＿＿＿＿＿＿＿＿＿＿　確認日：＿＿＿＿年＿＿月＿＿日　担当：＿＿＿＿＿＿</p>
+    <h3>家賃と入居</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>レントロール（家賃の一覧表）をもらった<small>部屋ごとの家賃・共益費・入居日・敷金</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>空室の部屋と、空いている期間</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>滞納している入居者と金額・期間</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>今の家賃と、まわりの募集家賃の差<small>入居が長い部屋は相場より高いことがある</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>賃貸借契約書（更新・特約・定期借家か）と、敷金の引きつぎ</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>サブリース（一括借上げ）の有無と、その契約の条件</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>事件・事故など、告知が必要なことの有無</span></label></li>
+    </ul>
+    <h3>管理と修繕</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>修繕の履歴（いつ・どこを・いくらで）<small>外壁・屋根・給排水・給湯器・エアコン</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>管理会社との契約（管理費の率・解約の条件）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>区分の場合：管理規約・長期修繕計画・修繕積立金の残高と値上げの予定</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>区分の場合：管理費・修繕積立金の滞納（売主と建物全体）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>雨もり・設備の故障など、いま分かっている不具合</span></label></li>
+    </ul>
+    <h3>税・法律・建物</h3>
+    <ul class="checklist">
+      <li><label class="check"><input type="checkbox"><span>固定資産税・都市計画税の通知書（課税明細）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>違反建築・既存不適格（いまの基準に合わない建物）の有無<small>融資が出にくいことがある</small></span></label></li>
+      <li><label class="check"><input type="checkbox"><span>再建築できるか（道路に2m以上接しているか など）</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>建築確認済証・検査済証の有無</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>旧耐震（1981年5月以前の建築確認）かどうか</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>境界の確定・越境の有無</span></label></li>
+      <li><label class="check"><input type="checkbox"><span>用途地域・建ぺい率・容積率（<a href="kenchiku.html">建築・ボリューム</a>のページ）</span></label></li>
+    </ul>
+    <div class="btns no-print">
+      <button class="btn" type="button" id="printCheck">このチェックリストを印刷する</button>
+      <button class="btn" type="button" id="clearCheck">チェックを全部外す</button>
+    </div>
+  </div>
+</section>
+
+<p class="no-print" style="text-align:right;margin-top:24px"><button class="btn" id="resetBtn" type="button">入力を最初の状態にもどす</button></p>
+
+<div class="disclaimer">
+  <p><b>これは目安です。</b>税金（所得税・住民税・法人税）を計算していない「税引前」の数字です。実際の家賃・空室・経費は売主・管理会社に、融資の条件は金融機関に、税金は税理士に、物件の法律の制限は役所・宅地建物取引士に必ず確認してください。</p>
+  <p>使ったデータ・考え方の出典</p>
+  <ul>
+    <li>返済額の計算：元利均等返済の公式（借入額×月利÷(1−(1+月利)^−回数)）。</li>
+    <li>返済比率50%・DSCR1.3・修繕積立「家賃の5%」などは、不動産投資の解説や金融機関でよく使われる一般的な目安で、法律の基準ではありません。</li>
+    <li>大規模修繕の考え方：国土交通省「<a href="https://www.mlit.go.jp/jutakukentiku/house/content/001747009.pdf">マンションの修繕積立金に関するガイドライン</a>」「長期修繕計画作成ガイドライン」（令和6年6月改訂）。くわしくは<a href="shuzen.html">修繕・リフォーム</a>のページ。</li>
+    <li>諸費用7%は中古物件でよくある目安です。くわしくは<a href="loan.html">住宅ローン</a>のページの諸費用で計算できます。</li>
+    <li>面積：1坪＝3.30578㎡で換算。</li>
+  </ul>
+</div>
+</main>
+
+<script>
+// ==CALC-START==
+function annuity(P, r, n) {
+  if (n <= 0) return P;
+  if (Math.abs(r) < 1e-15) return P / n;
+  return P * r / (1 - Math.pow(1 + r, -n));
+}
+// p は円・%・年。戻り値は円
+// 修繕の考え方 p.repairMode：'big'＝大規模修繕の年に払う（はじめの値）／'reserve'＝毎年 入った家賃×reservePct% を積み立てる／'both'＝積み立てから大規模修繕を払い、足りない分を手残りから
+function shushi(p) {
+  const invest = p.price + p.costs;
+  const loan = Math.max(0, invest - p.own);
+  const monthly = loan > 0 ? annuity(loan, p.rate / 1200, p.years * 12) : 0;
+  const ADS = monthly * 12;
+  const fullY = p.rentM * 12;
+  const horizon = p.horizon || 35;
+  const mode = p.repairMode || 'big';
+  const resPct = mode === 'big' ? 0 : (p.reservePct || 0);
+  const rows = [];
+  let cum = 0, bal = loan, payback = null, firstNeg = null, fund = 0;
+  const r = p.rate / 1200;
+  for (let y = 1; y <= horizon; y++) {
+    const rent = fullY * Math.pow(1 - p.decline / 100, y - 1);
+    const vac = Math.min(Math.max(p.vacMax, p.vac), p.vac + p.vacUp * (y - 1));
+    const egi = rent * (1 - vac / 100);
+    const cf = Math.pow(1 + p.costUp / 100, y - 1);
+    const mgmt = egi * p.mgmt / 100;
+    const fixed = (p.repairY + p.taxY + p.insY + p.otherY + p.kumiaiM * 12) * cf;
+    const opex = mgmt + fixed;
+    const big = (mode !== 'reserve' && p.bigAmt > 0 && y >= p.bigFirst && (y === p.bigFirst || (p.bigCycle > 0 && (y - p.bigFirst) % p.bigCycle === 0))) ? p.bigAmt * cf : 0;
+    const reserve = egi * resPct / 100;
+    fund += reserve;
+    let fromFund = 0;
+    if (mode === 'both' && big > 0) { fromFund = Math.min(fund, big); fund -= fromFund; }
+    const short = big - fromFund; // 手残りから払う修繕
+    const noi = egi - opex;
+    const ads = y <= p.years ? ADS : 0;
+    // 年末のローン残高
+    for (let m = 0; m < 12 && y <= p.years; m++) { bal = bal * (1 + r) - monthly; }
+    if (bal < 1 || y >= p.years) bal = y >= p.years ? 0 : Math.max(0, bal);
+    const cash = noi - reserve - short - ads;
+    cum += cash;
+    if (payback === null && cum >= p.own && p.own > 0) payback = y;
+    if (firstNeg === null && cum < 0) firstNeg = y;
+    rows.push({ year: y, rent: rent, vac: vac, egi: egi, opex: opex, big: big, reserve: reserve, fromFund: fromFund, short: short, fund: fund, noi: noi, ads: ads, cash: cash, cum: cum, bal: bal });
+  }
+  const y1 = rows[0];
+  return {
+    invest: invest, loan: loan, monthly: monthly, ADS: ADS, fullY: fullY,
+    gross: p.price > 0 ? fullY / p.price * 100 : 0,
+    net: invest > 0 ? y1.noi / invest * 100 : 0,
+    noi: y1.noi, cashY: y1.cash, cashM: y1.cash / 12,
+    repayRatio: fullY > 0 ? ADS / fullY * 100 : 0,
+    dscr: ADS > 0 ? y1.noi / ADS : Infinity,
+    rows: rows, payback: payback, firstNeg: firstNeg
+  };
+}
+function dscrLevel(d) { return d >= 1.3 ? 'ok' : d >= 1.0 ? 'warn' : 'bad'; }
+function repayLevel(x) { return x <= 50 ? 'ok' : x <= 60 ? 'warn' : 'bad'; }
+// ---- 2026-10-21 追加：広さあたりの家賃と価格（円）。m2 は貸す部分の広さ
+const TSUBO_M2 = 3.30578;
+function unitMetrics(priceYen, rentMonthYen, m2) {
+  if (!(m2 > 0)) return null;
+  const tsubo = m2 / TSUBO_M2;
+  return { tsubo: tsubo, rentPerM2: rentMonthYen / m2, rentPerTsubo: rentMonthYen / tsubo, pricePerM2: priceYen / m2, pricePerTsubo: priceYen / tsubo };
+}
+// ==CALC-END==
+
+const KEY = 'sim_shushi_v1';
+const $ = id => document.getElementById(id);
+const FD = (typeof window !== 'undefined' && window.FUDOSAN) || {
+  area: (m2, d) => { if (m2 == null || isNaN(m2)) return '—'; d = d == null ? 1 : d; return m2.toFixed(d) + '㎡（' + (m2 / TSUBO_M2).toFixed(1) + '坪）'; },
+  unitPrice: y => (y == null || isNaN(y)) ? '—' : (y / 1e4).toFixed(1) + '万円/㎡（' + (y * TSUBO_M2 / 1e4).toFixed(1) + '万円/坪）'
+};
+const fmtMan = (yen, d) => { if (!isFinite(yen)) return '—'; d = d == null ? 1 : d; return (yen / 1e4).toLocaleString('ja-JP', { minimumFractionDigits: d, maximumFractionDigits: d }) + '万円'; };
+const fmtYen = v => Math.round(v).toLocaleString('ja-JP') + '円';
+const num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+const fields = () => Array.from(document.querySelectorAll('[data-s]'));
+const defaults = {};
+fields().forEach(el => { defaults[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
+function save() { const o = {}; fields().forEach(el => { o[el.id] = el.type === 'checkbox' ? el.checked : el.value; }); try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
+function load() {
+  let o = null; try { o = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { o = null; }
+  if (!o) return;
+  fields().forEach(el => { if (o[el.id] === undefined) return; if (el.type === 'checkbox') el.checked = !!o[el.id]; else el.value = o[el.id]; });
+}
+function syncTsubo() { const v = parseFloat($('area').value); $('areaTsubo').value = isFinite(v) && v > 0 ? (v / TSUBO_M2).toFixed(2) : (v === 0 ? '0' : ''); }
+
+function barChart(el, rows) {
+  const W = Math.max(300, el.clientWidth || 600), H = 260, pl = 52, pr = 12, pt = 12, pb = 28;
+  const vals = rows.map(r => r.cash), cums = rows.map(r => r.cum);
+  let max = Math.max(1, ...vals, ...cums), min = Math.min(0, ...vals, ...cums);
+  const span = max - min, step = Math.pow(10, Math.floor(Math.log10(span || 1)));
+  max = Math.ceil(max / step) * step; min = Math.floor(min / step) * step;
+  const n = rows.length, bw = (W - pl - pr) / n;
+  const y = v => pt + (H - pt - pb) * (max - v) / (max - min || 1);
+  let g = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = min + (max - min) * i / 4, yy = y(v);
+    g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yy + '" y2="' + yy + '" style="stroke:var(--rule)"/>';
+    g += '<text x="' + (pl - 6) + '" y="' + (yy + 4) + '" text-anchor="end" font-size="11" style="fill:var(--muted)">' + Math.round(v / 1e4).toLocaleString('ja-JP') + '</text>';
+  }
+  g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y(0) + '" y2="' + y(0) + '" style="stroke:var(--rule-strong)"/>';
+  rows.forEach((r, i) => {
+    const x0 = pl + i * bw + bw * 0.15, h = Math.abs(y(r.cash) - y(0));
+    g += '<rect x="' + x0.toFixed(1) + '" y="' + Math.min(y(r.cash), y(0)).toFixed(1) + '" width="' + (bw * 0.7).toFixed(1) + '" height="' + Math.max(0.5, h).toFixed(1) + '" style="fill:' + (r.cash >= 0 ? 'var(--accent)' : 'var(--alert)') + '"><title>' + r.year + '年目 ' + fmtMan(r.cash) + '</title></rect>';
+    if ((i + 1) % 5 === 0 || i === 0) g += '<text x="' + (pl + i * bw + bw / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" style="fill:var(--muted)">' + r.year + '</text>';
+  });
+  const d = rows.map((r, i) => (i ? 'L' : 'M') + (pl + i * bw + bw / 2).toFixed(1) + ',' + y(r.cum).toFixed(1)).join('');
+  g += '<path d="' + d + '" fill="none" style="stroke:var(--ink)" stroke-width="1.5"/>';
+  el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="年ごとの手残りと累計（横軸は年目、縦軸は万円）">' + g + '</svg><div class="muted" style="text-align:right">横：何年目　縦：万円</div>';
+}
+
+let lastRows = null;
+function update() {
+  if ($('autoCosts').checked) $('costs').value = Math.round(num('price') * 0.07);
+  $('costs').disabled = $('autoCosts').checked;
+  const mode = $('repairMode').value;
+  document.querySelectorAll('.rm-big').forEach(e => { e.style.display = mode === 'reserve' ? 'none' : ''; });
+  document.querySelectorAll('.rm-res').forEach(e => { e.style.display = mode === 'big' ? 'none' : ''; });
+  const p = {
+    price: num('price') * 1e4, costs: num('costs') * 1e4, own: num('own') * 1e4, rate: num('rate'), years: Math.max(1, Math.round(num('years'))),
+    rentM: num('rentM') * 1e4, vac: num('vac'), mgmt: num('mgmt'), repairY: num('repairY') * 1e4, taxY: num('taxY') * 1e4, insY: num('insY') * 1e4,
+    otherY: num('otherY') * 1e4, kumiaiM: num('kumiaiM') * 1e4, decline: num('decline'), costUp: num('costUp'), vacUp: num('vacUp'), vacMax: num('vacMax'),
+    bigFirst: Math.max(1, Math.round(num('bigFirst'))), bigCycle: Math.round(num('bigCycle')), bigAmt: num('bigAmt') * 1e4, horizon: 35,
+    repairMode: mode, reservePct: num('reservePct')
+  };
+  const R = shushi(p);
+  $('loanOut').textContent = fmtMan(R.loan) + '（毎月の返済 ' + fmtYen(R.monthly) + '）';
+  const dl = dscrLevel(R.dscr), rl = repayLevel(R.repayRatio), cl = R.cashY >= 0 ? 'ok' : 'bad';
+  const k = [
+    ['手残り（1か月）', fmtMan(R.cashM), '税引前', 'main lv-' + cl],
+    ['手残り（1年）', fmtMan(R.cashY), '税引前' + (mode !== 'big' ? '・修繕積立を引いたあと' : ''), 'lv-' + cl],
+    ['表面利回り', R.gross.toFixed(2) + '%', '満室の家賃 ÷ 値段', ''],
+    ['実質利回り', R.net.toFixed(2) + '%', 'NOI ÷ (値段＋諸費用)', ''],
+    ['NOI（返済前のもうけ）', fmtMan(R.noi), '1年目', ''],
+    ['1年のローン返済', fmtMan(R.ADS), '', ''],
+    ['返済比率', R.repayRatio.toFixed(1) + '%', '50%以下が目安', 'lv-' + rl],
+    ['DSCR', isFinite(R.dscr) ? R.dscr.toFixed(2) : '借入なし', '1.3以上が目安', isFinite(R.dscr) ? 'lv-' + dl : 'lv-ok']
+  ];
+  $('kpis').innerHTML = k.map(a => '<div class="figure ' + a[3] + '"><div class="k">' + a[0] + '</div><div class="v">' + a[1] + '</div><div class="s">' + a[2] + '</div></div>').join('');
+  const U = unitMetrics(p.price, p.rentM, num('area'));
+  $('units').innerHTML = U ?
+    '<div class="figure"><div class="k">広さ</div><div class="v" style="font-size:18px">' + FD.area(num('area')) + '</div></div>' +
+    '<div class="figure"><div class="k">満室の家賃（1か月）の単価</div><div class="v" style="font-size:18px">' + Math.round(U.rentPerM2).toLocaleString('ja-JP') + '<small>円/㎡</small></div><div class="s">' + Math.round(U.rentPerTsubo).toLocaleString('ja-JP') + '円/坪</div></div>' +
+    '<div class="figure"><div class="k">価格の単価</div><div class="v" style="font-size:18px">' + (U.pricePerM2 / 1e4).toFixed(1) + '<small>万円/㎡</small></div><div class="s">' + (U.pricePerTsubo / 1e4).toFixed(1) + '万円/坪</div></div>'
+    : '<p class="muted" style="grid-column:1/-1;margin:8px 0">貸す部分の広さを入れると、㎡・坪あたりの家賃と価格を出します。</p>';
+  let al = '';
+  if (R.firstNeg) al += '<p class="note alert">' + R.firstNeg + '年目に、手残りの累計がマイナスになります（自分のお金を足す必要があります）。下の表の朱色の行を見てください。</p>';
+  else al += '<p class="note ok">35年のあいだ、手残りの累計はマイナスになりません。</p>';
+  al += '<div class="out">自己資金 ' + fmtMan(p.own) + ' を手残りで取りもどせるのは：<b>' + (R.payback ? R.payback + '年目' : '35年以内には取りもどせない') + '</b>' + (p.own <= 0 ? '（自己資金0のため計算しません）' : '') + '<br><span class="muted">35年後の手残りの累計：' + fmtMan(R.rows[R.rows.length - 1].cum) + '（物件を売ったお金はふくみません）' + (mode !== 'big' ? '。35年後の修繕積立の残り：' + fmtMan(R.rows[R.rows.length - 1].fund) : '') + '</span></div>';
+  if (mode === 'both') {
+    const shortYears = R.rows.filter(x => x.short > 0.5).map(x => x.year);
+    al += shortYears.length ? '<p class="note caution">修繕積立だけでは大規模修繕に足りない年があります（' + shortYears.join('・') + '年目）。足りない分は手残りから払う計算です。</p>' : '<p class="note ok">大規模修繕は、毎年の修繕積立でまかなえる計算です。</p>';
+  }
+  $('alerts').innerHTML = al;
+  const showRes = mode !== 'big';
+  let t = '<tr><th>年目</th><th>満室の家賃</th><th>空室率</th><th>入った家賃</th><th>経費</th><th>NOI</th>' + (mode !== 'reserve' ? '<th>大規模修繕</th>' : '') + (showRes ? '<th>修繕積立</th><th>積立の残り</th>' : '') + '<th>ローン返済</th><th>手残り</th><th>手残りの累計</th><th>ローン残高</th></tr>';
+  R.rows.forEach(r => {
+    t += '<tr class="' + (r.cum < 0 ? 'neg' : '') + (r.big > 0 ? ' big' : '') + '"><td>' + r.year + '</td><td>' + fmtMan(r.rent) + '</td><td>' + r.vac.toFixed(1) + '%</td><td>' + fmtMan(r.egi) + '</td><td>' + fmtMan(r.opex) + '</td><td>' + fmtMan(r.noi) + '</td>' +
+      (mode !== 'reserve' ? '<td>' + (r.big > 0 ? fmtMan(r.big) + (mode === 'both' && r.short > 0.5 ? '（不足 ' + fmtMan(r.short) + '）' : '') : '—') + '</td>' : '') +
+      (showRes ? '<td>' + fmtMan(r.reserve) + '</td><td>' + fmtMan(r.fund) + '</td>' : '') +
+      '<td>' + fmtMan(r.ads) + '</td><td>' + fmtMan(r.cash) + '</td><td>' + fmtMan(r.cum) + '</td><td>' + fmtMan(r.bal) + '</td></tr>';
+  });
+  $('yearTable').innerHTML = t;
+  lastRows = R.rows; barChart($('chart'), lastRows);
+  save();
+}
+document.addEventListener('input', e => {
+  if (e.target.id === 'areaTsubo') { const v = parseFloat(e.target.value); $('area').value = isFinite(v) ? (v * TSUBO_M2).toFixed(2) : ''; update(); return; }
+  if (e.target.matches('[data-s]')) { if (e.target.id === 'area') syncTsubo(); update(); }
+});
+document.addEventListener('change', e => { if (e.target.matches('[data-s]')) update(); });
+$('resetBtn').addEventListener('click', () => {
+  fields().forEach(el => { if (el.type === 'checkbox') el.checked = defaults[el.id]; else el.value = defaults[el.id]; });
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  syncTsubo(); update();
+});
+$('printCheck').addEventListener('click', () => { document.documentElement.classList.add('print-checklist'); window.print(); });
+window.addEventListener('afterprint', () => document.documentElement.classList.remove('print-checklist'));
+$('clearCheck').addEventListener('click', () => { document.querySelectorAll('#staffSec input[type=checkbox]').forEach(c => { c.checked = false; }); });
+let rt = null;
+window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (lastRows) barChart($('chart'), lastRows); }, 150); });
+load();
+syncTsubo();
+update();
+</script>
+</body>
+</html>

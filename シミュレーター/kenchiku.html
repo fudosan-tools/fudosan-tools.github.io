@@ -1,0 +1,1386 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>建てられる大きさと建築費の目安</title>
+<link rel="stylesheet" href="../共通/common.css">
+<style>
+/* このページだけで足した部品（共通に無いもの） */
+:root {
+  --c-road: var(--accent); --c-nb: var(--ink-2); --c-north: var(--ok); --c-kodo: var(--caution); --c-abs: var(--alert);
+  --c-env: var(--accent-weak); --c-floor: var(--accent); --c-floor2: var(--rule-strong);
+}
+.tabs { display: flex; gap: 24px; margin: 8px 0 8px; border-bottom: 1px solid var(--rule-strong); }
+.tabs button { font: inherit; font-size: 15px; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: 10px 0 8px; color: var(--ink-2); cursor: pointer; min-height: 40px; }
+.tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+.tabpanel { display: none; }
+.tabpanel.on { display: block; }
+.pair { display: flex; gap: 10px; flex-wrap: wrap; }
+.pair .unit-input { flex: 1 1 120px; }
+.formrows .fr > select { max-width: 24em; }
+.formrows .fr.chk { grid-template-columns: 1fr; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.btns .btn { min-height: 36px; }
+.legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin-top: 6px; }
+.legend span::before { content: ""; display: inline-block; width: 16px; height: 2px; vertical-align: middle; margin-right: 5px; background: var(--c); }
+.legend span.sq::before { height: 10px; width: 10px; }
+.legend span.dash::before { height: 0; background: none; border-top: 2px dashed var(--c); }
+.legend span.line::before { height: 0; background: none; border-top: 1px solid var(--c); }
+#o_svg svg, #o_plan svg, #r_bar svg, #r_trend svg { display: block; width: 100%; height: auto; }
+.lim-on { color: var(--alert); }
+tr.over td { color: var(--muted); }
+.cost-in td input { width: 6em; padding: 4px 6px; }
+.cost-in td { padding: 4px 6px 4px 0; }
+td.l, th.l { text-align: left; }
+.total-v { font-size: 28px; font-weight: 600; color: var(--accent); line-height: 1.3; }
+.checklist h3 { margin-top: 18px; }
+.checklist .check { border-bottom: 1px solid var(--rule); min-height: 36px; font-size: 14px; }
+.checklist .check span small { display: block; color: var(--muted); font-size: 12px; }
+/* 4辺の道路の表 */
+table.roads td, table.roads th { vertical-align: middle; }
+table.roads td input[type=number] { width: 5.5em; padding: 4px 6px; }
+table.roads td select { width: auto; padding: 4px 6px; font-size: 13px; }
+table.roads label.check { padding: 0; }
+.subrows { margin-top: 8px; }
+.res-block { margin-top: 8px; }
+.res-block table td:first-child { width: 12em; }
+.seg.small button { font-size: 12px; padding: 4px 10px; min-height: 32px; }
+.kv { display: grid; grid-template-columns: 11em 1fr; gap: 2px 12px; font-size: 14px; margin: 6px 0; }
+.kv > div:nth-child(odd) { color: var(--ink-2); font-size: 13px; }
+@media (max-width: 640px) { .total-v { font-size: 22px; } .kv { grid-template-columns: 1fr; } .kv > div:nth-child(odd) { margin-top: 6px; } }
+@media print {
+  .tabs, .btns { display: none !important; }
+  .tabpanel { display: block !important; }
+  body.print-check main.page > *:not(#checklist) { display: none !important; }
+  body.print-check #checklist { display: block !important; }
+}
+/* いびつな形（共通/katachi_ui.js の部品） */
+#v_poly { margin: 8px 0 12px; }
+#v_poly .kt { min-width: 0; }
+.cols > section { min-width: 0; }
+/* がけ・擁壁の表 */
+table.gakes td select { max-width: 13em; }
+table.gakes td input[type=number] { width: 4.5em; }
+.gk-side { border-top: 1px solid var(--rule); padding-top: 8px; margin-top: 10px; }
+.gk-side ul { margin: 4px 0 0 1.2em; padding: 0; font-size: 13px; }
+.gk-side li { margin: 2px 0; }
+.gk-cmp td, .gk-cmp th { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="kenchiku"></nav>
+
+<main class="page">
+<div class="page-head">
+  <div class="eyebrow">建築・ボリューム</div>
+  <h1>建てられる大きさと建築費の目安</h1>
+  <p class="lead">土地の形と道路、その土地にかかる決まり（用途地域・斜線制限・日影規制・高度地区・防火など）を入れると、どれくらいの大きさの建物が建てられそうかを計算し、横から見た形と上から見た配置を描きます。そのあと、建てるのにいくらかかりそうかも出せます。</p>
+  <p class="note for-client">ここで出る大きさと金額は目安です。実際に建てられる大きさは建築士と役所で、金額は建築会社の見積もりで確かめてください。</p>
+</div>
+<div id="urlNote"></div>
+
+<div class="tabs" role="tablist">
+  <button type="button" id="tabV" class="on" data-tab="vol">ボリューム計算</button>
+  <button type="button" id="tabC" data-tab="cost">建築費</button>
+</div>
+
+<!-- ============ ボリューム計算 ============ -->
+<div class="tabpanel on" id="panel-vol">
+<div class="cols">
+  <section>
+    <h2><span class="no">01</span>土地（敷地）</h2>
+    <p class="muted">敷地は長方形と考え、4つの辺は東西南北を向いているとします（ずれているときは近い向きを選んでください）。「間口」は主な道路に面している辺、「奥行」は道路から奥までの長さです。</p>
+    <div class="formrows">
+      <div class="fr"><span class="lab">敷地の形</span><select id="v_shape" data-s><option value="rect">ふつうの長方形</option><option value="flag">旗竿地（敷地延長・路地状敷地）</option><option value="poly">いびつな形（台形・L字・測量図の座標など）</option></select><span class="hint">旗竿地：細い通路（路地状部分）で道路につながる土地。いびつな形：形を選ぶ・測量図の座標・方眼で入れます</span><input type="hidden" id="v_kz" data-s value=""></div>
+      <div class="fr"><span class="lab">主な道路の向き</span><select id="v_dir" data-s><option value="S">南</option><option value="N">北</option><option value="E">東</option><option value="W">西</option></select><span class="hint">道路が土地のどちら側にあるか</span></div>
+      <div class="fr dimrow"><span class="lab" id="v_Flab">間口</span><span class="unit-input"><input type="number" id="v_F" data-s min="1" step="0.1" value="10" aria-label="間口"><span>m</span></span><span class="hint" id="v_Fhint">道路に面した辺の長さ</span></div>
+      <div class="fr dimrow"><span class="lab" id="v_Dlab">奥行</span><span class="unit-input"><input type="number" id="v_D" data-s min="1" step="0.1" value="15" aria-label="奥行"><span>m</span></span></div>
+      <div class="fr" id="v_flagWwrap" hidden><span class="lab">路地状部分の幅</span><span class="unit-input"><input type="number" id="v_flagW" data-s min="0" step="0.1" value="2.5" aria-label="路地状部分の幅"><span>m</span></span><span class="hint">通路の一番せまい所の幅（道路に接する長さ）</span></div>
+      <div class="fr" id="v_flagLwrap" hidden><span class="lab">路地状部分の長さ</span><span class="unit-input"><input type="number" id="v_flagL" data-s min="0" step="0.1" value="15" aria-label="路地状部分の長さ"><span>m</span></span><span class="hint">道路の境界から、旗の部分までの長さ。ここは敷地面積に入りますが、建物は建てられません</span></div>
+      <div class="fr dimrow" id="v_areaWrap"><span class="lab">敷地の面積</span><div class="pair"><span class="unit-input"><input type="number" id="v_A" data-s min="1" step="0.1" value="150" aria-label="敷地の面積（㎡）"><span>㎡</span></span><span class="unit-input"><input type="number" id="v_At" min="0.3" step="0.01" value="45.38" aria-label="敷地の面積（坪）"><span>坪</span></span></div><span class="hint" id="v_Ahint">面積（㎡か坪）を入れると、奥行は「面積÷間口」で自動になります</span></div>
+      <div class="fr chk dimrow"><label class="check"><input type="checkbox" id="v_byArea" data-s><span>面積から奥行を出す（面積を入れると自動でここに印が付きます）</span></label></div>
+    </div>
+    <div id="v_poly" hidden>
+      <p class="note">いびつな形は、中に入る長方形で計算した目安です。実際は形に合わせて建物を工夫できるので、少し大きく建てられることがあります。建ぺい率・容積率は、形の本当の面積（2項道路の後退後）で計算します。斜めの道路は東西南北のいちばん近い向きとして計算するので、斜線の向きが実際とちがうことがあります（建築士に確かめてください）。</p>
+      <p class="muted">図は上が北です。「形を選ぶ」では道路が南（図の下）になります。道路が南でないときは、測量図の座標か方眼で向きを合わせてください。道路に接する辺は、図の辺をタップして選びます。</p>
+      <div id="v_kt"></div>
+      <p class="muted" id="v_polyNote"></p>
+    </div>
+    <p class="muted" id="v_siteNote"></p>
+  </section>
+
+  <section>
+    <h2><span class="no">02</span>道路（4つの辺）</h2>
+    <p class="muted">道路が2本以上の土地（角地・二方道路・三方道路）も入れられます。幅が4m未満の道路は「2項道路」として、道路の中心から2m（反対側が川やがけなら反対側から4m）まで下がるとみなします。</p>
+    <div class="formrows">
+      <div class="fr"><span class="lab">主な道路の幅</span><span class="unit-input"><input type="number" id="v_W" data-s min="0.5" step="0.1" value="4" aria-label="主な道路の幅"><span>m</span></span><span class="hint" id="v_Whint">幅員（道路の幅）</span></div>
+      <div class="fr"><span class="lab">主な道路が4m未満のとき</span><select id="v_nikou" data-s><option value="auto">道路の中心から2m下がる</option><option value="one">反対側が川・がけ（こちらだけで4mにする）</option></select></div>
+    </div>
+    <div class="tablewrap subrows" id="v_roadsWrap">
+      <table class="roads" id="v_roads">
+        <tr><th>辺</th><th class="l">道路</th><th>幅</th><th class="l">4m未満のとき</th></tr>
+        <tr data-side="S"><td>南</td><td class="l"><label class="check"><input type="checkbox" id="v_rS" data-s><span>あり</span></label><span class="mainmark muted"></span></td><td><span class="unit-input"><input type="number" id="v_wS" data-s min="0.5" step="0.1" value="4" aria-label="南の道路の幅"><span>m</span></span></td><td class="l"><select id="v_nS" data-s aria-label="南の道路が4m未満のとき"><option value="auto">中心から2m</option><option value="one">反対側が川・がけ</option></select></td></tr>
+        <tr data-side="E"><td>東</td><td class="l"><label class="check"><input type="checkbox" id="v_rE" data-s><span>あり</span></label><span class="mainmark muted"></span></td><td><span class="unit-input"><input type="number" id="v_wE" data-s min="0.5" step="0.1" value="4" aria-label="東の道路の幅"><span>m</span></span></td><td class="l"><select id="v_nE" data-s aria-label="東の道路が4m未満のとき"><option value="auto">中心から2m</option><option value="one">反対側が川・がけ</option></select></td></tr>
+        <tr data-side="N"><td>北</td><td class="l"><label class="check"><input type="checkbox" id="v_rN" data-s><span>あり</span></label><span class="mainmark muted"></span></td><td><span class="unit-input"><input type="number" id="v_wN" data-s min="0.5" step="0.1" value="4" aria-label="北の道路の幅"><span>m</span></span></td><td class="l"><select id="v_nN" data-s aria-label="北の道路が4m未満のとき"><option value="auto">中心から2m</option><option value="one">反対側が川・がけ</option></select></td></tr>
+        <tr data-side="W"><td>西</td><td class="l"><label class="check"><input type="checkbox" id="v_rW" data-s><span>あり</span></label><span class="mainmark muted"></span></td><td><span class="unit-input"><input type="number" id="v_wW" data-s min="0.5" step="0.1" value="4" aria-label="西の道路の幅"><span>m</span></span></td><td class="l"><select id="v_nW" data-s aria-label="西の道路が4m未満のとき"><option value="auto">中心から2m</option><option value="one">反対側が川・がけ</option></select></td></tr>
+      </table>
+    </div>
+    <p class="muted" id="v_polyRoadNote" hidden>いびつな形のときは、道路は「01 土地（敷地）」の形の図で選びます。下の欄は、形の道路の辺を東西南北のいちばん近い向きに当てて、自動で入れています。</p>
+    <p class="muted" id="v_flagRoadNote" hidden>旗竿地なので、道路は「主な道路」の1本だけです（路地状部分の先にあるとして計算します）。</p>
+    <div class="formrows" style="margin-top:10px">
+      <div class="fr chk"><label class="check"><input type="checkbox" id="v_corner" data-s><span>角地緩和（役所が角地と認めた土地：建ぺい率 +10%）</span></label></div>
+    </div>
+    <p class="muted" id="v_cornerHint"></p>
+    <h3>がけ・擁壁（高低差のある辺）</h3>
+    <p class="muted">となりの土地や道路との間に高低差（がけ・擁壁＝土を止める壁）がある辺を入れると、がけ条例で建物を離す帯を敷地から除いて計算します。高さは、がけの下の地面から上の地面まで。角度は、擁壁ならほぼ垂直の90度、土の斜面なら斜面の角度です。</p>
+    <div class="formrows">
+      <div class="fr"><span class="lab">がけ条例の地域</span><select id="v_gReg" data-s><option value="auto">自動（03の都県から）</option></select><span class="hint" id="v_gRegHint">市によって、がけの高さ（2m・3m）や測り方がちがいます</span></div>
+      <div class="fr"><span class="lab">土砂災害の区域</span><select id="v_gDosha" data-s><option value="unknown">わからない</option><option value="none">区域の外</option><option value="yellow">警戒区域（イエロー）</option><option value="red">特別警戒区域（レッド）</option></select><span class="hint">都県の地図で確かめられます</span></div>
+    </div>
+    <div class="tablewrap subrows">
+      <table class="roads gakes" id="v_gake">
+        <tr><th>辺</th><th class="l">がけ</th><th>高さ</th><th>角度</th><th class="l">擁壁の状態</th><th class="l">対策</th></tr>
+        <tr data-side="S"><td>南</td><td class="l"><select id="v_gpS" data-s aria-label="南の辺のがけ"><option value="">なし</option><option value="above">敷地が上（がけの上）</option><option value="below">敷地が下（がけの下）</option></select></td><td><span class="unit-input"><input type="number" id="v_ghS" data-s min="0" step="0.1" value="3" aria-label="南のがけの高さ"><span>m</span></span></td><td><span class="unit-input"><input type="number" id="v_gaS" data-s min="1" max="90" step="1" value="90" aria-label="南のがけの角度"><span>度</span></span></td><td class="l"><select id="v_gwS" data-s aria-label="南の擁壁の状態"><option value="none">擁壁なし（土の斜面）</option><option value="ok">擁壁あり・検査済証あり</option><option value="nocert">擁壁あり・検査済証なし</option><option value="unknown">擁壁あり・わからない</option><option value="bad">擁壁あり・古い形や傷み</option></select></td><td class="l"><select id="v_gmS" data-s aria-label="南のがけの対策"><option value="none">何もしない（離して建てる）</option><option value="rebuild">擁壁をやり直す</option><option value="rc">鉄筋コンクリート造にする（がけの下）</option><option value="ryudo">土砂を受ける壁を作る（がけの下）</option><option value="deep">基礎を深くする（がけの上）</option></select></td></tr>
+        <tr data-side="E"><td>東</td><td class="l"><select id="v_gpE" data-s aria-label="東の辺のがけ"><option value="">なし</option><option value="above">敷地が上（がけの上）</option><option value="below">敷地が下（がけの下）</option></select></td><td><span class="unit-input"><input type="number" id="v_ghE" data-s min="0" step="0.1" value="3" aria-label="東のがけの高さ"><span>m</span></span></td><td><span class="unit-input"><input type="number" id="v_gaE" data-s min="1" max="90" step="1" value="90" aria-label="東のがけの角度"><span>度</span></span></td><td class="l"><select id="v_gwE" data-s aria-label="東の擁壁の状態"><option value="none">擁壁なし（土の斜面）</option><option value="ok">擁壁あり・検査済証あり</option><option value="nocert">擁壁あり・検査済証なし</option><option value="unknown">擁壁あり・わからない</option><option value="bad">擁壁あり・古い形や傷み</option></select></td><td class="l"><select id="v_gmE" data-s aria-label="東のがけの対策"><option value="none">何もしない（離して建てる）</option><option value="rebuild">擁壁をやり直す</option><option value="rc">鉄筋コンクリート造にする（がけの下）</option><option value="ryudo">土砂を受ける壁を作る（がけの下）</option><option value="deep">基礎を深くする（がけの上）</option></select></td></tr>
+        <tr data-side="N"><td>北</td><td class="l"><select id="v_gpN" data-s aria-label="北の辺のがけ"><option value="">なし</option><option value="above">敷地が上（がけの上）</option><option value="below">敷地が下（がけの下）</option></select></td><td><span class="unit-input"><input type="number" id="v_ghN" data-s min="0" step="0.1" value="3" aria-label="北のがけの高さ"><span>m</span></span></td><td><span class="unit-input"><input type="number" id="v_gaN" data-s min="1" max="90" step="1" value="90" aria-label="北のがけの角度"><span>度</span></span></td><td class="l"><select id="v_gwN" data-s aria-label="北の擁壁の状態"><option value="none">擁壁なし（土の斜面）</option><option value="ok">擁壁あり・検査済証あり</option><option value="nocert">擁壁あり・検査済証なし</option><option value="unknown">擁壁あり・わからない</option><option value="bad">擁壁あり・古い形や傷み</option></select></td><td class="l"><select id="v_gmN" data-s aria-label="北のがけの対策"><option value="none">何もしない（離して建てる）</option><option value="rebuild">擁壁をやり直す</option><option value="rc">鉄筋コンクリート造にする（がけの下）</option><option value="ryudo">土砂を受ける壁を作る（がけの下）</option><option value="deep">基礎を深くする（がけの上）</option></select></td></tr>
+        <tr data-side="W"><td>西</td><td class="l"><select id="v_gpW" data-s aria-label="西の辺のがけ"><option value="">なし</option><option value="above">敷地が上（がけの上）</option><option value="below">敷地が下（がけの下）</option></select></td><td><span class="unit-input"><input type="number" id="v_ghW" data-s min="0" step="0.1" value="3" aria-label="西のがけの高さ"><span>m</span></span></td><td><span class="unit-input"><input type="number" id="v_gaW" data-s min="1" max="90" step="1" value="90" aria-label="西のがけの角度"><span>度</span></span></td><td class="l"><select id="v_gwW" data-s aria-label="西の擁壁の状態"><option value="none">擁壁なし（土の斜面）</option><option value="ok">擁壁あり・検査済証あり</option><option value="nocert">擁壁あり・検査済証なし</option><option value="unknown">擁壁あり・わからない</option><option value="bad">擁壁あり・古い形や傷み</option></select></td><td class="l"><select id="v_gmW" data-s aria-label="西のがけの対策"><option value="none">何もしない（離して建てる）</option><option value="rebuild">擁壁をやり直す</option><option value="rc">鉄筋コンクリート造にする（がけの下）</option><option value="ryudo">土砂を受ける壁を作る（がけの下）</option><option value="deep">基礎を深くする（がけの上）</option></select></td></tr>
+      </table>
+    </div>
+    <div class="formrows" id="v_gCostWrap" hidden style="margin-top:10px">
+      <div class="fr"><span class="lab">今の擁壁の種類</span><select id="v_gOld" data-s><option value="rc">鉄筋コンクリート</option><option value="stone">間知石・間知ブロックの練積み</option><option value="dry">空石積み・大谷石・ブロック積み</option></select><span class="hint">擁壁の作り直しの費用に使います（「擁壁なし」の辺は解体なし）</span></div>
+      <div class="fr"><span class="lab">新しくする擁壁</span><select id="v_gNew" data-s><option value="L">鉄筋コンクリート L型</option><option value="T">鉄筋コンクリート 逆T型</option><option value="kenchi">間知ブロック練積み</option></select></div>
+      <div class="fr"><span class="lab">重機の入り方</span><select id="v_gAcc" data-s><option value="ok">重機が入る</option><option value="small">小型の重機だけ</option><option value="hand">手作業</option></select></div>
+      <div class="fr chk"><label class="check"><input type="checkbox" id="v_gNb" data-s><span>となりの建物・境界が近い（土が崩れないよう山留めが要る）</span></label></div>
+      <div class="fr chk"><label class="check"><input type="checkbox" id="v_gRoad" data-s><span>道路に面していて、道路を使う・交通誘導が要る</span></label></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="no">03</span>地域の決まり</h2>
+    <p class="muted">役所の「都市計画図」や、不動産の重要事項説明書に書いてあります。</p>
+    <div class="formrows">
+      <div class="fr"><span class="lab">都県・市</span><select id="v_pref" data-s>
+        <option value="tokyo">東京都</option><option value="kanagawa">神奈川県（横浜市・川崎市などをのぞく）</option><option value="yokohama">横浜市</option>
+        <option value="saitama">埼玉県</option><option value="chiba">千葉県</option><option value="other">そのほか・わからない</option></select>
+        <span class="hint">旗竿地の条例と、日影規制の例を選ぶのに使います。川崎市・相模原市・横須賀市などは独自の条例があるので「そのほか」にして役所で確認してください</span></div>
+      <div class="fr"><span class="lab">用途地域</span><select id="v_zone" data-s></select></div>
+      <div class="fr"><span class="lab">建ぺい率（指定）</span><select id="v_bcr" data-s></select><span class="hint">敷地のうち、建物を建ててよい割合</span></div>
+      <div class="fr"><span class="lab">容積率（指定）</span><select id="v_far" data-s></select><span class="hint">敷地に対する、全部の階の床の合計の割合</span></div>
+      <div class="fr"><span class="lab">道路の幅にかける数</span><select id="v_coef" data-s></select><span class="hint">一番広い前面道路の幅が12m未満のとき、容積率は「道路の幅 × この数 × 100」％までに下がります（建築基準法 第52条2項）。ふつうは住居系 4/10、それ以外 6/10</span></div>
+      <div class="fr"><span class="lab">防火の地域</span><select id="v_fire" data-s><option value="none">指定なし</option><option value="jun">準防火地域</option><option value="bou">防火地域</option></select></div>
+      <div class="fr" id="v_absWrap"><span class="lab">絶対高さの制限</span><select id="v_absH" data-s><option value="10">10m</option><option value="12">12m</option></select><span class="hint">第一種・第二種低層住居専用地域と田園住居地域だけ</span></div>
+      <div class="fr"><span class="lab">高度地区</span><select id="v_kodo" data-s></select><span class="hint" id="v_kodoHint">北側の斜線と、最高の高さの決まり。市ごとに式がちがいます</span></div>
+      <div class="fr" id="v_kcWrap" hidden><span class="lab">高度地区の式（自分で入れる）</span>
+        <div>
+          <div class="pair"><span class="unit-input"><span>北側</span><input type="number" id="v_kBase" data-s min="0" step="0.5" value="5" aria-label="北側の立ち上がりの高さ"><span>m ＋ 勾配</span><input type="number" id="v_kS1" data-s min="0" step="0.05" value="1.25" aria-label="勾配1"></span></div>
+          <div class="pair" style="margin-top:6px"><span class="unit-input"><span>距離</span><input type="number" id="v_kBrk" data-s min="0" step="0.5" value="8" aria-label="勾配が変わる距離"><span>m から先は勾配</span><input type="number" id="v_kS2" data-s min="0" step="0.05" value="0.6" aria-label="勾配2"></span></div>
+          <div style="margin-top:6px"><select id="v_kMeas" data-s aria-label="距離の測り方"><option value="road">北が道路なら、道路の反対側の境界線まで測る</option><option value="half">北が道路なら、道路の幅の半分だけ外側まで測る</option><option value="site">敷地の境界線まで測る</option></select></div>
+        </div>
+        <span class="hint">勾配が途中で変わらないときは、距離に 0 を入れてください</span></div>
+      <div class="fr"><span class="lab">高度地区の最高の高さ</span><span class="unit-input"><input type="number" id="v_kodoMax" data-s min="0" step="1" value="0" aria-label="高度地区の最高の高さ"><span>m</span></span><span class="hint" id="v_kodoMaxHint">17m・22mなど。無ければ 0（横浜市・川崎市の型を選ぶと、その型の高さを使います）</span></div>
+      <div class="fr"><span class="lab">そのほかの高さの上限</span><span class="unit-input"><input type="number" id="v_hMax" data-s min="0" step="0.5" value="0" aria-label="そのほかの高さの上限"><span>m</span></span><span class="hint">地区計画・建築協定・景観の条例などで高さが決まっているとき。無ければ 0</span></div>
+      <div class="fr"><span class="lab">日影規制</span><select id="v_shMode" data-s><option value="auto">都県の条例の例から自動で選ぶ</option><option value="none">かからない（として計算）</option><option value="manual">自分で選ぶ</option></select><span class="automark" id="v_shAuto" hidden>自動で入れた・要確認</span><span class="hint" id="v_shHint"></span></div>
+      <div class="fr" id="v_shManWrap" hidden><span class="lab">日影の時間と測る高さ</span>
+        <div class="pair"><select id="v_shGo" data-s aria-label="規制の時間（号）"></select><select id="v_shHm" data-s aria-label="測る高さ"><option value="1.5">測る高さ 1.5m</option><option value="4">測る高さ 4m</option><option value="6.5">測る高さ 6.5m</option></select></div>
+        <span class="hint">「5m〜10mの所」と「10mより先」で、冬至の日に影になってよい時間（別表第四）。低層住居は測る高さ1.5m、それ以外は4mか6.5m</span></div>
+      <div class="fr"><span class="lab">緯度（日影の計算用）</span><span class="unit-input"><input type="number" id="v_lat" data-s min="20" max="46" step="0.1" value="35.7" aria-label="緯度"><span>度</span></span><span class="hint">東京は35.7度。横浜35.4・さいたま35.9・千葉35.6</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="no">04</span>建物の条件</h2>
+    <div class="formrows">
+      <div class="fr"><span class="lab">建物のつくり</span><select id="v_struct" data-s>
+        <option value="wood">木造</option><option value="ls">軽量鉄骨造</option><option value="s">重量鉄骨造</option>
+        <option value="rc">RC造（鉄筋コンクリート・柱と梁）</option><option value="wrc">壁式RC造（壁で支える）</option><option value="src">SRC造（鉄骨鉄筋コンクリート）</option>
+      </select><span class="hint">変えると、1階あたりの高さ・屋根・燃えにくさの目安も入れ直します</span></div>
+      <div class="fr"><span class="lab">建物の燃えにくさ</span><select id="v_fireBldg" data-s><option value="taika">耐火建築物 など</option><option value="juntaika">準耐火建築物 など</option><option value="none">それ以外</option></select><span class="hint">防火地域・準防火地域では、階数と広さによって必要な燃えにくさが決まります（結果に出します）</span></div>
+      <div class="fr"><span class="lab">建物の使い方</span><select id="v_use" data-s><option value="house">戸建て住宅</option><option value="apart">共同住宅（アパート・マンション）</option><option value="other">事務所・店舗など</option></select><span class="hint">共同住宅は、燃えにくさや旗竿地の決まりがきびしくなります</span></div>
+      <div class="fr"><span class="lab">1階あたりの高さ（階高）</span><span class="unit-input"><input type="number" id="v_fh" data-s min="2.4" max="6" step="0.1" value="2.9" aria-label="階高"><span>m</span></span><span class="hint">床から上の階の床まで</span></div>
+      <div class="fr"><span class="lab">1階の床の高さ</span><span class="unit-input"><input type="number" id="v_base" data-s min="0" max="2" step="0.05" value="0.5" aria-label="1階の床の高さ"><span>m</span></span><span class="hint">地面から1階の床まで（基礎の高さ）。木造は0.5m前後</span></div>
+      <div class="fr"><span class="lab">屋根の形</span><select id="v_roof" data-s><option value="gable">切妻（三角の屋根）</option><option value="shed">片流れ（一方に傾いた屋根）</option><option value="flat">陸屋根（平らな屋根）</option></select><span class="hint">勾配屋根が斜線に入らないときは、入る形に自動で変えます</span></div>
+      <div class="fr" id="v_pitchWrap"><span class="lab">屋根の勾配</span><select id="v_pitch" data-s><option value="0.3">3寸（3/10）</option><option value="0.4" selected>4寸（4/10）</option><option value="0.5">5寸（5/10）</option><option value="0.6">6寸（6/10）</option></select></div>
+      <div class="fr"><span class="lab">道路から下げる距離</span><span class="unit-input"><input type="number" id="v_d" data-s min="0" step="0.1" value="0" aria-label="道路から下げる距離"><span>m</span></span><span class="hint">建物を道路から下げると、その分だけ道路斜線がゆるくなります（後退緩和）。1階の位置から自動でも効かせます</span></div>
+      <div class="fr"><span class="lab">隣の土地から離す距離</span><span class="unit-input"><input type="number" id="v_c" data-s min="0" step="0.1" value="0.5" aria-label="隣地からの距離"><span>m</span></span><span class="hint">民法では50cmが目安</span></div>
+      <div class="fr"><span class="lab">部屋として使える最小の幅</span><span class="unit-input"><input type="number" id="v_minDim" data-s min="1" max="5" step="0.1" value="2" aria-label="部屋として使える最小の幅"><span>m</span></span><span class="hint">1つの階の幅か奥行がこれより細くなったら、その階は使わないことにします</span></div>
+    </div>
+    <h3>つくりごとの目安</h3>
+    <div class="tablewrap"><table id="v_structTbl"></table></div>
+    <p class="muted">一般的な目安です。実際の階高・柱の間隔・できる階数は、建物の使い方と設計で変わります。坪単価は「建築費」タブの統計（東京都）から出しています。</p>
+  </section>
+</div>
+
+<section id="v_result">
+  <h2><span class="no">05</span>結果：建てられる大きさの目安</h2>
+  <div class="figures">
+    <div class="figure main"><div class="k">建てられる延床面積（全部の階の合計）</div><div class="v" id="o_total">-</div><div class="s" id="o_totalT"></div></div>
+    <div class="figure"><div class="k">何階建て</div><div class="v" id="o_floors">-</div><div class="s" id="o_floorsS"></div></div>
+    <div class="figure"><div class="k">1階の広さ（建築面積）</div><div class="v" id="o_bldg">-</div><div class="s" id="o_bldgS"></div></div>
+    <div class="figure"><div class="k">建物の高さ</div><div class="v" id="o_height">-</div><div class="s" id="o_heightS"></div></div>
+    <div class="figure"><div class="k">いちばん効いている制限</div><div class="v" id="o_bind" style="font-size:18px">-</div><div class="s" id="o_bindS"></div></div>
+  </div>
+  <div id="o_warn"></div>
+  <div class="btns"><button type="button" class="btn primary" id="toCost">この延床面積で建築費を見る</button></div>
+
+  <h3>横から見た図</h3>
+  <div class="segscroll"><div class="seg small" id="o_cutSeg" role="group" aria-label="見る向き"><button type="button" data-cut="NS">南北に見る（東から見た図）</button><button type="button" data-cut="EW">東西に見る（南から見た図）</button></div></div>
+  <div id="o_svg"></div>
+  <div class="legend">
+    <span class="sq" style="--c:var(--c-env)">建ててよい空間（すべての決まりを重ねたもの）</span>
+    <span class="dash" style="--c:var(--accent)">その外形</span>
+    <span class="sq" style="--c:var(--c-floor)">建てる建物（階ごと）</span>
+    <span class="dash" style="--c:var(--c-floor2)">形の上は入るが使わない分（容積率・日影など）</span>
+    <span class="line" style="--c:var(--c-road)">道路斜線</span>
+    <span class="line" style="--c:var(--c-nb)">隣地斜線</span>
+    <span class="line" style="--c:var(--c-north)">北側斜線</span>
+    <span class="line" style="--c:var(--c-kodo)">高度地区</span>
+    <span style="--c:var(--c-abs)">高さの上限</span>
+  </div>
+  <p class="muted" id="o_svgNote"></p>
+
+  <h3>上から見た図（配置図）</h3>
+  <div id="o_plan"></div>
+  <div class="legend">
+    <span class="sq" style="--c:var(--rule-strong)">道路</span>
+    <span class="sq" style="--c:var(--caution-weak)">道路とみなして下がる所（2項道路）</span>
+    <span class="sq" style="--c:var(--c-env)">1階</span>
+    <span class="line" style="--c:var(--c-floor)">上の階の外形</span>
+    <span class="dash" style="--c:var(--c-kodo)">日影を測る線（5m・10m）</span>
+    <span class="sq" style="--c:var(--alert-weak)">がけ条例で建物を置かない帯</span>
+  </div>
+
+  <h3>日影規制の確かめ（目安）</h3>
+  <div id="o_shadow" class="res-block"></div>
+
+  <h3>燃えにくさ（耐火）と構造</h3>
+  <div id="o_fire" class="res-block"></div>
+
+  <div id="o_gakeWrap" hidden>
+    <h3>がけ条例と擁壁</h3>
+    <div id="o_gake" class="res-block"></div>
+  </div>
+
+  <div id="o_flagWrap" hidden>
+    <h3>旗竿地（路地状敷地）の決まり</h3>
+    <div id="o_flag" class="res-block"></div>
+  </div>
+
+  <h3>どの決まりが、どれだけ効いているか</h3>
+  <div class="tablewrap"><table id="o_limits"></table></div>
+  <p class="muted">「効き具合」は、その決まりが1つだけ無かったら、形の上の床面積が何㎡増えるかです。日影・耐火・旗竿地は、建てる建物から削った面積です。</p>
+
+  <h3>階ごとの広さ</h3>
+  <div class="tablewrap"><table id="o_floorsTbl"></table></div>
+
+  <div class="note caution">
+    <b>この計算に入っていないこと</b>（実際はここで建てられる大きさが変わります）
+    <ul>
+      <li>天空率（斜線のかわりに「空の見え方」で確かめる方法。使うともっと建てられることが多い）</li>
+      <li>日影規制は、建物を階ごとの箱と屋根で表した目安です。正式には建築士が日影図で確かめます。敷地と隣地の高さのちがい、ほかの建物、区域の境目は入っていません</li>
+      <li>敷地が東西南北からずれている形、長方形でない形、土地の高低差</li>
+      <li>地区計画・建築協定・各自治体の条例（窓先空地など）。がけ条例は「がけ・擁壁」の欄に入れた辺だけ、帯を除く形で入れています（がけが斜めの辺・敷地の中の高低差は入っていません）。旗竿地と日影の条例は都県の主な決まりだけで、政令市などの独自の条例は入っていません</li>
+      <li>公園・川・線路に面した緩和（北側斜線・隣地斜線）、特定行政庁が指定する区域の特別な数値（住居系の道路斜線1.5・隣地斜線2.5 など）、特定道路による容積率の緩和</li>
+      <li>容積率に入れなくてよい部分（駐車場・共用廊下・地下室・エレベーターなど）。実際の延床はもう少し大きくできることがあります</li>
+      <li>屋上の手すり・階段室・設備などの高さ、軒の出</li>
+    </ul>
+  </div>
+</section>
+</div>
+
+<!-- ============ 建築費 ============ -->
+<div class="tabpanel" id="panel-cost">
+<div class="cols">
+  <section>
+    <h2><span class="no">01</span>建物</h2>
+    <div class="formrows">
+      <div class="fr"><span class="lab">延床面積（全部の階の合計）</span><div class="pair"><span class="unit-input"><input type="number" id="c_area" data-s min="1" step="0.1" value="100" aria-label="延床面積（㎡）"><span>㎡</span></span><span class="unit-input"><input type="number" id="c_areaTsubo" min="0.3" step="0.01" value="30.25" aria-label="延床面積（坪）"><span>坪</span></span></div><span class="hint" id="c_areaT"></span></div>
+      <div class="fr"><span class="lab">建物のつくり</span><select id="c_struct" data-s><option value="wood">木造</option><option value="ls">軽量鉄骨造</option><option value="s">重量鉄骨造</option><option value="rc">RC造</option><option value="wrc">壁式RC造</option><option value="src">SRC造</option></select></div>
+      <div class="fr" id="c_fireWrap"><span class="lab">木造の燃えにくさ</span><select id="c_fire" data-s><option value="none">ふつう</option><option value="juntaika">準耐火</option><option value="taika">耐火（耐火の木造）</option></select><span class="hint">耐火の木造は、燃えにくくする材料と手間の分だけ高くなります（一般的な目安で2〜3割）</span></div>
+      <div class="fr"><span class="lab">建物の種類</span><select id="c_use" data-s><option value="house">戸建て</option><option value="apart">アパート</option><option value="mansion">マンション</option></select></div>
+      <div class="fr"><span class="lab">グレード（設備・仕上げ）</span><select id="c_grade" data-s><option value="low">おさえめ</option><option value="std" selected>ふつう</option><option value="high">こだわり</option></select></div>
+      <div class="fr"><span class="lab">場所</span><select id="c_region" data-s><option value="tokyo">東京都</option><option value="national">全国平均</option></select></div>
+      <div class="fr chk"><label class="check"><input type="checkbox" id="c_manual" data-s><span>坪単価を自分で入れる（見積もりがあるとき）</span></label></div>
+      <div class="fr" id="c_manualWrap"><span class="lab">坪単価</span><div class="pair"><span class="unit-input"><input type="number" id="c_mLo" data-s min="0" step="1" value="90" aria-label="坪単価 下限"><span>〜</span></span><span class="unit-input"><input type="number" id="c_mHi" data-s min="0" step="1" value="120" aria-label="坪単価 上限"><span>万円/坪</span></span></div><span class="hint" id="c_mNote"></span></div>
+    </div>
+    <div class="btns"><button type="button" class="btn" id="c_take">ボリューム計算の延床面積を引き継ぐ</button></div>
+    <p class="muted" id="c_takeNote"></p>
+    <p class="muted" id="c_unitNote"></p>
+  </section>
+
+  <section>
+    <h2><span class="no">02</span>古い家の解体</h2>
+    <div class="formrows">
+      <div class="fr chk"><label class="check"><input type="checkbox" id="c_demo" data-s><span>古い家がある（こわしてから建てる）</span></label></div>
+    </div>
+    <div id="c_demoWrap">
+      <div class="formrows">
+        <div class="fr"><span class="lab">古い家のつくり</span><select id="c_demoStruct" data-s><option value="wood">木造</option><option value="s">鉄骨造</option><option value="rc">RC造</option></select></div>
+        <div class="fr"><span class="lab">古い家の延床</span><div class="pair"><span class="unit-input"><input type="number" id="c_demoTsubo" data-s min="0" step="1" value="30" aria-label="古い家の延床（坪）"><span>坪</span></span><span class="unit-input"><input type="number" id="c_demoM2" min="0" step="0.1" value="99.17" aria-label="古い家の延床（㎡）"><span>㎡</span></span></div></div>
+        <div class="fr"><span class="lab">解体の坪単価</span><div class="pair"><span class="unit-input"><input type="number" id="c_demoLo" data-s min="0" step="0.5" value="3" aria-label="解体の坪単価 下限"><span>〜</span></span><span class="unit-input"><input type="number" id="c_demoHi" data-s min="0" step="0.5" value="6" aria-label="解体の坪単価 上限"><span>万円/坪</span></span></div><span class="hint" id="c_demoNote"></span></div>
+      </div>
+      <p class="note caution">石綿（アスベスト）の除去・地中の古い基礎やがれきは別料金になりやすいです。解体の前には石綿の事前調査が必要で、解体する部分の床面積が80㎡（約24.2坪）以上なら、調査の結果を国と自治体に報告します（2022年4月から）。</p>
+    </div>
+    <h2><span class="no">03</span>そのほかのお金（万円）</h2>
+    <p class="muted">「建物の種類」を変えると、ここの目安も入れ直します。見積もりがあれば書きかえてください。</p>
+    <div class="tablewrap"><table class="cost-in" id="c_items"></table></div>
+    <div class="btns"><button type="button" class="btn" id="c_reset">目安の数字に戻す</button></div>
+  </section>
+</div>
+
+<section>
+  <h2><span class="no">04</span>結果：建築にかかるお金の目安</h2>
+  <div class="panel">
+    <div class="muted">合計（消費税こみ）</div>
+    <div class="total-v" id="r_total">-</div>
+    <div class="small" id="r_totalS"></div>
+  </div>
+  <div class="figures" style="margin-top:12px">
+    <div class="figure"><div class="k">建物の本体工事</div><div class="v" id="r_hon">-</div><div class="s" id="r_honS"></div></div>
+    <div class="figure"><div class="k">使った坪単価</div><div class="v" id="r_unit">-</div><div class="s" id="r_unitS"></div></div>
+    <div class="figure"><div class="k">延床1坪あたりの総額</div><div class="v" id="r_per">-</div><div class="s" id="r_perS">本体以外もふくめた額</div></div>
+  </div>
+  <div id="r_bar" style="margin-top:12px"></div>
+  <div class="tablewrap"><table id="r_tbl"></table></div>
+  <div id="r_warn"></div>
+  <p class="note for-client">この金額は見積もりではありません。建築会社に土地を見てもらい、見積もりを取って確かめてください。</p>
+</section>
+
+<section>
+  <h2><span class="no">05</span>建築費は、ここ数年で上がっています</h2>
+  <p class="muted">国土交通省「建設工事費デフレーター」（2020年度＝100）。工事にかかる材料や人の値段の動きをあらわす数字です。</p>
+  <div id="r_trend"></div>
+  <p class="note" id="r_trendText"></p>
+</section>
+</div>
+
+<section class="for-staff checklist" id="checklist">
+  <h2><span class="no">06</span>役所で確かめること（担当者向け）</h2>
+  <div class="staff-box">
+    <div class="t">確認表　所在地：＿＿＿＿＿＿＿＿＿＿＿＿　確認日：＿＿＿＿＿＿　窓口：＿＿＿＿＿＿</div>
+    <h3>道路</h3>
+    <label class="check"><input type="checkbox"><span>前面道路の種類（建築基準法 第42条の何項何号か）。道路が2本以上なら、それぞれ<small>1項1号＝道路法の道路、1項2号＝開発などで造った道路、1項3号＝法ができる前からある道、1項5号＝位置指定道路、2項＝幅4m未満で道路とみなす道（2項道路）。道路でなければ原則建てられない</small></span></label>
+    <label class="check"><input type="checkbox"><span>道路の幅（役所の認定の幅と、いまの幅）。一番広い道路の幅（容積率と道路斜線に使う）</span></label>
+    <label class="check"><input type="checkbox"><span>道路が2本以上のとき：角地の緩和の対象か（特定行政庁の基準。道路の角度・接する長さ）、二方道路の道路斜線の扱い（施行令第132条）</span></label>
+    <label class="check"><input type="checkbox"><span>敷地が道路に2m以上接しているか（第43条）</span></label>
+    <label class="check"><input type="checkbox"><span>セットバックの要否と、下がる線の位置<small>2項道路は原則、道路の中心から2m。反対側が川・がけなら片側で4m。角の隅切りの要否も</small></span></label>
+    <label class="check"><input type="checkbox"><span>道路との境界（官民の境界）が決まっているか。私道なら持ち分・通行と掘削の承諾</span></label>
+    <label class="check"><input type="checkbox"><span>都市計画道路の予定線にかかっていないか（かかると建てられる建物に制限）</span></label>
+    <h3>旗竿地（路地状敷地）</h3>
+    <label class="check"><input type="checkbox"><span>路地状部分の幅（一番せまい所）と長さ。条例の表に足りているか<small>東京都建築安全条例 第3条・第3条の2、埼玉県建築基準法施行条例 第3条、横浜市建築基準条例 第4条など。政令市・中核市は独自の条例のことがある</small></span></label>
+    <label class="check"><input type="checkbox"><span>共同住宅・寄宿舎などを建てられるか（東京都 第10条、埼玉県 第10条、千葉県 第7条、神奈川県・横浜市 第5条の接する長さ）</span></label>
+    <label class="check"><input type="checkbox"><span>路地状部分に塀・門・車庫を置けるか、通路の有効幅（雨どい・メーターなどの出っぱり）</span></label>
+    <h3>地域の決まり</h3>
+    <label class="check"><input type="checkbox"><span>用途地域・建ぺい率・容積率・防火の地域の数値。境目で2つにまたがっていないか</span></label>
+    <label class="check"><input type="checkbox"><span>高度地区の種類（北側の斜線の式・最高の高さ）。市ごとに式と距離の測り方がちがう<small>例：東京都は道路の反対側の境界線まで、横浜市は敷地境界線まで（北が道路なら幅の1/2外側）</small></span></label>
+    <label class="check"><input type="checkbox"><span>日影規制の有無と、号（時間）・測る高さ（1.5m／4m／6.5m）<small>第56条の2と条例。区ごと・町丁目ごとの例外が多い。中高層住居専用地域では、日影規制の区域だと北側斜線が外れる</small></span></label>
+    <label class="check"><input type="checkbox"><span>絶対高さ（低層住居の10m・12m）、地区計画・建築協定・景観の条例の高さ</span></label>
+    <label class="check"><input type="checkbox"><span>地区計画・建築協定・まちづくりの条例<small>最低の敷地面積、壁の位置（壁面後退）、高さ、建ててよい用途</small></span></label>
+    <label class="check"><input type="checkbox"><span>自治体の条例（例：東京都建築安全条例の窓先空地、がけ条例、ワンルームの条例）</span></label>
+    <label class="check"><input type="checkbox"><span>景観・風致地区・宅地造成の規制、土砂災害警戒区域・浸水の想定（ハザードマップ）</span></label>
+    <label class="check"><input type="checkbox"><span>特定行政庁が指定する特別な数値（容積率の係数0.6、道路斜線1.5 など）、天空率を使えるか</span></label>
+    <h3>燃えにくさ（耐火）と構造</h3>
+    <label class="check"><input type="checkbox"><span>防火地域・準防火地域で必要な燃えにくさ（第61条・施行令第136条の2）。延焼防止建築物などの扱い</span></label>
+    <label class="check"><input type="checkbox"><span>共同住宅・店舗などの特殊建築物の決まり（第27条・別表第一）。木造3階建て共同住宅の条件</span></label>
+    <label class="check"><input type="checkbox"><span>木造で4階以上・高さ16m超になるか（第21条）</span></label>
+    <h3>地下と引き込み</h3>
+    <label class="check"><input type="checkbox"><span>埋蔵文化財（周知の埋蔵文化財包蔵地か）<small>当てはまれば工事の60日前までに届け出（文化財保護法 第93条）。試掘・発掘調査で工期と費用がふえることがある</small></span></label>
+    <label class="check"><input type="checkbox"><span>上水道の引き込み<small>前の道路の水道管の太さと位置、敷地に入っている管の太さ、私設の管か。加入金（水道の負担金）。旗竿地は引き込みが長くなる</small></span></label>
+    <label class="check"><input type="checkbox"><span>下水道（公共下水か浄化槽か、汚水・雨水を流す先、負担金）</span></label>
+    <label class="check"><input type="checkbox"><span>ガス（都市ガスかプロパン）、電柱・電線の位置</span></label>
+    <label class="check"><input type="checkbox"><span>地盤（近くの地盤調査の記録・液状化）、土壌汚染の届け出の要否</span></label>
+    <h3>いまある建物</h3>
+    <label class="check"><input type="checkbox"><span>確認済証・検査済証の有無（台帳記載事項証明書）<small>建て替え・増築のときの手がかり。違反建築でないか</small></span></label>
+    <label class="check"><input type="checkbox"><span>解体するなら石綿の事前調査（解体する床面積80㎡以上は結果の報告が必要）</span></label>
+  </div>
+  <div class="btns"><button type="button" class="btn" id="printCheck">この確認表を印刷する</button></div>
+</section>
+
+<div class="disclaimer">
+  <p>これは目安です。実際の設計・確認申請は建築士と役所で確かめてください。日影規制は簡単な形で計算した目安で、正式には日影図で確かめます。建築費は見積もりで大きく変わります。</p>
+  <p>根拠にしたもの（出典）</p>
+  <ul>
+    <li>建築基準法 第21条（大規模の木造）・第27条（特殊建築物）・第42条（道路）・第43条（接道）・第52条（容積率）・第53条（建ぺい率）・第55条（低層住居の高さ）・第56条（道路・隣地・北側斜線）・第56条の2（日影）・第61条（防火地域）・別表第一・第三・第四：<a href="https://laws.e-gov.go.jp/law/325AC0000000201">e-Gov法令検索 建築基準法</a></li>
+    <li>建築基準法施行令 第132条（2以上の前面道路）・第135条の12（日影の緩和）・第136条の2（防火地域・準防火地域の建築物）：<a href="https://laws.e-gov.go.jp/law/325CO0000000338">e-Gov法令検索 建築基準法施行令</a></li>
+    <li>東京都建築安全条例 第3条・第3条の2・第10条（路地状敷地）：<a href="https://www.reiki.metro.tokyo.lg.jp/reiki/reiki_honbun/g101RG00001306.html">東京都例規集</a>／東京都日影による中高層建築物の高さの制限に関する条例：<a href="https://www.reiki.metro.tokyo.lg.jp/reiki/reiki_honbun/g101RG00001307.html">東京都例規集</a></li>
+    <li>神奈川県建築基準条例（第4条・第4条の2・第5条）：<a href="https://www.pref.kanagawa.jp/docs/cz4/cnt/f360239/index.html">神奈川県</a>／横浜市建築基準条例（第4条・第4条の4・第5条）：<a href="https://cgi.city.yokohama.lg.jp/somu/reiki/reiki_honbun/g202RG00000906.html">横浜市例規集</a></li>
+    <li>埼玉県建築基準法施行条例（第3条・第8条の2・第10条）：<a href="https://ops-jg.d1-law.com/opensearch/SrJbF01/init?jctcd=8A7FF90CEA&amp;houcd=H335901010037">埼玉県法規集</a>／千葉県建築基準法施行条例（第7条・第8条・第46条の2）：<a href="https://www.pref.chiba.lg.jp/kenchiku/zyourei-kaisetu/kaisetu20250701.html">千葉県</a></li>
+    <li>高度地区：東京都（<a href="https://www.city.sumida.lg.jp/matizukuri/tosi_keikaku/tosi_keikaku/youtitiiki_gaiyou/h22henkou/koudochikugaiyou.files/kodokeikakusho.pdf">墨田区の計画書</a>）、<a href="https://www.city.yokohama.lg.jp/business/bunyabetsu/kenchiku/tetsuduki/kisoku/toriatsukai.files/08_5-4.pdf">横浜市</a>、<a href="https://www.city.kawasaki.jp/500/cmsfiles/contents/0000181/181412/keikakusyo.pdf">川崎市</a>、<a href="https://www.city.chiba.jp/toshi/toshi/keikaku/gaiyou/documents/koudochiku_keikakusyo_kiteisyo20230929.pdf">千葉市</a>、<a href="https://www.city.saitama.lg.jp/001/010/014/001/p062554_d/fil/keikakusyo.pdf">さいたま市</a>の計画書（区・市ごとに最高の高さがちがうので、必ずその区市の都市計画図で確認）</li>
+    <li>民法 第234条（建物は境界線から50cm以上離す）：<a href="https://laws.e-gov.go.jp/law/129AC0000000089">e-Gov法令検索 民法</a></li>
+    <li>文化財保護法 第93条（周知の埋蔵文化財包蔵地での工事の届け出）：<a href="https://laws.e-gov.go.jp/law/325AC0100000214">e-Gov法令検索 文化財保護法</a></li>
+    <li>石綿の事前調査・報告：<a href="https://www.ishiwata.mhlw.go.jp/">厚生労働省 石綿総合情報ポータルサイト</a></li>
+    <li>建築費の坪単価：国土交通省「建築着工統計調査」令和7年度計（構造別・用途別・都道府県別の床面積と工事費予定額）<a href="https://www.mlit.go.jp/sogoseisaku/jouhouka/sosei_jouhouka_tk4_000002.html">国土交通省 建築着工統計調査</a></li>
+    <li>建設工事費デフレーター（2020年度基準・年度別）：<a href="https://www.mlit.go.jp/statistics/details/t-other-2_tk_000253.html">国土交通省 建設工事費デフレーター</a>／<a href="https://www.e-stat.go.jp/dbview?sid=0004055085">e-Stat 統計表</a></li>
+    <li>構造ごとの階高・柱の間隔・できる階数の目安、軽量鉄骨・壁式RCの単価の係数、解体費・付帯工事・設計料・諸費用は、公的な統計がないため「業界の一般的な目安」として幅を広めに入れています。</li>
+  </ul>
+</div>
+</main>
+
+<script src="../共通/common.js"></script>
+<script src="../共通/gake.js"></script>
+<script src="kenchiku_calc.js"></script>
+<script src="../共通/katachi.js"></script>
+<script src="../共通/katachi_ui.js"></script>
+<script>
+(function(){
+  var K = window.KENCHIKU, TSUBO = K.TSUBO;
+  var $ = function(id){ return document.getElementById(id); };
+  var KEY = 'kenchiku_v2';
+  var SIDES = K.SIDES, SN = K.SIDE_NAME;
+  function fmt(n, d){ if (!isFinite(n)) return '-'; d = d==null?1:d; return n.toLocaleString('ja-JP',{minimumFractionDigits:d, maximumFractionDigits:d}); }
+  function m2t(m2){ return m2 / TSUBO; }
+  function r2(x){ return Math.round(x*100)/100; }
+  function yen(man){ if (!isFinite(man)) return '-'; if (Math.abs(man) >= 10000) return fmt(man/10000, 2) + '億円'; return Math.round(man).toLocaleString('ja-JP') + '万円'; }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function num(id, def){ var v = parseFloat($(id).value); return isFinite(v) ? v : def; }
+  function areaBoth(m2, d){ return fmt(m2, d==null?1:d) + '㎡（約' + fmt(m2t(m2), 1) + '坪）'; }
+  function lv(cls, t){ return '<span class="lv-' + cls + '">' + t + '</span>'; }
+
+  // ---------- 保存と読み込み ----------
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem('kenchiku_v1') || '{}') || {}; } catch(e){ saved = {}; }
+  var cutAxis = saved._cut || null;
+  function save(){
+    try {
+      var o = {};
+      document.querySelectorAll('[data-s]').forEach(function(el){ o[el.id] = el.type==='checkbox' ? el.checked : el.value; });
+      o._items = itemsState; o._tab = curTab; o._cut = cutAxis;
+      localStorage.setItem(KEY, JSON.stringify(o));
+    } catch(e){}
+  }
+
+  // ---------- 選択肢 ----------
+  var zoneSel = $('v_zone');
+  K.ZONES.forEach(function(z){ var o = document.createElement('option'); o.value = z.id; o.textContent = z.name; zoneSel.appendChild(o); });
+  // がけ条例の地域（共通/gake.js）
+  var GK = window.Gake;
+  if (GK) (function(){
+    var sel = $('v_gReg'), groups = {};
+    GK.REGIONS.forEach(function(rg){
+      var pn = GK.PREF_NAME[rg.pref];
+      if (!groups[pn]){ groups[pn] = document.createElement('optgroup'); groups[pn].label = pn; sel.appendChild(groups[pn]); }
+      var o = document.createElement('option'); o.value = rg.id; o.textContent = rg.name; groups[pn].appendChild(o);
+    });
+  })();
+  (function(){
+    var sel = $('v_kodo'), groups = {};
+    var o0 = document.createElement('option'); o0.value = 'none'; o0.textContent = 'なし'; sel.appendChild(o0);
+    Object.keys(K.KODO).forEach(function(k){
+      if (k==='none') return;
+      var d = K.KODO[k];
+      if (!groups[d.grp]){ groups[d.grp] = document.createElement('optgroup'); groups[d.grp].label = d.grp; sel.appendChild(groups[d.grp]); }
+      var o = document.createElement('option'); o.value = k;
+      o.textContent = d.grp==='自分で入れる' ? '式を自分で入れる' : d.name + kodoFormula(d);
+      groups[d.grp].appendChild(o);
+    });
+  })();
+  function kodoFormula(d){
+    if (d.base == null) return d.max ? '（' + d.max + 'm）' : '';
+    var s = '（北側 ' + d.base + 'm＋' + d.s1 + '×距離';
+    if (d.brk > 0 && d.s2 !== d.s1) s += '、' + d.brk + 'mから先は' + d.s2;
+    if (d.max) s += '、最高' + d.max + 'm';
+    return s + '）';
+  }
+  function fillOpts(sel, list, val, suffix){
+    sel.innerHTML = '';
+    list.forEach(function(v){ var o = document.createElement('option'); o.value = v; o.textContent = v + suffix; sel.appendChild(o); });
+    sel.value = list.indexOf(+val) >= 0 ? String(val) : String(list[0]);
+  }
+  function coefChoices(z){
+    if (z.road==='res' && (z.id==='1low' || z.id==='2low' || z.id==='den')) return [[0.4,'4/10（この地域は変えられません）']];
+    if (z.road==='res') return [[0.4,'4/10（ふつう）'],[0.6,'6/10（役所が指定した区域）']];
+    return [[0.6,'6/10（ふつう）'],[0.4,'4/10（役所が指定した区域）'],[0.8,'8/10（役所が指定した区域）']];
+  }
+  function fillCoef(z){
+    var sel = $('v_coef'), cur = +sel.value, ch = coefChoices(z);
+    var grp = z.road==='res' ? 'res' : 'other';
+    if (sel.getAttribute('data-grp') && sel.getAttribute('data-grp') !== grp) cur = ch[0][0];
+    sel.setAttribute('data-grp', grp);
+    sel.innerHTML = ch.map(function(c){ return '<option value="' + c[0] + '">' + c[1] + '</option>'; }).join('');
+    sel.value = ch.some(function(c){ return c[0]===cur; }) ? String(cur) : String(ch[0][0]);
+    sel.disabled = ch.length < 2;
+  }
+  function fillGo(z){
+    var sel = $('v_shGo'), cur = sel.value, opts = [];
+    var sh = z.sh || 2;
+    [1,2,3].forEach(function(g){ var t = K.nichieiTimes(sh, g); if (t) opts.push([g, '(' + ['','一','二','三'][g] + ') 5〜10m：' + t.t1 + '時間／10m超：' + t.t2 + '時間']); });
+    sel.innerHTML = opts.map(function(o){ return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('');
+    if (opts.some(function(o){ return String(o[0])===cur; })) sel.value = cur;
+  }
+  function addOpt(sel, val, suffix){
+    var o = document.createElement('option'); o.value = String(val); o.textContent = val + suffix + '（受け取った値）'; sel.appendChild(o); sel.value = String(val);
+  }
+  function refreshZoneOpts(useDefaults){
+    var z = K.zoneById(zoneSel.value);
+    var b = useDefaults ? z.def[0] : +$('v_bcr').value, f = useDefaults ? z.def[1] : +$('v_far').value;
+    if (z.bcr.indexOf(b) < 0) b = z.def[0];
+    if (z.far.indexOf(f) < 0) f = z.def[1];
+    fillOpts($('v_bcr'), z.bcr, b, '%');
+    fillOpts($('v_far'), z.far, f, '%');
+    fillCoef(z); fillGo(z);
+    $('v_absWrap').hidden = !z.abs;
+  }
+
+  // 保存した値を戻す
+  document.querySelectorAll('[data-s]').forEach(function(el){
+    if (saved[el.id] === undefined || el.id==='v_bcr' || el.id==='v_far' || el.id==='v_coef' || el.id==='v_shGo') return;
+    if (el.type==='checkbox') el.checked = !!saved[el.id]; else el.value = saved[el.id];
+    if (el.tagName==='SELECT' && el.selectedIndex < 0) el.selectedIndex = 0;
+  });
+  if (saved.v_kodo && /^[123]$/.test(saved.v_kodo)) $('v_kodo').value = 'T' + saved.v_kodo;   // 前の版の保存
+  if (!$('v_kodo').value) $('v_kodo').value = 'none';
+  if (!zoneSel.value) zoneSel.value = '1low';
+  refreshZoneOpts(false);
+  if (saved.v_bcr) { var zz = K.zoneById(zoneSel.value); if (zz.bcr.indexOf(+saved.v_bcr)>=0) $('v_bcr').value = saved.v_bcr; }
+  if (saved.v_coef) { var zc = K.zoneById(zoneSel.value); if (coefChoices(zc).some(function(c){ return c[0]===+saved.v_coef; })) $('v_coef').value = saved.v_coef; }
+  if (saved.v_far) { var zz2 = K.zoneById(zoneSel.value); if (zz2.far.indexOf(+saved.v_far)>=0) $('v_far').value = saved.v_far; }
+  if (saved.v_shGo) $('v_shGo').value = saved.v_shGo;
+  if (saved.v_base === undefined) $('v_base').value = K.STRUCTS[$('v_struct').value].base;
+  if (saved.v_fireBldg === undefined) $('v_fireBldg').value = defaultFire();
+  function defaultFire(){ var s = $('v_struct').value, f = $('v_fire').value; return (s==='wood'||s==='ls') ? (f==='none' ? 'none' : 'juntaika') : 'taika'; }
+
+  // ---------- URL の引数で受け取った値を入れる（保存した値より優先） ----------
+  var PR = K.parseParams((window.location && window.location.search) || '');
+  var shAutoFromUrl = false;
+  (function applyParams(){
+    var V = PR.values;
+    if (!PR.used.length && !PR.ignored.length) return;
+    if (V.zone){ zoneSel.value = V.zone; refreshZoneOpts(true); }
+    var z = K.zoneById(zoneSel.value), notes = [];
+    if (V.bcr != null){ if (z.bcr.indexOf(V.bcr) >= 0) $('v_bcr').value = String(V.bcr); else { addOpt($('v_bcr'), V.bcr, '%'); notes.push('建ぺい率 ' + V.bcr + '% は、この用途地域でふつう選べる値（' + z.bcr.join('・') + '%）にありません。緩和をふくんだ数字かもしれないので、都市計画図で確かめてください。'); } }
+    if (V.far != null){ if (z.far.indexOf(V.far) >= 0) $('v_far').value = String(V.far); else { addOpt($('v_far'), V.far, '%'); notes.push('容積率 ' + V.far + '% は、この用途地域でふつう選べる値にありません。都市計画図で確かめてください。'); } }
+    if (V.kodo) $('v_kodo').value = /^[123]$/.test(V.kodo) ? 'T' + V.kodo : V.kodo;
+    if (V.kodoMax != null) $('v_kodoMax').value = V.kodoMax;
+    if (V.fire){ $('v_fire').value = V.fire; var s0 = $('v_struct').value; if ((s0==='wood'||s0==='ls') && V.fire!=='none' && $('v_fireBldg').value==='none') $('v_fireBldg').value = 'juntaika'; }
+    if (V.W != null) $('v_W').value = V.W;
+    if (V.dir) $('v_dir').value = V.dir;
+    if (V.corner != null) $('v_corner').checked = V.corner;
+    if (V.nichiei != null){ $('v_shMode').value = V.nichiei ? 'auto' : 'none'; shAutoFromUrl = V.nichiei; }
+    if (V.absH != null) $('v_absH').value = String(V.absH);
+    if (V.pref) $('v_pref').value = V.pref;
+    if (V.struct){ $('v_struct').value = V.struct; applyStructDefaults(); }
+    ['S','E','N','W'].forEach(function(k){ var w = V['r' + k]; if (w != null){ $('v_r' + k).checked = w > 0; if (w > 0) $('v_w' + k).value = w; } });
+    if (V.F != null) $('v_F').value = V.F;
+    if (V.A != null){ $('v_A').value = V.A; $('v_byArea').checked = true; }
+    else if (V.D != null){ $('v_D').value = V.D; $('v_byArea').checked = false; }
+    // 面積・間口・奥行を受け取ったのに、前に使った「いびつな形」が残っていると、その形の面積で計算してしまう。
+    // 形（kz）が来ていなければ長方形にもどす（形が来ていれば、このあとの applyKz がいびつな形にする）
+    var fromShape = false;
+    try { fromShape = !!(window.KatachiUI && window.KatachiUI.readLocation()); } catch (e) {}
+    if ((V.A != null || V.F != null || V.D != null) && !fromShape && $('v_shape').value === 'poly'){
+      $('v_shape').value = 'rect'; notes.push('前に入れた「いびつな形」が残っていたので、受け取った面積で計算するため「ふつうの長方形」にもどしました。');
+    }
+    var h = '<p class="note">別のページ（物件調査など）から受け取った値で入れました：' +
+      PR.used.map(function(u){ return esc(u.label) + '＝' + esc(showVal(u)); }).join('、') + '。ほかの項目はこれまでの入力のままです。</p>';
+    if (PR.ignored.length) h += '<p class="note caution">読めなかった値（使っていません）：' + PR.ignored.map(function(u){ return esc(u.key) + '＝' + esc(u.raw); }).join('、') + '</p>';
+    if (notes.length) h += notes.map(function(s){ return '<p class="note caution">' + esc(s) + '</p>'; }).join('');
+    $('urlNote').innerHTML = h;
+  })();
+  // 土地の形（共通/katachi.js）：? か # の kz・kzr・kzf・kzt があれば「いびつな形」で開く（ほかの引数はそのまま）
+  var KT = window.Katachi, KU = window.KatachiUI;
+  (function applyKz(){
+    var kl = KU ? KU.readLocation() : null; if (!kl) return;
+    $('v_shape').value = 'poly'; $('v_kz').value = KT.toQuery(kl);
+    $('urlNote').innerHTML += '<p class="note">別のページから、土地の形（いびつな形）を受け取りました。道路の向き・幅は形から入れます。</p>';
+  })();
+  function showVal(u){
+    if (u.key==='youto') return K.zoneById(u.value).name;
+    if (u.key==='bouka') return {none:'指定なし', jun:'準防火地域', bou:'防火地域'}[u.value];
+    if (u.key==='koudo') { if (u.value==='none') return 'なし'; var kd = K.KODO[/^[123]$/.test(u.value) ? 'T'+u.value : u.value]; return kd ? kd.grp + ' ' + kd.name : u.value; }
+    if (u.key==='dir') return {S:'南',N:'北',E:'東',W:'西'}[u.value];
+    if (u.key==='kado' || u.key==='nichiei') return u.value ? 'あり' : 'なし';
+    if (u.key==='kenpei' || u.key==='youseki') return u.value + '%';
+    if (u.key==='area') return areaBoth(u.value, 2);
+    if (u.key==='tsubo') return fmt(u.value, 2) + '坪（' + fmt(u.value*TSUBO, 2) + '㎡）';
+    if (u.key==='ken' || u.key==='pref') return K.PREFS[u.value].name;
+    if (u.key==='kozo' || u.key==='struct') return K.STRUCTS[u.value].name;
+    return u.value + 'm';
+  }
+
+  // ---------- タブ ----------
+  var curTab = (PR && PR.used && PR.used.length) ? 'vol' : (saved._tab === 'cost' ? 'cost' : 'vol');
+  function showTab(t){
+    curTab = t;
+    $('tabV').classList.toggle('on', t==='vol'); $('tabC').classList.toggle('on', t==='cost');
+    $('panel-vol').classList.toggle('on', t==='vol'); $('panel-cost').classList.toggle('on', t==='cost');
+    save();
+  }
+  $('tabV').onclick = function(){ showTab('vol'); };
+  $('tabC').onclick = function(){ showTab('cost'); };
+
+  // ---------- ボリューム計算 ----------
+  var lastVol = null;
+  function applyStructDefaults(){
+    var st = K.STRUCTS[$('v_struct').value];
+    $('v_fh').value = st.fh; $('v_base').value = st.base; $('v_roof').value = st.roof;
+    $('v_fireBldg').value = defaultFire();
+  }
+  // ---------- いびつな形（共通/katachi_ui.js） ----------
+  var ktUI = null, ktRes = null, lastDimShape = $('v_shape').value === 'flag' ? 'flag' : 'rect';
+  function rotLand(land, dir){   // 型の形（道路が南）を、主な道路の向きに回す
+    var a = {S:0, E:90, N:180, W:-90}[dir] || 0; if (!a) return land;
+    var c = Math.cos(a * Math.PI / 180), s = Math.sin(a * Math.PI / 180);
+    return {pts: land.pts.map(function(q){ return [Math.round((q[0]*c - q[1]*s)*1000)/1000, Math.round((q[0]*s + q[1]*c)*1000)/1000]; }), roads: land.roads};
+  }
+  function ktInitialLand(){
+    var q = $('v_kz').value; if (q){ var l = KT.fromQuery(q); if (l) return l; }
+    var W = Math.max(0.5, num('v_W', 4)), F = Math.max(1, num('v_F', 10)), D = Math.max(1, num('v_D', 15));
+    var land = lastDimShape === 'flag' ? KT.makeShape('hata', {pw:num('v_flagW', 2.5), pl:num('v_flagL', 15), bw:F, bd:D, pos:'c'}, W) : KT.makeShape('rect', {W:F, D:D}, W);
+    return rotLand(land, $('v_dir').value);
+  }
+  function ktMount(){
+    if (ktUI || !KT || !KU) return;
+    var land = ktInitialLand();
+    ktUI = KU.mount($('v_kt'), {value:land, showSummary:false, showSettings:false, onChange:function(res, ui){
+      ktUI = ui; ktRes = res; if (res.ok) $('v_kz').value = res.query;
+      if ($('v_shape').value === 'poly') calcV();
+    }});
+    ktRes = ktUI.result();
+    if (ktRes && ktRes.ok) $('v_kz').value = ktRes.query;
+  }
+  // 形から、この計算の欄（間口・奥行・道路・旗竿）を入れる。入れられないときは null
+  function polyFill(){
+    if (!ktRes || !ktRes.ok) return null;
+    var pp = K.polyInput(ktRes, KT); if (!pp) return null;
+    $('v_F').value = pp.F; $('v_D').value = pp.D; $('v_byArea').checked = false;
+    $('v_dir').value = pp.dir; $('v_W').value = pp.W; $('v_nikou').value = pp.nikou;
+    SIDES.forEach(function(k){ var sd = pp.sides[k]; $('v_r' + k).checked = sd.road; if (sd.road){ $('v_w' + k).value = sd.W; $('v_n' + k).value = sd.nikou; } });
+    if (pp.flag.on){ $('v_flagW').value = pp.flag.w; $('v_flagL').value = pp.flag.L; }
+    return pp;
+  }
+  function readV(){
+    var shp = $('v_shape').value, polyP = null;
+    if (shp === 'poly'){ ktMount(); polyP = polyFill(); } else lastDimShape = shp;
+    var flag = shp === 'flag' || !!(polyP && polyP.flag.on);
+    var F = Math.max(1, num('v_F', 10));
+    var fw = Math.max(0, num('v_flagW', 2.5)), fL = Math.max(0, num('v_flagL', 15));
+    var poleA = flag ? fw*fL : 0;
+    var D;
+    if ($('v_byArea').checked){ D = Math.max(1, (Math.max(1, num('v_A', 150)) - poleA) / F); $('v_D').value = r2(D); }
+    else { D = Math.max(1, num('v_D', 15)); $('v_A').value = r2(F*D + poleA); }
+    if (document.activeElement !== $('v_At')) $('v_At').value = r2(m2t(F*D + poleA));
+    var dir = $('v_dir').value;
+    var sides = {};
+    SIDES.forEach(function(k){ sides[k] = {road: $('v_r' + k).checked, W: Math.max(0.5, num('v_w' + k, 4)), nikou: $('v_n' + k).value}; });
+    var zone = zoneSel.value, z = K.zoneById(zone), far = +$('v_far').value, pref = $('v_pref').value, kodo = $('v_kodo').value;
+    // 日影規制
+    var mode = $('v_shMode').value, sh = null, shInfo = {mode:mode};
+    if (mode === 'auto'){
+      var na = K.nichieiAuto(pref, zone, far, kodo);
+      shInfo.auto = na;
+      if (na.none) sh = null;
+      else if (na.unknown){
+        if (shAutoFromUrl || pref !== 'other'){ var t = K.nichieiTimes(z.sh, 1); sh = {hm: z.sh===1 ? 1.5 : 4, t1:t.t1, t2:t.t2, go:1, guess:true}; }
+        else sh = null;
+      } else sh = {hm:na.hm, t1:na.t1, t2:na.t2, go:na.go};
+    } else if (mode === 'manual' && z.sh){
+      var g = +$('v_shGo').value || 1, tt = K.nichieiTimes(z.sh, g) || K.nichieiTimes(z.sh, 1);
+      sh = {hm: +$('v_shHm').value, t1:tt.t1, t2:tt.t2, go:g};
+    }
+    shInfo.sh = sh;
+    var gReg = $('v_gReg').value;
+    if (gReg === 'auto') gReg = {tokyo:'tokyo', kanagawa:'kanagawa', yokohama:'yokohama', saitama:'saitama', chiba:'chiba'}[pref] || 'tokyo';
+    var gk = {region:gReg, dosha:$('v_gDosha').value, sides:{}, cost:{oldType:$('v_gOld').value, newType:$('v_gNew').value, access:$('v_gAcc').value, neighbor:$('v_gNb').checked, road:$('v_gRoad').checked}};
+    SIDES.forEach(function(k){ gk.sides[k] = {pos:$('v_gp' + k).value, H:Math.max(0, num('v_gh' + k, 0)), angle:Math.min(90, Math.max(1, num('v_ga' + k, 90))), wall:$('v_gw' + k).value, measure:$('v_gm' + k).value}; });
+    return {
+      gake: gk,
+      F:F, D:D, dir:dir, W: Math.max(0.5, num('v_W', 4)), nikou: $('v_nikou').value, sides:sides,
+      flag:{on:flag, w:fw, L:fL}, poly:polyP, siteArea:polyP ? polyP.siteArea : 0, siteSetback:polyP ? polyP.siteSetback : 0, zone:zone, bcr: +$('v_bcr').value, far: far, coef: +$('v_coef').value,
+      corner: $('v_corner').checked, fire: $('v_fire').value, fireBldg: $('v_fireBldg').value, pref: pref,
+      kodo: kodo, kodoCustom:{base:num('v_kBase',5), s1:num('v_kS1',1.25), brk:num('v_kBrk',0), s2:num('v_kS2',0.6), meas:$('v_kMeas').value},
+      kodoMax: Math.max(0, num('v_kodoMax', 0)), hMax: Math.max(0, num('v_hMax', 0)), absH: +$('v_absH').value,
+      sh: sh, shInfo: shInfo, lat: Math.min(46, Math.max(20, num('v_lat', 35.7))),
+      struct: $('v_struct').value, use: $('v_use').value, roof: $('v_roof').value, pitch: +$('v_pitch').value,
+      d: Math.max(0, num('v_d', 0)), c: Math.max(0, num('v_c', 0.5)),
+      fh: Math.min(6, Math.max(2.4, num('v_fh', 2.9))), base: Math.min(2, Math.max(0, num('v_base', 0.5))), minDim: Math.min(5, Math.max(1, num('v_minDim', 2)))
+    };
+  }
+  function refreshForm(p){
+    var flag = p.flag.on, poly = $('v_shape').value === 'poly';
+    $('v_poly').hidden = !poly; $('v_polyRoadNote').hidden = !poly;
+    document.querySelectorAll('.dimrow').forEach(function(e){ e.hidden = poly; });
+    $('v_flagW').readOnly = poly; $('v_flagL').readOnly = poly;
+    $('v_flagWwrap').hidden = !flag; $('v_flagLwrap').hidden = !flag;
+    $('v_Flab').textContent = flag ? '旗の部分の幅' : '間口';
+    $('v_Fhint').textContent = flag ? '建物を建てる部分（旗の部分）の、道路側の辺の長さ' : '道路に面した辺の長さ';
+    $('v_Dlab').textContent = flag ? '旗の部分の奥行' : '奥行';
+    $('v_Ahint').textContent = flag ? '路地状部分もふくめた面積。入れると、旗の部分の奥行は「（面積－路地状部分）÷幅」で自動になります' : '面積（㎡か坪）を入れると、奥行は「面積÷間口」で自動になります';
+    $('v_roadsWrap').hidden = flag; $('v_flagRoadNote').hidden = !flag;
+    SIDES.forEach(function(k){
+      var tr = document.querySelector('#v_roads tr[data-side="' + k + '"]'), main = k === p.dir;
+      tr.querySelector('.mainmark').textContent = main ? '主な道路（上で入力）' : '';
+      tr.querySelector('label.check').style.display = main ? 'none' : '';   // .check は display:flex なので hidden では消えない
+      $('v_w' + k).disabled = main || !$('v_r' + k).checked; $('v_n' + k).disabled = main || !$('v_r' + k).checked;
+      $('v_w' + k).parentNode.style.visibility = main ? 'hidden' : '';
+      $('v_n' + k).style.visibility = main ? 'hidden' : '';
+    });
+    if (poly){ ['v_dir','v_W','v_nikou'].forEach(function(id){ $(id).disabled = true; }); SIDES.forEach(function(k){ $('v_r' + k).disabled = true; $('v_w' + k).disabled = true; $('v_n' + k).disabled = true; }); }
+    else { ['v_dir','v_W','v_nikou'].forEach(function(id){ $(id).disabled = false; }); SIDES.forEach(function(k){ $('v_r' + k).disabled = false; }); }
+    var anyG = false, needCost = false;
+    SIDES.forEach(function(k){
+      var g = p.gake.sides[k], on = !!g.pos;
+      ['v_gh','v_ga','v_gw','v_gm'].forEach(function(id){ $(id + k).disabled = !on; });
+      if (on){ anyG = true; if (g.measure === 'rebuild' || g.measure === 'none') needCost = true; }
+    });
+    $('v_gCostWrap').hidden = !needCost;
+    var rgN = window.Gake ? window.Gake.region(p.gake.region) : null;
+    $('v_gRegHint').textContent = rgN ? '使う条文：' + window.Gake.ruleOf(rgN.id).short + (($('v_gReg').value === 'auto' && p.pref === 'other') ? '（都県が「そのほか」なので東京都の例）' : '') : '';
+    $('v_kcWrap').hidden = p.kodo !== 'custom';
+    var kd = K.KODO[p.kodo];
+    $('v_kodoMaxHint').textContent = (kd && kd.max) ? 'この型は最高 ' + kd.max + 'm（0のままならその値を使います）' : '17m・22mなど。無ければ 0';
+    $('v_shManWrap').hidden = p.shInfo.mode !== 'manual';
+    $('v_pitchWrap').hidden = p.roof === 'flat';
+    var z = K.zoneById(p.zone), si = p.shInfo, hint = '';
+    $('v_shAuto').hidden = !(si.mode==='auto' && p.sh);
+    if (!z.sh) hint = 'この用途地域（商業・工業・工業専用）は日影規制の対象外です（建築基準法 別表第四）';
+    else if (si.mode==='auto'){
+      var a = si.auto;
+      if (a.none) hint = a.src;
+      else if (a.unknown) hint = a.src + (p.sh ? '。仮に (一) の時間・測る高さ ' + p.sh.hm + 'm で計算しています' : '。日影規制なしとして計算しています');
+      else hint = '例：' + a.src + ' → (' + ['','一','二','三'][a.go] + ') 5〜10m ' + a.t1 + '時間／10m超 ' + a.t2 + '時間・測る高さ ' + a.hm + 'm。区域ごとの例外があるので役所で確認してください';
+    } else if (si.mode==='none') hint = '日影規制を計算に入れません。中高層住居専用地域では北側斜線をかけます';
+    $('v_shHint').textContent = hint;
+  }
+
+  function calcV(){
+    var p = readV(), z = K.zoneById(p.zone);
+    refreshForm(p);
+    var r = K.analyze(p);
+    lastVol = {p:p, r:r};
+    var c = r.ctx, pl = r.plan;
+    // 敷地の説明
+    var sn = '敷地 ' + areaBoth(p.F*p.D + (p.flag.on ? p.flag.w*p.flag.L : 0), 2) + '（' + (p.flag.on ? '旗の部分 ' : '間口 ') + fmt(p.F,2) + 'm × 奥行 ' + fmt(p.D,2) + 'm' + (p.flag.on ? '＋路地状部分 ' + fmt(p.flag.w,1) + 'm × ' + fmt(p.flag.L,1) + 'm' : '') + '）';
+    if (c.setbackArea > 0.005) sn += '。2項道路で下がる部分 ' + areaBoth(c.setbackArea, 2) + ' は敷地面積に入れず、計算に使う敷地は ' + areaBoth(c.area, 2);
+    if (p.poly){
+      var pp = p.poly, rn = pp.roads.map(function(x){ return '辺' + (x.edge + 1) + '→' + K.SIDE_NAME[x.side] + '（幅' + fmt(x.w,1) + 'm' + (x.front ? '・主な道路' : '') + '）'; }).join('、');
+      sn = 'いびつな形の敷地 ' + areaBoth(pp.rawArea, 2) + (pp.siteSetback > 0.005 ? '（2項道路の後退後 ' + areaBoth(pp.siteArea, 2) + '）' : '') + '。建ぺい率・容積率はこの面積で計算。建物は、中に入る長方形 ' + fmt(pp.F,2) + 'm × ' + fmt(pp.D,2) + 'm（主な道路にそろえた向き）を敷地とみた目安です' + (pp.flag.on ? '。旗竿の形と読みとり、路地状部分 幅 ' + fmt(pp.flag.w,2) + 'm × 長さ ' + fmt(pp.flag.L,1) + 'm を入れました' : '') + '。';
+      $('v_polyNote').textContent = '道路の辺の当てはめ：' + (rn || 'なし') + '。';
+    } else if ($('v_shape').value === 'poly'){
+      $('v_polyNote').textContent = '形が正しくないため、前の間口・奥行で計算しています（図の下の注意を見てください）。';
+    }
+    $('v_siteNote').textContent = sn;
+    var roadSides = SIDES.filter(function(k){ return c.side[k].isRoad; });
+    var adjPairs = roadSides.length >= 2 && roadSides.some(function(a){ return roadSides.some(function(b){ return a!==b && ((a==='S'||a==='N') !== (b==='S'||b==='N')); }); });
+    $('v_cornerHint').textContent = adjPairs && !p.corner ? '道路が2つの辺（となり合う辺）にあります。角地緩和の対象かどうかは自治体の基準（道路の角度・接する長さなど）で決まるので、役所で確かめて印を付けてください。' : '';
+
+    // 主な数字
+    var total = pl.total;
+    $('o_total').innerHTML = fmt(total,1) + '<small>㎡</small>';
+    $('o_totalT').textContent = '約' + fmt(m2t(total),1) + '坪。容積率の上限 ' + areaBoth(r.farArea) + '、形の上の合計 ' + areaBoth(r.shapeSum);
+    if (!pl.n){
+      $('o_floors').textContent = '建てられません';
+      $('o_floorsS').textContent = pl.flag && pl.flag.banned ? '旗竿地の決まりに合いません' : (pl.fireCaps.floors===0 ? '燃えにくさの決まりに合いません' : '1階分の高さも確保できません。条件を見直してください');
+    } else {
+      $('o_floors').innerHTML = pl.n + '<small>階建て</small>';
+      var extra = r.maxFloors > pl.n ? '形の上は' + r.maxFloors + '階まで入りますが、' + (r.farBinding ? '容積率' : '決まり') + 'に合わせて' + pl.n + '階に' : (r.stopBy ? (r.maxFloors+1) + '階目は「' + r.stopBy + '」で無理' : '');
+      $('o_floorsS').textContent = extra;
+    }
+    var a1 = pl.n ? pl.floors[0].area : 0;
+    $('o_bldg').innerHTML = fmt(a1,1) + '<small>㎡</small>';
+    $('o_bldgS').textContent = '約' + fmt(m2t(a1),1) + '坪。上限は建ぺい率 ' + r.cov.pct + '% で ' + (isFinite(r.bldgMax) ? areaBoth(r.bldgMax) : '-') + (r.cov.notes.length ? '（' + r.cov.notes.join('、') + '）' : '');
+    $('o_height').innerHTML = pl.n ? fmt(pl.height,1) + '<small>m</small>' : '-';
+    $('o_heightS').textContent = pl.n ? '軒の高さ ' + fmt(pl.eave,1) + 'm。' + roofName(pl.roof) : '';
+    $('o_bind').textContent = r.binding.name;
+    $('o_bindS').textContent = r.binding.key==='far' ? '形の上はもっと建てられますが、延べ面積の上限で止まります' :
+      r.binding.key==='shadow' ? '日影規制をこえないように上の階を削っています' : r.binding.key==='fire' ? '選んだ燃えにくさ・構造でできる階数・広さで止まります' :
+      r.binding.key==='flag' ? '路地状部分の幅などの条例で止まります' : '斜線などで建物の形が削られて、容積率を使い切れません';
+
+    // 注意
+    var w = [];
+    if (r.far.reduced) w.push('一番広い前面道路の幅が12m未満なので、容積率が ' + p.far + '% → <b>' + fmt(r.far.pct,0) + '%</b>（道路の幅 ' + fmt(r.far.W,1) + 'm × ' + Math.round(r.far.coef*10) + '/10 × 100）に下がっています。');
+    if (c.setbackArea > 0.005) w.push('幅4m未満の道路があります。道路とみなす線まで下がる（セットバック）部分（' + areaBoth(c.setbackArea, 2) + '）は敷地面積に入れていません。');
+    if (c.roads.length >= 2) w.push('前面道路が' + c.roads.length + '本あります。道路斜線は道路ごとにかけ、施行令第132条（一番広い道路の幅の2倍かつ35m以内、ほかの道路の中心から10m超の所は、一番広い道路の幅とみなす）で緩めています。');
+    if (z.chuko && !p.sh) w.push('第一種・第二種中高層住居専用地域で日影規制を入れていないので、北側斜線をかけています。日影規制の区域なら北側斜線は外れ、そのかわり日影規制がかかります。');
+    if (p.kodo !== 'none') { var kd = K.kodoDef(p); if (kd.slope || kd.max) w.push('高度地区は「' + (kd.grp||'') + ' ' + kd.name + '」の式で計算しています。区・市ごとに式と最高の高さがちがうので、都市計画図で確かめてください。'); }
+    if (pl.roof && pl.roof.adjusted && p.roof !== 'flat') w.push('選んだ屋根の形では斜線に入らないので、' + roofName(pl.roof) + 'にしています。');
+    if (pl.floors.length && pl.floors.some(function(f){ return !f.full; })) w.push('一番上の階は、容積率などの上限に合わせて北側を小さくしています。');
+    $('o_warn').innerHTML = w.map(function(s){ return '<p class="note caution">' + s + '</p>'; }).join('');
+
+    renderShadow(p, r); renderFire(p, r); renderFlag(p, r); renderGake(p, r); renderLimits(p, r); renderFloors(p, r); renderStructTbl(p);
+    if (!cutAxis) cutAxis = (p.dir==='S'||p.dir==='N') ? 'NS' : 'EW';
+    document.querySelectorAll('#o_cutSeg button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-cut')===cutAxis); });
+    drawSection(p, r, cutAxis);
+    drawPlan(p, r);
+    $('c_takeNote').textContent = 'ボリューム計算の結果：' + areaBoth(total);
+    save();
+  }
+  function roofName(rf){
+    if (!rf || rf.type==='none') return '';
+    if (rf.type==='flat') return '陸屋根（平らな屋根）' + (rf.fallback ? '（勾配屋根が斜線に入らないため）' : '');
+    if (rf.type==='gable') return '切妻屋根（' + Math.round(rf.pitch*10) + '寸勾配・屋根の高さ ' + fmt(rf.rise,1) + 'm）';
+    return '片流れ屋根（' + SN[rf.low] + 'へ下がる・' + Math.round(rf.pitch*10) + '寸勾配・屋根の高さ ' + fmt(rf.rise,1) + 'm）';
+  }
+
+  function renderShadow(p, r){
+    var z = K.zoneById(p.zone), pl = r.plan, h = '';
+    if (!z.sh){ $('o_shadow').innerHTML = '<p class="note">' + lv('info','対象外') + '　この用途地域は日影規制の対象外です（建築基準法 第56条の2・別表第四）。ただし、近くの規制区域に高さ10m超の建物の影が落ちるときは対象になります（第56条の2第4項）。</p>'; return; }
+    if (!p.sh){ $('o_shadow').innerHTML = '<p class="note">' + lv('info','入れていない') + '　日影規制は計算に入れていません。区域かどうかは役所で確かめてください。</p>'; return; }
+    var s = pl.shadow;
+    var cond = z.sh===1 ? '軒の高さ7m超か、地上3階以上の建物' : '高さ10m超の建物';
+    h += '<div class="kv"><div>規制の中身</div><div>測る高さ ' + p.sh.hm + 'm。敷地境界から5〜10mの所で ' + p.sh.t1 + '時間まで、10mより先で ' + p.sh.t2 + '時間まで（冬至の日の8時〜16時・真太陽時）' + (p.sh.guess ? '<br><span class="lv-caution">条例の表に当てはまらないので仮に (一) で計算</span>' : '') + '</div>';
+    h += '<div>対象になる建物</div><div>' + cond + '</div>';
+    if (!s){ $('o_shadow').innerHTML = h + '</div>'; return; }
+    h += '<div>この建物</div><div>' + (s.target ? lv('caution','対象') + '（軒の高さ ' + fmt(s.eave,1) + 'm・高さ ' + fmt(s.height,1) + 'm・' + pl.n + '階）' : lv('ok','対象外') + '（軒の高さ ' + fmt(s.eave,1) + 'm・高さ ' + fmt(s.height,1) + 'm・' + pl.n + '階）') + '</div>';
+    if (s.target){
+      h += '<div>5mの線の上で一番長い影</div><div>' + fmt(s.max5,1) + '時間（' + p.sh.t1 + '時間まで）' + (s.max5 <= s.t1 + 1e-9 ? ' ' + lv('ok','こえない') : ' ' + lv('alert','こえる')) + '</div>';
+      h += '<div>10mの線の上で一番長い影</div><div>' + fmt(s.max10,1) + '時間（' + p.sh.t2 + '時間まで）' + (s.max10 <= s.t2 + 1e-9 ? ' ' + lv('ok','こえない') : ' ' + lv('alert','こえる')) + '</div>';
+    }
+    h += '<div>計算に使った緯度</div><div>' + fmt(s.lat,1) + '度（冬至の日の正午の太陽の高さ ' + fmt(K.sunPos(s.lat, 12).alt,1) + '度）</div></div>';
+    if (s.trimmed && pl.shadowCut > 0.05) h += '<p class="note caution">日影の時間をこえないように、上の階から北側を削りました（' + areaBoth(pl.shadowCut) + ' 減らしています）。</p>';
+    h += '<p class="note">これは目安です。建物を階ごとの箱と屋根で表し、5mと10mの線の上の点で影の時間を数えています（2分ごと）。道路に面した辺は、道路の幅の半分だけ外側を境界とみなしています（施行令第135条の12）。正式には建築士が日影図で確かめます。</p>';
+    $('o_shadow').innerHTML = h;
+  }
+  function renderFire(p, r){
+    var pl = r.plan, req = pl.fireReq, st = K.STRUCTS[p.struct], fc = pl.fireCaps;
+    var chosen = p.fireBldg;
+    var h = '<div class="kv">';
+    h += '<div>この建物に必要な燃えにくさ</div><div>' + (req.req==='none' ? '特別な決まりなし' : '<b>' + K.FIRE_NAME[req.req] + '</b>') + (req.why.length ? '<br><small>' + req.why.map(esc).join('<br>') + '</small>' : '') + '</div>';
+    h += '<div>選んだもの</div><div>' + {taika:'耐火建築物 など', juntaika:'準耐火建築物 など', none:'それ以外'}[chosen] + '（' + st.name + '）';
+    if (K.FIRE_RANK[chosen] < K.FIRE_RANK[req.req] && req.req !== 'bouka'){
+      if (req.alt && chosen===req.alt.cls) h += ' ' + lv('caution','条件つきで可') + '<br><small>' + esc(req.alt.note) + '</small>';
+      else h += ' ' + lv('alert','足りない');
+    } else h += ' ' + lv('ok','足りている');
+    h += '</div>';
+    h += '<div>この燃えにくさ・構造でできること</div><div>' + (fc.why.length ? fc.why.map(esc).join('<br>') : '階数・広さの決まりはありません') + '</div>';
+    h += '<div>' + esc(st.name) + 'の目安</div><div>' + esc(st.floors) + '。' + esc(st.fireable) + '</div>';
+    h += '</div>';
+    if (pl.fireCut > 0.05) h += '<p class="note caution">燃えにくさと構造の決まりで、建てられる延床が ' + areaBoth(pl.fireCut) + ' 減っています。もっと大きく建てるには、燃えにくさを上げる（耐火建築物など）か、構造を変えてください。</p>';
+    if (p.struct==='wood' && chosen==='taika') h += '<p class="note caution">耐火の木造（4階以上など）は、燃えにくくするための材料と手間がかかり、ふつうの木造より高くなります（一般的な目安で2〜3割）。設計・施工できる会社も限られます。</p>';
+    if (p.use==='apart') h += '<p class="note">共同住宅は特殊建築物です（建築基準法 第27条・別表第一(2)項）。3階以上の階を共同住宅にするときは耐火建築物など（3階建てで延べ200㎡未満は警報設備で対象外、防火地域の外なら1時間準耐火の木造も条件つきで可）、2階の部分が300㎡以上なら準耐火以上が目安です。</p>';
+    h += '<p class="muted">防火地域・準防火地域の区分（施行令第136条の2）：防火地域は3階以上か延べ100㎡超で耐火、それ以外は準耐火。準防火地域は4階以上か延べ1500㎡超で耐火、3階か延べ500㎡超で準耐火、2階以下・500㎡以下の木造は外壁と軒裏を防火構造。</p>';
+    $('o_fire').innerHTML = h;
+  }
+  function renderFlag(p, r){
+    $('o_flagWrap').hidden = !p.flag.on;
+    if (!p.flag.on) return;
+    var f = r.plan.flag, h = '';
+    if (!f){ $('o_flag').innerHTML = ''; return; }
+    h += '<div class="kv"><div>入れた形</div><div>路地状部分 幅 ' + fmt(p.flag.w,1) + 'm × 長さ ' + fmt(p.flag.L,1) + 'm（' + esc(K.PREFS[p.pref].name) + '）</div>';
+    h += '<div>必要な幅</div><div>' + fmt(f.need,1) + 'm 以上 ' + (f.banned ? lv('alert','建てられない') : f.ok ? lv('ok','足りている') : lv('alert','足りない')) + '</div>';
+    h += '<div>根拠</div><div>' + esc(f.src) + '</div></div>';
+    h += f.lines.map(function(s){ return '<p class="note">' + esc(s) + '</p>'; }).join('');
+    if (f.fix.length) h += f.fix.map(function(s){ return '<p class="note caution">' + esc(s) + '</p>'; }).join('');
+    if (r.plan.flagCut > 0.05 && !f.banned) h += '<p class="note caution">条例に合わせて、建てられる延床を ' + areaBoth(r.plan.flagCut) + ' 減らしています（延べ面積や階数の上限）。</p>';
+    if (f.banned) h += '<p class="note alert">この形のままでは建てられない見込みです。路地状部分の幅を広げる（隣地を買う・借りる）、建物の使い方や規模を変える、知事の認定・許可などを役所に相談してください。</p>';
+    h += '<p class="muted">路地状部分は敷地面積に入りますが、建物は建てられません。道路斜線は道路からの距離で効くので、奥の建物にはゆるくなります。政令市・中核市などは独自の条例のことがあるので、役所で確認してください。</p>';
+    $('o_flag').innerHTML = h;
+  }
+  // ---------- がけ条例と擁壁（共通/gake.js） ----------
+  function manY(y){ return fmt(y/10000, 0) + '万円'; }
+  function linkA(t, u){ return '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + '</a>'; }
+  function renderGake(p, r){
+    var c = r.ctx, G = window.Gake, list = SIDES.filter(function(k){ return c.gake && c.gake[k]; });
+    $('o_gakeWrap').hidden = !list.length;
+    if (!list.length || !G){ $('o_gake').innerHTML = ''; return; }
+    var rg = G.region(p.gake.region), rule = G.ruleOf(rg.id), h = '';
+    h += '<p class="note">' + lv('info','目安') + '　' + esc(rg.name) + '：' + esc(rule.name) + '。がけの近い方の端が敷地の境界にあるとして、境界からの帯の幅を出しています。最後の判断は役所（建築指導課）・建築士です。</p>';
+    var anyRebuild = false, anyBand = false;
+    list.forEach(function(k){
+      var g = c.gake[k], j = g.judge;
+      if (g.measure === 'rebuild') anyRebuild = true;
+      if (g.bandKeep > 0) anyBand = true;
+      h += '<div class="gk-side"><b>' + SN[k] + 'の辺</b>：' + (g.pos === 'above' ? '敷地ががけの上' : '敷地ががけの下') + '・高さ ' + fmt(g.H,1) + 'm・角度 ' + fmt(g.angle,0) + '度　' +
+        (j.isCliff ? (g.band > 0 ? lv('alert','建物を離す帯あり') : lv('caution','がけに当たる（対策で帯なし）')) : lv('ok','がけに当たらない')) + '</div>';
+      h += '<div class="kv">';
+      h += '<div>がけの決まり</div><div>' + esc(rule.def) + '</div>';
+      if (j.isCliff){
+        h += '<div>離す範囲</div><div>' + esc(rule.dist) + '。' + (rule.effect === 'nobuild' ? '範囲の中に居室のある建物は建てられない' : '範囲の中に建てるなら安全な擁壁が要る') + '</div>';
+        h += '<div>境界からの帯</div><div>' + (j.ref === 'lower' ? 'がけの下端' : 'がけの上端') + 'から高さの' + j.k + '倍 ＝ ' + fmt(j.range,2) + 'm' + (j.need < j.range - 1e-9 ? '、斜面の横の幅 ' + fmt(j.slopeW,2) + 'm を引いて <b>' + fmt(j.need,2) + 'm</b>' : ' → <b>' + fmt(j.need,2) + 'm</b>') +
+          '。辺の長さ ' + fmt(g.len,1) + 'm なので、建物を置けない所は約 ' + areaBoth(G.bandLoss(g.len, j.need, (k==='S'||k==='N') ? c.Yraw : c.Xraw).area, 1) + (g.band > 0 ? '' : '（いまは対策で帯なし）') + '</div>';
+        h += '<div>擁壁の扱い</div><div>' + ({none:'擁壁なし（土の斜面）', ok:'検査済証のある擁壁：安全な擁壁として扱える見込み（傷みが無いことが条件）', nocert:'検査済証の無い擁壁：<b>擁壁が無いのと同じあつかい</b>になることが多い', unknown:'検査済証が分からない擁壁：見つからなければ、擁壁が無いのと同じあつかい', bad:'古い形・傷みのある擁壁：<b>擁壁が無いのと同じあつかい</b>'}[g.wall]) + '</div>';
+        var rl = j.reliefs.filter(function(x){ return x.applicable; }).map(function(x){ return '<li>' + (x.on ? lv('ok','選んだ') + ' ' : '') + esc(x.t) + (x.st === 'ask' ? '（解説・取扱いの例。要確認）' : '') + '</li>'; }).join('');
+        h += '<div>離さなくてよい条件</div><div><ul>' + rl + '</ul></div>';
+      } else h += '<div>判定</div><div>' + j.why.map(esc).join('。') + '</div>';
+      if (j.checks.length) h += '<div>確かめること</div><div><ul>' + j.checks.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+      h += '</div>';
+      if (g.cost && (g.measure === 'rebuild' || g.bandKeep > 0)){
+        var cs = g.cost;
+        h += '<p class="small"><b>' + SN[k] + 'の擁壁をやり直す費用の目安</b>（長さ ' + fmt(cs.L,1) + 'm × 高さ ' + fmt(cs.H,1) + 'm ＝ 壁の面積 ' + fmt(cs.A,1) + '㎡）</p>';
+        h += '<div class="tablewrap"><table class="gk-cmp"><tr><th class="l">内わけ</th><th>下限</th><th>中央</th><th>上限</th></tr>' +
+          cs.rows.map(function(x){ return '<tr><td class="l">' + esc(x.name) + '<br><small class="muted">' + esc(x.how) + '</small></td><td>' + manY(x.lo) + '</td><td>' + manY(x.mid) + '</td><td>' + manY(x.hi) + '</td></tr>'; }).join('') +
+          '<tr class="total"><td class="l">合計（税抜）</td><td>' + manY(cs.lo) + '</td><td>' + manY(cs.mid) + '</td><td>' + manY(cs.hi) + '</td></tr>' +
+          '<tr><td class="l">長さ1mあたり</td><td>' + manY(cs.perM[0]) + '</td><td>' + manY(cs.perM[1]) + '</td><td>' + manY(cs.perM[2]) + '</td></tr></table></div>';
+        h += '<ul class="small">' + cs.notes.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+      }
+    });
+    // 離して建てる場合と、擁壁をやり直す場合をくらべる
+    if (anyBand || anyRebuild){
+      var p2 = JSON.parse(JSON.stringify(p)); p2.poly = p.poly;
+      SIDES.forEach(function(k){ var gs = p2.gake.sides[k]; if (!gs.pos) return; if (anyRebuild) gs.measure = gs.measure === 'rebuild' ? 'none' : gs.measure; else if (c.gake[k] && c.gake[k].bandKeep > 0) gs.measure = 'rebuild'; });
+      var r2v = K.analyze(p2), keepR = anyRebuild ? r2v : r, rebR = anyRebuild ? r : r2v;
+      var cost = [0,0,0]; SIDES.forEach(function(k){ var g = (anyRebuild ? c : r2v.ctx).gake[k]; if (g && g.measure === 'rebuild' && g.cost){ cost[0] += g.cost.lo; cost[1] += g.cost.mid; cost[2] += g.cost.hi; } });
+      var d = rebR.plan.total - keepR.plan.total, d1 = (rebR.plan.n ? rebR.plan.floors[0].area : 0) - (keepR.plan.n ? keepR.plan.floors[0].area : 0);
+      h += '<h3>擁壁をやり直すか、離して建てるか</h3><div class="tablewrap"><table class="gk-cmp"><tr><th class="l">やり方</th><th>延床面積</th><th>1階の広さ</th><th>擁壁の費用</th></tr>' +
+        '<tr><td class="l">擁壁をやり直さず、がけから離して建てる</td><td>' + areaBoth(keepR.plan.total) + '</td><td>' + areaBoth(keepR.plan.n ? keepR.plan.floors[0].area : 0) + '</td><td>0円</td></tr>' +
+        '<tr><td class="l">擁壁をやり直す（帯が消える）</td><td>' + areaBoth(rebR.plan.total) + '</td><td>' + areaBoth(rebR.plan.n ? rebR.plan.floors[0].area : 0) + '</td><td>' + manY(cost[0]) + '〜' + manY(cost[2]) + '<br><small>中央 ' + manY(cost[1]) + '</small></td></tr>' +
+        '<tr class="total"><td class="l">ちがい</td><td>' + (d >= 0 ? '+' : '') + fmt(d,1) + '㎡（' + (d >= 0 ? '+' : '') + fmt(m2t(d),1) + '坪）</td><td>' + (d1 >= 0 ? '+' : '') + fmt(d1,1) + '㎡</td><td></td></tr></table></div>';
+      h += '<p class="muted">' + (Math.abs(d) < 0.05 ? '延床面積は変わりません（容積率など、ほかの決まりで止まっているため）。1階の置き方・庭・駐車場の広さが変わります。' : '擁壁をやり直すと、延床面積が約 ' + fmt(Math.abs(d),1) + '㎡ ' + (d > 0 ? '増えます' : '減ります') + '。') + 'ほかに、鉄筋コンクリート造にする・基礎を深くするなどで帯を無くせることもあります（費用は建物の見積もりで）。</p>';
+    }
+    // 盛土規制法・土砂災害の地図
+    var md = G.MORIDO_MAP[rg.morido], ds = G.DOSHA_MAP[rg.pref];
+    h += '<div class="kv">';
+    if (md) h += '<div>盛土規制法の区域</div><div>' + esc(md.by) + '：' + esc(md.zone) + '（' + esc(md.when) + 'から）。' + linkA('区域の案内', md.u) + (md.map ? '・' + linkA('地図', md.map) : '') + '<br><small>擁壁を作り直すときに土を切る・盛ると、高さ・面積によって許可が要ります（盛土で1m・切土で2mを超える崖など）。高さ2mを超える擁壁は、工作物の確認申請か盛土規制法の許可が要ります。</small></div>';
+    if (ds) h += '<div>土砂災害の区域</div><div>' + linkA(ds.t, ds.u) + '・' + linkA(G.DOSHA_MAP.nation.t, G.DOSHA_MAP.nation.u) + '</div>';
+    h += '<div>条文の出典</div><div>' + rule.src.map(function(x){ return linkA(x.t, x.u); }).join('<br>') + '<br><small>確認日 ' + G.CHECKED + '</small></div>';
+    h += '</div>';
+    h += '<details class="more"><summary>擁壁の見分け方（安全と認められにくい擁壁）</summary><ul>' + G.WALL_SIGNS.map(function(x){ return '<li>' + lv(x.lv, x.lv === 'alert' ? '要注意' : '確かめる') + ' ' + esc(x.t) + '<br><small class="muted">' + esc(x.why) + '</small></li>'; }).join('') + '</ul></details>';
+    $('o_gake').innerHTML = h;
+  }
+  function renderLimits(p, r){
+    var c = r.ctx, z = c.z, pl = r.plan, rows = [];
+    rows.push(['建ぺい率', r.cov.pct + '%（1階の広さ ' + areaBoth(r.bldgMax) + 'まで）', effOf(r,'bcr')]);
+    rows.push(['容積率', fmt(r.far.pct,0) + '%（延べ ' + areaBoth(r.farArea) + 'まで）<br><small>' + (isFinite(r.far.roadPct)
+        ? '指定 ' + p.far + '% と、一番広い道路の幅 ' + fmt(r.far.W,1) + 'm × ' + Math.round(r.far.coef*10) + '/10 × 100 ＝ ' + fmt(r.far.roadPct,0) + '% の、小さい方'
+        : '道路の幅が12m以上なので、道路の幅による制限はかかりません（指定 ' + p.far + '% のまま）') + '</small>', r.farBinding ? '<span class="lim-on">上限で止まっています（' + fmt(r.shapeSum - r.farArea,1) + '㎡ ぶん）</span>' : '使い切れていません']);
+    var rd = c.roads.map(function(rr){ return SN[rr.side] + ' ' + fmt(rr.W,1) + 'm' + (rr.Wraw < 4 ? '（いまは' + fmt(rr.Wraw,1) + 'm）' : '') + (rr.remote ? '・路地状部分 ' + fmt(c.poleL,1) + 'm の先' : ''); }).join('、');
+    rows.push(['道路斜線', '勾配 ' + c.rt.s + '、道路の反対側から ' + c.rt.L + 'm まで（' + rd + '）。1階の道路からの離れを後退緩和に使っています' + (c.roads.length >= 2 ? '。2本以上の道路の緩和（施行令第132条）あり' : ''), effOf(r,'road')]);
+    rows.push(['隣地斜線', z.nb ? z.nb.b + 'm＋' + z.nb.s + '×距離（' + z.nb.b + 'mをこえる部分を下げた分の緩和あり）' : 'この地域ではかかりません', z.nb ? effOf(r,'nb') : '-']);
+    rows.push(['北側斜線', z.north>0 ? (K.northApplies(c) ? z.north + 'm＋1.25×距離（北の' + (c.side.N.isRoad ? '道路の反対側の境界線' : '隣地境界線') + 'まで）' : '日影規制の区域なので外しています') : 'この地域ではかかりません', K.northApplies(c) ? effOf(r,'north') : '-']);
+    var kd = c.kodo;
+    rows.push(['高度地区', p.kodo==='none' ? 'なし' : esc((kd.grp||'') + ' ' + kd.name) + (kd.slope ? '：北側 ' + kd.base + 'm＋' + kd.s1 + '×距離' + (kd.brk>0 && kd.s2!==kd.s1 ? '（' + kd.brk + 'mから先は' + kd.s2 + '）' : '') : '') , kd.slope ? effOf(r,'kodo') : '-']);
+    var cap = K.heightCap(c);
+    rows.push(['高さの上限', isFinite(cap.h) ? esc(cap.by) : 'なし', [z.abs?'絶対高さ：'+effOf(r,'abs'):'', ((+p.kodoMax>0)||kd.max>0)?'高度地区の最高：'+effOf(r,'kodoMax'):'', p.hMax>0?'そのほか：'+effOf(r,'hMax'):''].filter(Boolean).join('<br>') || '-']);
+    rows.push(['日影規制', p.sh ? '測る高さ ' + p.sh.hm + 'm・' + p.sh.t1 + '時間／' + p.sh.t2 + '時間' : (z.sh ? '入れていない' : '対象外'), pl.shadowCut > 0.05 ? '<span class="lim-on">削った分 ' + fmt(pl.shadowCut,1) + '㎡</span>' : (p.sh ? '今の形では効いていない' : '-')]);
+    rows.push(['燃えにくさ・構造', esc(K.STRUCTS[p.struct].name) + '・' + {taika:'耐火',juntaika:'準耐火',none:'それ以外'}[p.fireBldg], pl.fireCut > 0.05 ? '<span class="lim-on">減った分 ' + fmt(pl.fireCut,1) + '㎡</span>' : '今の形では効いていない']);
+    if (c.gakeAny || SIDES.some(function(k){ return c.gake[k]; })) rows.push(['がけ条例', SIDES.filter(function(k){ return c.gake[k]; }).map(function(k){ var g = c.gake[k]; return SN[k] + '：高さ' + fmt(g.H,1) + 'm・' + (g.band > 0 ? '離す帯 ' + fmt(g.band,2) + 'm' : (g.judge.isCliff ? '帯なし（' + (g.measure === 'rebuild' ? '擁壁をやり直す' : '対策・擁壁あり') + '）' : 'がけに当たらない')); }).join('<br>'), c.gakeAny ? effOf(r,'gake') : '-']);
+    if (p.flag.on) rows.push(['旗竿地の条例', pl.flag ? '必要な幅 ' + fmt(pl.flag.need,1) + 'm（入れた幅 ' + fmt(p.flag.w,1) + 'm）' : '-', pl.flag && pl.flag.banned ? '<span class="lim-on">建てられない</span>' : pl.flagCut > 0.05 ? '<span class="lim-on">減った分 ' + fmt(pl.flagCut,1) + '㎡</span>' : '今の形では効いていない']);
+    $('o_limits').innerHTML = '<tr><th>決まり</th><th class="l">内容</th><th class="l">効き具合</th></tr>' +
+      rows.map(function(x){ return '<tr><td>' + x[0] + '</td><td class="l">' + x[1] + '</td><td class="l">' + x[2] + '</td></tr>'; }).join('');
+  }
+  function effOf(r, key){
+    for (var i=0;i<r.effects.length;i++) if (r.effects[i].key===key){
+      var d = r.effects[i].delta;
+      return d > 0.05 ? '<span' + (r.binding.key===key?' class="lim-on"':'') + '>効いている（無ければ +' + fmt(d,1) + '㎡）</span>' : '今の条件では効いていない';
+    }
+    return '-';
+  }
+  function renderFloors(p, r){
+    var pl = r.plan, acc = 0, c = r.ctx, rows = [];
+    r.floors.forEach(function(f, i){
+      var used = pl.floors[i];
+      var R = used ? used.rect : f.rect, a = used ? used.area : 0;
+      acc += a;
+      var by = [];
+      if (f.k===1 && r.firstCapped) by.push('建ぺい率');
+      SIDES.forEach(function(j){ var t = f.by && f.by[j]; if (t && t !== '下の階にそろえる') by.push(SN[j] + '：' + t); });
+      if (used && !used.full) by.push('上限に合わせて小さく');
+      var zb = c.base + (f.k-1)*c.fh;
+      rows.push('<tr' + (used ? '' : ' class="over"') + '><td>' + f.k + '階</td><td>' + fmt(zb,1) + '〜' + fmt(f.h,1) + 'm</td><td>' + fmt(R.x1-R.x0,2) + ' × ' + fmt(R.y1-R.y0,2) + 'm</td><td>' + (used ? fmt(a,1) + '㎡' : '（' + fmt(f.area,1) + '㎡）') + '</td><td>' + (used ? fmt(m2t(a),1) + '坪' : '-') + '</td><td>' + (used ? fmt(acc,1) + '㎡（' + fmt(m2t(acc),1) + '坪）' : '-') + '</td><td class="l">' + (by.join('・')||'敷地の広さ') + (used ? '' : '（使わない分）') + '</td></tr>');
+    });
+    $('o_floorsTbl').innerHTML = '<tr><th>階</th><th>床〜天井の高さ</th><th>東西×南北</th><th>床面積</th><th>坪</th><th>合計</th><th class="l">広さを決めている決まり</th></tr>' + (rows.join('') || '<tr><td colspan="7" class="l">建てられる階がありません</td></tr>');
+  }
+  function renderStructTbl(p){
+    var stat = K.STAT.tokyo, rows = '';
+    Object.keys(K.STRUCTS).forEach(function(k){
+      var s = K.STRUCTS[k], u = stat[s.cost]*s.costK;
+      rows += '<tr' + (k===p.struct?' style="font-weight:600"':'') + '><td class="l">' + esc(s.name) + '</td><td>' + fmt(s.fh,1) + 'm</td><td class="l">' + esc(s.floors) + '</td><td class="l">' + esc(s.span) + '</td><td>' + fmt(u*0.9,0) + '〜' + fmt(u*1.3,0) + '万円</td><td class="l">' + esc(s.fireable) + '</td></tr>';
+    });
+    $('v_structTbl').innerHTML = '<tr><th class="l">つくり</th><th>階高</th><th class="l">階数の目安</th><th class="l">柱の間隔（スパン）</th><th>坪単価の目安</th><th class="l">燃えにくさ</th></tr>' + rows;
+  }
+
+  // ---------- 横から見た図 ----------
+  function drawSection(p, r, axis){
+    var c = r.ctx, pl = r.plan, st = r.st, z = c.z;
+    var NS = axis === 'NS';
+    var len = NS ? c.Y : c.X;
+    var lo = NS ? 'S' : 'W', hi = NS ? 'N' : 'E';
+    var f1 = pl.floors.length ? pl.floors[0].rect : (r.floors.length ? r.floors[0].rect : {x0:0,x1:c.X,y0:0,y1:c.Y});
+    var cc = NS ? (f1.x0+f1.x1)/2 : (f1.y0+f1.y1)/2;
+    function P(u){ return NS ? [cc, u] : [u, cc]; }
+    // 両はしの外がわ（道路・下がる所・路地状部分・隣地）
+    function outer(side){
+      var items = [], sd = c.sd[side];
+      if (c.flag.on && side===c.dir){ items.push({k:'pole', w:c.poleL}); if (c.poleBack>0) items.push({k:'back', w:c.poleBack}); items.push({k:'road', w:sd.Wraw}); }
+      else if (c.side[side].isRoad){ if (sd.back>0) items.push({k:'back', w:sd.back}); items.push({k:'road', w:sd.Wraw}); }
+      else if (c.gake && c.gake[side]) items.push({k:'gake', w: Math.max(3, c.gake[side].judge.slopeW + 1.5)});
+      else items.push({k:'nb', w:3});
+      var tot = 0; items.forEach(function(it){ tot += it.w; }); return {items:items, tot:tot};
+    }
+    var oL = outer(lo), oH = outer(hi);
+    var uMin = -oL.tot - 0.5, uMax = len + oH.tot + 0.5;
+    var topH = pl.n ? pl.height : 3;
+    var shapeTop = r.floors.length ? r.floors[r.floors.length-1].h : 0;
+    var Hmax = Math.max(10, topH + 4, Math.min(shapeTop + 1.5, topH + 15));
+    var cap = K.heightCap(c);
+    if (isFinite(cap.h)) Hmax = Math.max(Hmax, Math.min(cap.h + 2, topH + 12));
+    var VW = 680, pl0 = 36, pr = 12, pt = 16, pb = 46;
+    // がけ：敷地ががけの上なら、となりの低い地面を地面の線より下に描く
+    function gkOf(side){ return (c.gake && c.gake[side] && !c.side[side].isRoad && !(c.flag.on && side===c.dir)) ? c.gake[side] : null; }
+    var dH = 0;
+    [lo, hi].forEach(function(sd){ var g = gkOf(sd); if (g && g.pos === 'above') dH = Math.max(dH, Math.min(g.H, 8)); if (g && g.pos === 'below') Hmax = Math.max(Hmax, Math.min(g.H, 20) + 1); });
+    var s = (VW - pl0 - pr) / (uMax - uMin);
+    var VH = (Hmax + dH) * s + pt + pb;
+    if (VH > 560){ s = Math.min(s, (560 - pt - pb) / (Hmax + dH)); VH = (Hmax + dH) * s + pt + pb; }
+    var x0p = pl0 + ((VW - pl0 - pr) - (uMax-uMin)*s)/2;
+    function X(u){ return x0p + (u - uMin) * s; }
+    function Y(h){ return VH - pb - dH * s - h * s; }
+    var out = [];
+    out.push('<svg viewBox="0 0 ' + VW + ' ' + Math.round(VH) + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="横から見た図">');
+    var step = Hmax > 40 ? 10 : 5;
+    for (var g = 0; g <= Hmax; g += step){
+      out.push('<line x1="' + pl0 + '" x2="' + (VW-pr) + '" y1="' + Y(g).toFixed(1) + '" y2="' + Y(g).toFixed(1) + '" style="stroke:var(--rule);stroke-width:0.6"/>');
+      out.push('<text x="' + (pl0-4) + '" y="' + (Y(g)+4).toFixed(1) + '" font-size="11" text-anchor="end" style="fill:var(--muted)">' + g + 'm</text>');
+    }
+    // 建ててよい空間（すべての決まりを重ねたもの）
+    var n = 240, pts = [], env = [];
+    for (var i=0;i<=n;i++){ var u = len*i/n, q = P(u), h = Math.min(K.heightAt(c, q[0], q[1], st), Hmax); env.push([u, Math.max(0,h)]); }
+    pts.push([X(0), Y(0)]); env.forEach(function(e){ pts.push([X(e[0]), Y(e[1])]); }); pts.push([X(len), Y(0)]);
+    out.push('<polygon points="' + pts.map(function(q){ return q[0].toFixed(1)+','+q[1].toFixed(1); }).join(' ') + '" style="fill:var(--c-env);stroke:var(--accent);stroke-width:1.2;stroke-dasharray:5 4"/>');
+    // それぞれの斜線（細い線）
+    function poly(fn, ua, ub, color){
+      var seg = [], segs = [];
+      for (var i=0;i<=200;i++){ var u = ua + (ub-ua)*i/200, h = fn(u); if (isFinite(h) && h >= 0 && h <= Hmax){ seg.push(X(u).toFixed(1)+','+Y(h).toFixed(1)); } else if (seg.length){ segs.push(seg); seg = []; } }
+      if (seg.length) segs.push(seg);
+      segs.forEach(function(sg){ if (sg.length>1) out.push('<polyline points="' + sg.join(' ') + '" style="fill:none;stroke:' + color + ';stroke-width:1;opacity:.75"/>'); });
+    }
+    c.roads.forEach(function(rr){ if (rr.side===lo || rr.side===hi) poly(function(u){ var q = P(u); return K.roadLimit(c, rr, q[0], q[1], st.rel[rr.id]); }, 0, len, 'var(--c-road)'); });
+    if (z.nb && !c.off.nb) [lo, hi].forEach(function(sd){ if (!c.side[sd].isRoad) poly(function(u){ var q = P(u), t = K.distTo(c, sd, q[0], q[1]), a = st.a[sd]; return z.nb.b + z.nb.s*(t + (a==null ? t : a)); }, 0, len, 'var(--c-nb)'); });
+    if (NS && K.northApplies(c)) poly(function(u){ var q = P(u); return z.north + 1.25*(K.distTo(c,'N',q[0],q[1]) + (c.side.N.isRoad ? c.side.N.W : 0)); }, 0, len, 'var(--c-north)');
+    if (NS && c.kodo.slope) poly(function(u){ var q = P(u); var add = !c.side.N.isRoad ? 0 : c.kodo.meas==='half' ? c.side.N.W/2 : c.kodo.meas==='site' ? 0 : c.side.N.W; return K.kodoHof(c.kodo, K.distTo(c,'N',q[0],q[1]) + add); }, 0, len, 'var(--c-kodo)');
+    if (isFinite(cap.h) && cap.h <= Hmax) out.push('<line x1="' + X(0).toFixed(1) + '" x2="' + X(len).toFixed(1) + '" y1="' + Y(cap.h).toFixed(1) + '" y2="' + Y(cap.h).toFixed(1) + '" style="stroke:var(--c-abs);stroke-width:1.5"/>');
+    // 形の上は入るが使わない分
+    r.floors.forEach(function(f, i){
+      var used = pl.floors[i], R = f.rect;
+      var a0 = NS ? R.y0 : R.x0, a1 = NS ? R.y1 : R.x1, zb = c.base + (f.k-1)*c.fh;
+      if (!used || Math.abs(used.area - f.area) > 1e-6)
+        out.push('<rect x="' + X(a0).toFixed(1) + '" y="' + Y(f.h).toFixed(1) + '" width="' + ((a1-a0)*s).toFixed(1) + '" height="' + (c.fh*s).toFixed(1) + '" style="fill:none;stroke:var(--c-floor2);stroke-width:1;stroke-dasharray:3 3"/>');
+    });
+    // 基礎
+    if (pl.n){
+      var R1 = pl.floors[0].rect, b0 = NS ? R1.y0 : R1.x0, b1 = NS ? R1.y1 : R1.x1;
+      out.push('<rect x="' + X(b0).toFixed(1) + '" y="' + Y(c.base).toFixed(1) + '" width="' + ((b1-b0)*s).toFixed(1) + '" height="' + (Math.max(c.base, 0.05)*s + 0.3*s).toFixed(1) + '" style="fill:var(--rule-strong);stroke:var(--ink-2);stroke-width:0.8"/>');
+    }
+    // 建てる建物（階ごとの四角）
+    pl.floors.forEach(function(f){
+      var R = f.rect, a0 = NS ? R.y0 : R.x0, a1 = NS ? R.y1 : R.x1, zt = c.base + f.k*c.fh, zb = zt - c.fh;
+      out.push('<rect x="' + X(a0).toFixed(1) + '" y="' + Y(zt).toFixed(1) + '" width="' + ((a1-a0)*s).toFixed(1) + '" height="' + (c.fh*s).toFixed(1) + '" style="fill:var(--c-floor);fill-opacity:.88;stroke:var(--paper);stroke-width:1.2"/>');
+      if (c.fh*s > 13 && (a1-a0)*s > 30) out.push('<text x="' + (X(a0)+5).toFixed(1) + '" y="' + (Y(zb) - c.fh*s/2 + 4).toFixed(1) + '" font-size="11" style="fill:var(--paper)">' + f.k + 'F ' + fmt(f.area,0) + '㎡</text>');
+    });
+    // 屋根
+    var rf = pl.roof;
+    if (pl.n && rf && rf.type !== 'none'){
+      var R = rf.rect, a0 = NS ? R.y0 : R.x0, a1 = NS ? R.y1 : R.x1, he = rf.he;
+      var rp;
+      var slopeAlong = (rf.type==='gable' && ((rf.axis==='x') === NS)) || (rf.type==='shed' && (NS ? (rf.low==='N'||rf.low==='S') : (rf.low==='E'||rf.low==='W')));
+      if (rf.type==='flat'){ rp = [[a0,he],[a0,he+0.15],[a1,he+0.15],[a1,he]]; }
+      else if (rf.type==='gable' && slopeAlong){ rp = [[a0-0.3,he-0.12],[(a0+a1)/2,he+rf.rise],[a1+0.3,he-0.12]]; }
+      else if (rf.type==='shed' && slopeAlong){
+        var lowAtStart = NS ? rf.low==='S' : rf.low==='W';
+        rp = lowAtStart ? [[a0-0.3,he-0.12],[a1,he+rf.rise],[a1,he]] : [[a0,he],[a0,he+rf.rise],[a1+0.3,he-0.12]];
+      } else { rp = [[a0-0.3,he-0.12],[a0-0.3,he+rf.rise],[a1+0.3,he+rf.rise],[a1+0.3,he-0.12]]; }
+      out.push('<polygon points="' + rp.map(function(q){ return X(q[0]).toFixed(1)+','+Y(q[1]).toFixed(1); }).join(' ') + '" style="fill:var(--ink-2);fill-opacity:' + (slopeAlong || rf.type==='flat' ? 1 : 0.6) + ';stroke:var(--ink);stroke-width:1"/>');
+      if (!slopeAlong && rf.type!=='flat'){   // 軒の側から見た勾配屋根：屋根の面に横の線を入れて、棟（てっぺん）を太く
+        for (var li=1; li<4; li++){ var zz = he + rf.rise*li/4; out.push('<line x1="' + X(a0-0.3).toFixed(1) + '" x2="' + X(a1+0.3).toFixed(1) + '" y1="' + Y(zz).toFixed(1) + '" y2="' + Y(zz).toFixed(1) + '" style="stroke:var(--paper);stroke-width:0.6;opacity:.7"/>'); }
+        out.push('<line x1="' + X(a0-0.3).toFixed(1) + '" x2="' + X(a1+0.3).toFixed(1) + '" y1="' + Y(he+rf.rise).toFixed(1) + '" y2="' + Y(he+rf.rise).toFixed(1) + '" style="stroke:var(--ink);stroke-width:2"/>');
+      }
+      // 高さの寸法（一番広い1階の外がわ）
+      var R1b = pl.floors[0].rect, xr = X(NS ? R1b.y1 : R1b.x1) + 12;
+      out.push('<line x1="' + xr.toFixed(1) + '" x2="' + xr.toFixed(1) + '" y1="' + Y(0).toFixed(1) + '" y2="' + Y(pl.height).toFixed(1) + '" style="stroke:var(--ink-2);stroke-width:0.8"/>');
+      out.push('<text x="' + (xr+4).toFixed(1) + '" y="' + (Y(pl.height)+10).toFixed(1) + '" font-size="11" style="fill:var(--ink)">高さ ' + fmt(pl.height,1) + 'm</text>');
+    }
+    // 地面・道路・境界
+    function strip(u0, u1, kind){
+      var col = kind==='road' ? 'var(--rule-strong)' : kind==='back' ? 'var(--caution-weak)' : kind==='pole' ? 'var(--head)' : 'var(--paper)';
+      out.push('<rect x="' + X(Math.min(u0,u1)).toFixed(1) + '" y="' + Y(0).toFixed(1) + '" width="' + (Math.abs(u1-u0)*s).toFixed(1) + '" height="9" style="fill:' + col + '"/>');
+    }
+    strip(0, len, 'site');
+    out.push('<rect x="' + X(0).toFixed(1) + '" y="' + Y(0).toFixed(1) + '" width="' + (len*s).toFixed(1) + '" height="9" style="fill:var(--rule)"/>');
+    function sideStrips(o, dirSign, origin){
+      var u = origin;
+      o.items.forEach(function(it){
+        var u2 = u + dirSign*it.w; strip(u, u2, it.k);
+        var label = it.k==='road' ? '道路 ' + fmt(it.w,1) + 'm' : it.k==='back' ? '下がる' : it.k==='pole' ? '路地状 ' + fmt(it.w,1) + 'm' : it.k==='gake' ? '' : '隣地';
+        if (Math.abs(u2-u)*s > 26) out.push('<text x="' + X((u+u2)/2).toFixed(1) + '" y="' + (Y(0)+24) + '" font-size="11" text-anchor="middle" style="fill:var(--ink-2)">' + label + '</text>');
+        out.push('<line x1="' + X(u2).toFixed(1) + '" x2="' + X(u2).toFixed(1) + '" y1="' + Y(0).toFixed(1) + '" y2="' + (Y(0)+12).toFixed(1) + '" style="stroke:var(--ink-2);stroke-width:0.8"/>');
+        u = u2;
+      });
+    }
+    sideStrips(oL, -1, 0); sideStrips(oH, 1, len);
+    // がけと、がけ条例で建物を置かない帯
+    [[lo, -1, 0], [hi, 1, len]].forEach(function(a){
+      var g = gkOf(a[0]); if (!g) return;
+      var dir = a[1], e = a[2], w = g.judge.slopeW, W = Math.max(3, w + 1.5), Hd = Math.min(g.H, g.pos === 'above' ? dH : Hmax);
+      var hh = g.pos === 'above' ? -Hd : Hd;
+      var pts2 = [[e, 0], [e + dir*w, hh], [e + dir*W, hh], [e + dir*W, 0]];
+      out.push('<polygon points="' + pts2.map(function(q){ return X(q[0]).toFixed(1) + ',' + Y(q[1]).toFixed(1); }).join(' ') + '" style="fill:var(--rule-strong);fill-opacity:.55;stroke:var(--ink);stroke-width:1"/>');
+      out.push('<text x="' + X(e + dir*W/2).toFixed(1) + '" y="' + (Y(Math.max(0, hh)) - 4).toFixed(1) + '" font-size="11" text-anchor="middle" style="fill:var(--ink)">がけ ' + fmt(g.H,1) + 'm' + (g.wall !== 'none' ? '（擁壁）' : '') + '</text>');
+      var b = Math.min(g.band, len);
+      if (b > 0){
+        var u0 = dir < 0 ? 0 : len - b, u1 = dir < 0 ? b : len;
+        out.push('<rect x="' + X(u0).toFixed(1) + '" y="' + Y(0).toFixed(1) + '" width="' + ((u1-u0)*s).toFixed(1) + '" height="9" style="fill:var(--alert-weak);stroke:var(--alert);stroke-width:0.8"/>');
+        out.push('<line x1="' + X(dir < 0 ? u1 : u0).toFixed(1) + '" x2="' + X(dir < 0 ? u1 : u0).toFixed(1) + '" y1="' + Y(0).toFixed(1) + '" y2="' + Y(Math.min(Hmax, 6)).toFixed(1) + '" style="stroke:var(--alert);stroke-width:1;stroke-dasharray:4 3"/>');
+        out.push('<text x="' + X((u0+u1)/2).toFixed(1) + '" y="' + (Y(0) - 4).toFixed(1) + '" font-size="10" text-anchor="middle" style="fill:var(--alert)">がけ条例 ' + fmt(b,1) + 'm</text>');
+      }
+    });
+    out.push('<line x1="' + pl0 + '" x2="' + (VW-pr) + '" y1="' + Y(0).toFixed(1) + '" y2="' + Y(0).toFixed(1) + '" style="stroke:var(--ink);stroke-width:1.5"/>');
+    [0, len].forEach(function(b){ out.push('<line x1="' + X(b).toFixed(1) + '" x2="' + X(b).toFixed(1) + '" y1="' + Y(0).toFixed(1) + '" y2="' + (Y(0)+14).toFixed(1) + '" style="stroke:var(--ink)"/>'); });
+    out.push('<text x="' + X(len/2).toFixed(1) + '" y="' + (Y(0)+24) + '" font-size="11" text-anchor="middle" style="fill:var(--ink)">敷地 ' + fmt(len,1) + 'm</text>');
+    out.push('<text x="' + X(uMin+0.2).toFixed(1) + '" y="' + (Y(0)+40) + '" font-size="12" style="fill:var(--ink-2)">' + SN[lo] + '</text>');
+    out.push('<text x="' + X(uMax-0.2).toFixed(1) + '" y="' + (Y(0)+40) + '" font-size="12" text-anchor="end" style="fill:var(--ink-2)">' + SN[hi] + '</text>');
+    out.push('</svg>');
+    $('o_svg').innerHTML = out.join('');
+    var notes = [];
+    notes.push(NS ? '南（左）から北（右）へ、東から見た図です。' : '西（左）から東（右）へ、南から見た図です。');
+    notes.push('点線の外形は、1階の真ん中を通る線の上で「建ててよい高さ」を重ねたものです。建物は、各階を四角のまま斜線の内側へ下げた形（段々）で描いています。');
+    if (gkOf(lo) || gkOf(hi)) notes.push('がけは、となりの土地との高低差を簡単に描いたものです（高さ8mを超える下りのがけは縮めています）。赤い帯は、がけ条例で建物を置かない所です。');
+    if (!NS && (K.northApplies(c) || c.kodo.slope)) notes.push('北側斜線・高度地区は、この向きの図には出ません（南北に見る図で確かめてください）。');
+    $('o_svgNote').textContent = notes.join(' ');
+  }
+
+  // ---------- 上から見た図 ----------
+  function drawPlan(p, r){
+    var c = r.ctx, pl = r.plan;
+    var bW = c.sd.W.back, bE = c.sd.E.back, bS = c.sd.S.back, bN = c.sd.N.back;
+    // 外まわり（道路の幅）
+    var ext = {S:0,E:0,N:0,W:0};
+    SIDES.forEach(function(k){ if (c.side[k].isRoad) ext[k] = c.sd[k].back + c.sd[k].Wraw; });
+    if (c.flag.on) ext[c.dir] = c.poleL + c.poleBack + c.sd[c.dir].Wraw;
+    SIDES.forEach(function(k){ if (c.gake && c.gake[k] && ext[k] < 2.5) ext[k] = 2.5; });
+    var sh = pl.shadow && pl.shadow.target ? K.measureShift(c) : null;
+    var m = sh ? 10.5 : 1.5;
+    var xMin = -Math.max(ext.W, sh ? sh.W + m : 1) - 1, xMax = c.X + Math.max(ext.E, sh ? sh.E + m : 1) + 1;
+    var yMin = -Math.max(ext.S, sh ? 1 : 1) - 1, yMax = c.Y + Math.max(ext.N, sh ? sh.N + m : 1) + 1;
+    var VW = 680, pad = 10;
+    var s = Math.min((VW - 2*pad) / (xMax - xMin), 520 / (yMax - yMin));
+    var VH = (yMax - yMin)*s + 2*pad;
+    var ox = (VW - (xMax-xMin)*s)/2;
+    function X(x){ return ox + (x - xMin)*s; }
+    function Y(y){ return pad + (yMax - y)*s; }
+    function rect(x0, y0, x1, y1, style){ return '<rect x="' + X(Math.min(x0,x1)).toFixed(1) + '" y="' + Y(Math.max(y0,y1)).toFixed(1) + '" width="' + (Math.abs(x1-x0)*s).toFixed(1) + '" height="' + (Math.abs(y1-y0)*s).toFixed(1) + '" style="' + style + '"/>'; }
+    var out = ['<svg viewBox="0 0 ' + VW + ' ' + Math.round(VH) + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="上から見た配置図">'];
+    // 道路
+    var big = 200;
+    SIDES.forEach(function(k){
+      var road = c.side[k].isRoad || (c.flag.on && k===c.dir);
+      if (!road) return;
+      var sd = c.sd[k], o = c.flag.on ? c.poleL + c.poleBack : sd.back, w = sd.Wraw;
+      var rr = k==='S' ? [-big, -o-w, c.X+big, -o] : k==='N' ? [-big, c.Y+o, c.X+big, c.Y+o+w] : k==='W' ? [-o-w, -big, -o, c.Y+big] : [c.X+o, -big, c.X+o+w, c.Y+big];
+      out.push(rect(Math.max(rr[0],xMin), Math.max(rr[1],yMin), Math.min(rr[2],xMax), Math.min(rr[3],yMax), 'fill:var(--rule-strong);opacity:.55'));
+      var lx = k==='S'||k==='N' ? (0 + c.X)/2 : (k==='W' ? -o-w/2 : c.X+o+w/2), ly = k==='S'||k==='N' ? (k==='S' ? -o-w/2 : c.Y+o+w/2) : c.Y/2;
+      out.push('<text x="' + X(lx).toFixed(1) + '" y="' + (Y(ly)+4).toFixed(1) + '" font-size="11" text-anchor="middle" style="fill:var(--ink)">道路 ' + fmt(w,1) + 'm</text>');
+      if (!c.flag.on && sd.back > 0){
+        var bb = k==='S' ? [0,-sd.back,c.X,0] : k==='N' ? [0,c.Y,c.X,c.Y+sd.back] : k==='W' ? [-sd.back,0,0,c.Y] : [c.X,0,c.X+sd.back,c.Y];
+        out.push(rect(bb[0],bb[1],bb[2],bb[3],'fill:var(--caution-weak);stroke:var(--caution);stroke-width:0.6'));
+      }
+    });
+    // 路地状部分
+    if (c.flag.on){
+      var w = c.flag.w, Lp = c.poleL + c.poleBack, k = c.dir, cx = (k==='S'||k==='N') ? c.X/2 : c.Y/2;
+      var pr = k==='S' ? [cx-w/2, -Lp, cx+w/2, 0] : k==='N' ? [cx-w/2, c.Y, cx+w/2, c.Y+Lp] : k==='W' ? [-Lp, cx-w/2, 0, cx+w/2] : [c.X, cx-w/2, c.X+Lp, cx+w/2];
+      out.push(rect(pr[0],pr[1],pr[2],pr[3],'fill:var(--head);stroke:var(--ink);stroke-width:1'));
+    }
+    // 敷地
+    out.push(rect(0, 0, c.X, c.Y, 'fill:var(--sheet);stroke:var(--ink);stroke-width:1.5'));
+    // がけと、がけ条例で建物を置かない帯
+    SIDES.forEach(function(k){
+      var g = c.gake && c.gake[k]; if (!g) return;
+      var b = Math.min(g.band, (k==='S'||k==='N') ? c.Y : c.X);
+      if (b > 0){
+        var bb = k==='S' ? [0,0,c.X,b] : k==='N' ? [0,c.Y-b,c.X,c.Y] : k==='W' ? [0,0,b,c.Y] : [c.X-b,0,c.X,c.Y];
+        out.push(rect(bb[0],bb[1],bb[2],bb[3],'fill:var(--alert-weak);stroke:var(--alert);stroke-width:0.8;stroke-dasharray:4 3'));
+        var tx = (bb[0]+bb[2])/2, ty = (bb[1]+bb[3])/2;
+        if (Math.min(Math.abs(bb[2]-bb[0]), Math.abs(bb[3]-bb[1]))*s > 13) out.push('<text x="' + X(tx).toFixed(1) + '" y="' + (Y(ty)+4).toFixed(1) + '" font-size="10" text-anchor="middle" style="fill:var(--alert)">がけ条例 ' + fmt(b,1) + 'm</text>');
+      }
+      // がけの印（境界の外に、低い方へ向けた短い線）
+      var o = 0.7, n2 = 12, len2 = (k==='S'||k==='N') ? c.X : c.Y, tick = g.pos === 'above' ? 0.6 : -0.6;
+      for (var i=0;i<=n2;i++){
+        var u = len2*i/n2, a1, a2;
+        if (k==='S'){ a1 = [u, -o]; a2 = [u, -o - tick]; } else if (k==='N'){ a1 = [u, c.Y+o]; a2 = [u, c.Y+o+tick]; }
+        else if (k==='W'){ a1 = [-o, u]; a2 = [-o - tick, u]; } else { a1 = [c.X+o, u]; a2 = [c.X+o+tick, u]; }
+        out.push('<line x1="' + X(a1[0]).toFixed(1) + '" y1="' + Y(a1[1]).toFixed(1) + '" x2="' + X(a2[0]).toFixed(1) + '" y2="' + Y(a2[1]).toFixed(1) + '" style="stroke:var(--ink-2);stroke-width:0.8"/>');
+      }
+      var la = k==='S' ? [c.X/2, -o-1.3] : k==='N' ? [c.X/2, c.Y+o+1.1] : k==='W' ? [-o-1.0, c.Y*0.15] : [c.X+o+1.0, c.Y*0.15];
+      out.push('<text x="' + X(la[0]).toFixed(1) + '" y="' + (Y(la[1])+4).toFixed(1) + '" font-size="10" text-anchor="middle" style="fill:var(--ink-2)">がけ' + (g.pos === 'above' ? '（下へ）' : '（上へ）') + fmt(g.H,1) + 'm</text>');
+    });
+    // 日影を測る線
+    if (sh){
+      [5,10].forEach(function(dd){
+        var x0 = -sh.W - dd, x1 = c.X + sh.E + dd, y0 = -sh.S - dd, y1 = c.Y + sh.N + dd, rr = dd*s;
+        out.push('<rect x="' + X(x0).toFixed(1) + '" y="' + Y(y1).toFixed(1) + '" width="' + ((x1-x0)*s).toFixed(1) + '" height="' + ((y1-y0)*s).toFixed(1) + '" rx="' + rr.toFixed(1) + '" style="fill:none;stroke:var(--c-kodo);stroke-width:1;stroke-dasharray:4 3"/>');
+        out.push('<text x="' + (X(c.X/2)).toFixed(1) + '" y="' + (Y(y1)-3).toFixed(1) + '" font-size="10" text-anchor="middle" style="fill:var(--c-kodo)">' + dd + 'mの線</text>');
+      });
+    }
+    // 建物
+    var groups = [];
+    pl.floors.forEach(function(f){
+      var R = f.rect, g = groups.length ? groups[groups.length-1] : null;
+      if (g && Math.abs(g.R.x0-R.x0)<1e-6 && Math.abs(g.R.x1-R.x1)<1e-6 && Math.abs(g.R.y0-R.y0)<1e-6 && Math.abs(g.R.y1-R.y1)<1e-6) g.k1 = f.k;
+      else groups.push({R:R, k0:f.k, k1:f.k});
+    });
+    var used = [];
+    groups.forEach(function(g, i){
+      var R = g.R;
+      out.push(rect(R.x0, R.y0, R.x1, R.y1, i===0 ? 'fill:var(--c-env);stroke:var(--accent);stroke-width:1.5' : 'fill:none;stroke:var(--accent);stroke-width:' + (1 + i*0.4).toFixed(1)));
+      var lab = g.k0===g.k1 ? g.k0 + 'F' : g.k0 + '〜' + g.k1 + 'F';
+      var lx = X(R.x0)+3, ly = Y(R.y1)+12;
+      for (var t=0; t<8 && used.some(function(u){ return Math.abs(u[0]-lx) < 40 && Math.abs(u[1]-ly) < 11; }); t++) ly += 12;
+      used.push([lx, ly]);
+      out.push('<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" font-size="11" style="fill:var(--accent)">' + lab + '</text>');
+    });
+    // 寸法と北（道路の無い側の外に書く）
+    function busy(k){ return c.side[k].isRoad || (c.flag.on && c.dir===k); }
+    var ewY = !busy('N') ? Y(c.Y) - 5 : !busy('S') ? Y(0) + 14 : Y(c.Y) + 14;
+    out.push('<text x="' + X(c.X/2).toFixed(1) + '" y="' + ewY.toFixed(1) + '" font-size="11" text-anchor="middle" style="fill:var(--ink-2)">東西 ' + fmt(c.X,2) + 'm</text>');
+    var nsX = !busy('E') ? X(c.X) + 4 : !busy('W') ? X(0) - 4 : X(0) + 4, nsA = (!busy('E') || busy('W')) ? 'start' : 'end';
+    out.push('<text x="' + nsX.toFixed(1) + '" y="' + Y(c.Y/2).toFixed(1) + '" font-size="11" text-anchor="' + nsA + '" style="fill:var(--ink-2)">南北 ' + fmt(c.Y,2) + 'm</text>');
+    var nx = VW - 24, ny = 30;
+    out.push('<line x1="' + nx + '" x2="' + nx + '" y1="' + (ny+14) + '" y2="' + (ny-12) + '" style="stroke:var(--ink);stroke-width:1.2"/><polygon points="' + nx + ',' + (ny-16) + ' ' + (nx-4) + ',' + (ny-7) + ' ' + (nx+4) + ',' + (ny-7) + '" style="fill:var(--ink)"/><text x="' + nx + '" y="' + (ny+27) + '" font-size="11" text-anchor="middle" style="fill:var(--ink)">北</text>');
+    out.push('</svg>');
+    $('o_plan').innerHTML = out.join('');
+  }
+
+  // 敷地の面積：㎡ か 坪 を入れたら「面積から奥行を出す」にする。奥行を入れたら外す
+  $('v_A').addEventListener('input', function(){ $('v_byArea').checked = true; var a = parseFloat($('v_A').value); if (a > 0) $('v_At').value = r2(m2t(a)); });
+  $('v_At').addEventListener('input', function(){ var t = parseFloat($('v_At').value); if (t > 0){ $('v_A').value = r2(t * TSUBO); $('v_byArea').checked = true; calcV(); } });
+  $('v_D').addEventListener('input', function(){ $('v_byArea').checked = false; });
+  $('v_struct').addEventListener('change', applyStructDefaults);
+  $('v_fire').addEventListener('change', function(){ var s = $('v_struct').value; if ((s==='wood'||s==='ls') && $('v_fire').value!=='none' && $('v_fireBldg').value==='none') $('v_fireBldg').value = 'juntaika'; });
+  zoneSel.addEventListener('change', function(){ refreshZoneOpts(true); });
+  $('v_kodo').addEventListener('change', function(){ shAutoFromUrl = false; });
+  document.querySelectorAll('#panel-vol [data-s]').forEach(function(el){
+    el.addEventListener('input', calcV); el.addEventListener('change', calcV);
+  });
+  document.querySelectorAll('#o_cutSeg button').forEach(function(b){ b.addEventListener('click', function(){ cutAxis = b.getAttribute('data-cut'); calcV(); }); });
+  $('toCost').onclick = function(){ takeOver(); showTab('cost'); if (window.scrollTo) window.scrollTo(0,0); };
+
+  // ---------- 建築費 ----------
+  var itemsState = saved._items && saved._items.extra ? saved._items : null;
+  function defaultsFor(use){ var d = K.DEFAULTS[use]; return JSON.parse(JSON.stringify({extra:d.extra, design:d.design, permit:d.permit, misc:d.misc})); }
+  if (!itemsState) itemsState = defaultsFor($('c_use').value);
+  function renderItems(){
+    var h = '<tr><th>項目</th><th>下限</th><th>上限</th></tr>';
+    function row(group, i, name, lo, hi, unit){
+      return '<tr><td class="l">' + esc(name) + (unit?' <span class="muted">（' + unit + '）</span>':'') + '</td><td><input type="number" min="0" step="1" data-g="' + group + '" data-i="' + i + '" data-k="1" value="' + lo + '" aria-label="' + esc(name) + ' 下限"></td><td><input type="number" min="0" step="1" data-g="' + group + '" data-i="' + i + '" data-k="2" value="' + hi + '" aria-label="' + esc(name) + ' 上限"></td></tr>';
+    }
+    h += '<tr><td colspan="3" class="l"><b>付帯工事</b></td></tr>';
+    itemsState.extra.forEach(function(x,i){ h += row('extra', i, x[0], x[1], x[2]); });
+    h += '<tr><td colspan="3" class="l"><b>設計・申請</b></td></tr>';
+    h += row('design', 0, '設計・監理料', itemsState.design[0], itemsState.design[1], '本体工事の%');
+    h += row('permit', 0, '確認申請・検査の費用', itemsState.permit[0], itemsState.permit[1]);
+    h += '<tr><td colspan="3" class="l"><b>諸費用</b>（税こみで入れてください）</td></tr>';
+    itemsState.misc.forEach(function(x,i){ h += row('misc', i, x[0], x[1], x[2]); });
+    $('c_items').innerHTML = h;
+    $('c_items').querySelectorAll('input').forEach(function(el){
+      el.addEventListener('input', function(){
+        var g = el.dataset.g, i = +el.dataset.i, k = +el.dataset.k, v = Math.max(0, parseFloat(el.value) || 0);
+        if (g==='extra' || g==='misc') itemsState[g][i][k] = v; else itemsState[g][k-1] = v;
+        calcC();
+      });
+    });
+  }
+  function takeOver(){
+    if (!lastVol) return;
+    $('c_area').value = Math.round(lastVol.r.plan.total*10)/10;
+    $('c_struct').value = $('v_struct').value;
+    $('c_fire').value = $('v_fireBldg').value;
+    if ($('v_use').value === 'apart' && $('c_use').value === 'house'){ $('c_use').value = lastVol.r.plan.n >= 4 ? 'mansion' : 'apart'; itemsState = defaultsFor($('c_use').value); renderItems(); }
+    calcC();
+  }
+  $('c_take').onclick = takeOver;
+  $('c_reset').onclick = function(){ itemsState = defaultsFor($('c_use').value); renderItems(); calcC(); };
+  $('c_use').addEventListener('change', function(){ itemsState = defaultsFor($('c_use').value); renderItems(); });
+  $('c_demoStruct').addEventListener('change', function(){ var u = K.DEMO_UNIT[$('c_demoStruct').value]; $('c_demoLo').value = u[0]; $('c_demoHi').value = u[1]; });
+  $('c_areaTsubo').addEventListener('input', function(){ var t = parseFloat($('c_areaTsubo').value); if (t > 0){ $('c_area').value = r2(t * TSUBO); calcC(); } });
+  $('c_demoM2').addEventListener('input', function(){ var a = parseFloat($('c_demoM2').value); if (a >= 0){ $('c_demoTsubo').value = r2(m2t(a)); calcC(); } });
+
+  function calcC(){
+    var manual = $('c_manual').checked;
+    $('c_manualWrap').style.display = manual ? '' : 'none';
+    $('c_demoWrap').style.display = $('c_demo').checked ? '' : 'none';
+    $('c_fireWrap').hidden = $('c_struct').value !== 'wood';
+    var area = Math.max(0, num('c_area', 0));
+    if (document.activeElement !== $('c_areaTsubo')) $('c_areaTsubo').value = r2(m2t(area));
+    $('c_areaT').textContent = areaBoth(area);
+    var dT = Math.max(0, num('c_demoTsubo', 0));
+    if (document.activeElement !== $('c_demoM2')) $('c_demoM2').value = r2(dT * TSUBO);
+    var c = {
+      area: area, struct: $('c_struct').value, use: $('c_use').value, grade: $('c_grade').value, region: $('c_region').value, fire: $('c_fire').value,
+      manual: manual ? [Math.max(0,num('c_mLo',0)), Math.max(0,num('c_mHi',0))] : null,
+      demo: {on: $('c_demo').checked, tsubo: dT, lo: Math.max(0,num('c_demoLo',0)), hi: Math.max(0,num('c_demoHi',0))},
+      extra: itemsState.extra, design: itemsState.design, permit: itemsState.permit, misc: itemsState.misc
+    };
+    var r = K.buildCost(c);
+    $('c_mNote').textContent = manual ? '＝ ' + fmt(c.manual[0]/TSUBO,1) + '〜' + fmt(c.manual[1]/TSUBO,1) + '万円/㎡' : '';
+    $('c_demoNote').textContent = '＝ ' + fmt(c.demo.lo/TSUBO,2) + '〜' + fmt(c.demo.hi/TSUBO,2) + '万円/㎡。古い家 ' + areaBoth(dT*TSUBO) + '。木造3〜6、鉄骨4〜7、RC6〜10万円/坪が目安';
+    $('r_total').textContent = yen(r.lo) + ' 〜 ' + yen(r.hi);
+    $('r_totalS').textContent = '延床 ' + areaBoth(area) + 'の場合。土地の代金は入っていません。';
+    $('r_hon').textContent = yen(r.rows[0].lo) + '〜' + yen(r.rows[0].hi);
+    $('r_honS').textContent = '税ぬき';
+    $('r_unit').innerHTML = fmt(r.unit.lo,1) + '〜' + fmt(r.unit.hi,1) + '<small>万円/坪</small>';
+    var st = K.STRUCTS[c.struct], sn = st.name, un = {house:'戸建て',apart:'アパート',mansion:'マンション'}[c.use];
+    var basis = manual ? '自分で入れた坪単価' : (c.region==='tokyo'?'東京都':'全国') + 'の統計 ' + fmt(r.unit.stat,1) + '万円/坪' + (st.costK !== 1 ? ' × ' + st.name + 'の係数 ' + st.costK : '') + ' × ' + un + ' × グレード' + (c.struct==='wood' && c.fire!=='none' ? ' × 燃えにくさ' : '');
+    $('r_unitS').textContent = '＝ ' + fmt(r.unit.lo/TSUBO,1) + '〜' + fmt(r.unit.hi/TSUBO,1) + '万円/㎡。' + basis;
+    $('c_unitNote').textContent = manual ? '' : '統計の坪単価：' + (c.region==='tokyo'?'東京都':'全国') + 'の' + {wood:'木造', s:'鉄骨造', rc:'RC造', src:'SRC造'}[st.cost] + 'の住宅 ' + fmt(r.unit.stat,1) + '万円/坪（' + fmt(r.unit.stat/TSUBO,1) + '万円/㎡。国土交通省 建築着工統計 令和7年度）。' + (st.costK !== 1 ? st.name + 'は統計に分かれていないので、係数 ' + st.costK + '（業界の一般的な目安）をかけています。' : '') + 'これに建物の種類とグレードの係数をかけています。';
+    $('r_per').innerHTML = r.tsubo>0 ? fmt(r.lo/r.tsubo,1) + '〜' + fmt(r.hi/r.tsubo,1) + '<small>万円/坪</small>' : '-';
+    $('r_perS').textContent = r.tsubo>0 ? '＝ ' + fmt(r.lo/area,1) + '〜' + fmt(r.hi/area,1) + '万円/㎡。本体以外もふくめた額' : '本体以外もふくめた額';
+    $('r_tbl').innerHTML = '<tr><th>内わけ</th><th>下限</th><th>上限</th></tr>' + r.rows.map(function(x){ return '<tr><td class="l">' + esc(x.name) + '</td><td>' + yen(x.lo) + '</td><td>' + yen(x.hi) + '</td></tr>'; }).join('') +
+      '<tr class="total"><td>合計</td><td>' + yen(r.lo) + '</td><td>' + yen(r.hi) + '</td></tr>';
+    drawBars(r);
+    var w = [];
+    if ((c.struct==='wood' && c.use==='mansion') || (c.struct==='src' && c.use==='house')) w.push('この組み合わせ（' + sn + '×' + un + '）は数が少なく、坪単価の幅が大きくなりやすいです。');
+    if (c.struct==='src' && !manual) w.push('SRC造の住宅は統計の数が少ない（東京都で年54棟）ので、坪単価はぶれやすいです。');
+    if ((c.struct==='ls' || c.struct==='wrc') && !manual) w.push(sn + 'は統計で分かれていないので、近い構造の統計に係数をかけた目安です。');
+    w.push('統計の「工事費予定額」は、工事を始める前に届け出た予定の金額です。実際の契約額はこれより高いことが多いので、グレード「ふつう」でも上限を統計の1.3倍にしています。');
+    $('r_warn').innerHTML = w.map(function(s){ return '<p class="note caution">' + s + '</p>'; }).join('');
+    save();
+  }
+  function drawBars(r){
+    var ops = [1, 0.72, 0.52, 0.36, 0.24, 0.14];
+    var VW = 640, rowH = 34, pl = 44, pr = 4, top = 8, VH = top + rowH*2 + 4;
+    var max = r.hi || 1, s = (VW - pl - pr) / max;
+    var out = ['<svg viewBox="0 0 ' + VW + ' ' + VH + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="費用の内わけ">'];
+    [['下限','lo'],['上限','hi']].forEach(function(b, j){
+      var y = top + j*rowH, x = pl;
+      out.push('<text x="' + (pl-8) + '" y="' + (y+16) + '" font-size="13" text-anchor="end" style="fill:var(--ink)">' + b[0] + '</text>');
+      r.rows.forEach(function(row, i){
+        var w = row[b[1]] * s;
+        if (w > 0) out.push('<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + w.toFixed(1) + '" height="22" style="fill:var(--accent);fill-opacity:' + ops[i % ops.length] + ';stroke:var(--paper);stroke-width:1"><title>' + esc(row.name) + ' ' + yen(row[b[1]]) + '</title></rect>');
+        x += w;
+      });
+    });
+    out.push('</svg>');
+    var leg = '<div class="legend">' + r.rows.map(function(row,i){ return '<span class="sq" style="--c:var(--accent);opacity:' + Math.max(0.35, ops[i % ops.length]) + '">' + esc(row.name.replace(/（.*?）/,'')) + '</span>'; }).join('') + '</div>';
+    $('r_bar').innerHTML = out.join('') + leg;
+  }
+  function drawTrend(){
+    var DEFL = K.DEFL;
+    var VW = 640, VH = 240, pl = 40, pr = 14, pt = 14, pb = 28;
+    var ys = DEFL.years, lo = 85, hi = 130;
+    function X(i){ return pl + i * (VW-pl-pr) / (ys.length-1); }
+    function Y(v){ return pt + (hi - v) * (VH-pt-pb) / (hi-lo); }
+    var out = ['<svg viewBox="0 0 ' + VW + ' ' + VH + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="建設工事費デフレーターの推移">'];
+    for (var g = 90; g <= 130; g += 10){
+      out.push('<line x1="' + pl + '" x2="' + (VW-pr) + '" y1="' + Y(g) + '" y2="' + Y(g) + '" style="stroke:var(--rule)"/><text x="' + (pl-6) + '" y="' + (Y(g)+4) + '" font-size="11" text-anchor="end" style="fill:var(--muted)">' + g + '</text>');
+    }
+    ys.forEach(function(y,i){ if (i%2===0 || i===ys.length-1) out.push('<text x="' + X(i) + '" y="' + (VH-8) + '" font-size="11" text-anchor="middle" style="fill:var(--muted)">' + y + '</text>'); });
+    [['house','var(--accent)',''],['wood','var(--caution)','6 4'],['nonwood','var(--ink-2)','2 3']].forEach(function(sr){
+      out.push('<polyline style="fill:none;stroke:' + sr[1] + ';stroke-width:2' + (sr[2]?';stroke-dasharray:' + sr[2]:'') + '" points="' + DEFL[sr[0]].map(function(v,i){ return X(i).toFixed(1)+','+Y(v).toFixed(1); }).join(' ') + '"/>');
+    });
+    var last = DEFL.house[DEFL.house.length-1];
+    out.push('<circle cx="' + X(ys.length-1) + '" cy="' + Y(last) + '" r="3.5" style="fill:var(--accent)"/><text x="' + (X(ys.length-1)-6) + '" y="' + (Y(last)-8) + '" font-size="12" text-anchor="end" style="fill:var(--accent)">' + last + '</text>');
+    out.push('</svg>');
+    $('r_trend').innerHTML = out.join('') + '<div class="legend"><span style="--c:var(--accent)">住宅ぜんぶ</span><span class="dash" style="--c:var(--caution)">木造住宅</span><span class="dash" style="--c:var(--ink-2)">木造以外の住宅</span></div>';
+    var up = (DEFL.house[DEFL.house.length-1] / DEFL.house[0] - 1) * 100;
+    $('r_trendText').innerHTML = '住宅の工事費は、2015年度から2025年度の10年で <b>約' + fmt(up,0) + '%</b> 上がっています（2020年度からだけでも約' + fmt(DEFL.house[DEFL.house.length-1]-100,0) + '%）。' +
+      '建築着工統計でも、全国の木造住宅の坪単価（予定額）は 平成30年度 56.1万円 → 令和7年度 75.3万円 に上がっています。<br>見積もりから着工まで時間があくと、その間に値上がりすることがあります。契約の前に、値上がりしたときの取り決め（スライド条項）があるか確かめてください。';
+  }
+
+  document.querySelectorAll('#panel-cost [data-s]').forEach(function(el){
+    el.addEventListener('input', calcC); el.addEventListener('change', calcC);
+  });
+  $('printCheck').addEventListener('click', function(){
+    document.body.classList.add('print-check');
+    try { window.print(); } finally { setTimeout(function(){ document.body.classList.remove('print-check'); }, 500); }
+  });
+
+  renderItems();
+  calcV();
+  calcC();
+  drawTrend();
+  showTab(curTab);
+})();
+</script>
+</body>
+</html>

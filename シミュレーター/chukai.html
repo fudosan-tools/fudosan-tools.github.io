@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>仲介手数料の上限</title>
+<link rel="stylesheet" href="../共通/common.css">
+<style>
+[hidden] { display: none !important; }
+.iline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.iline input[type=number] { width: 9em; }
+.u { color: var(--ink-2); font-size: 13px; }
+td.how { color: var(--ink-2); font-size: 12px; text-align: left; white-space: normal; }
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="chukai"></nav>
+<main class="page">
+<div class="page-head">
+  <div class="eyebrow">お金の計算</div>
+  <h1>仲介手数料の上限</h1>
+  <p class="lead">売買と賃貸の仲介手数料について、受け取れる<b>上限</b>を計算します。もとにするのは消費税を含まない代金なので、建物に消費税がかかる物件は、土地と建物を分けて入れます。</p>
+</div>
+<p class="note caution">ここで出すのは国の告示から計算した上限の目安です。実際の額は上限以下で、媒介契約で決めます。空家等の特例は、媒介契約のときに説明して合意しておく必要があります。</p>
+
+<div class="seg" id="tab" role="group" aria-label="種類"><button type="button" data-v="sale" class="on">売買</button><button type="button" data-v="rent">賃貸</button></div>
+
+<section id="saleBox">
+  <h2><span class="no">01</span>物件の価格</h2>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="seller">売主</label><select id="seller">
+      <option value="none">個人（住んでいた家など。事業ではない）</option>
+      <option value="taxable" selected>会社・個人事業の課税事業者（建物に消費税がかかる）</option>
+      <option value="sellerExempt">免税事業者（消費税をとらない）</option></select></div>
+    <div class="fr" id="howRow"><label class="lab" for="how">入れ方</label><select id="how">
+      <option value="split">土地と建物（税抜）を別々に入れる</option>
+      <option value="tax">総額（税込）と消費税額を入れる</option>
+      <option value="bldgIn">総額（税込）と建物の税込価格を入れる</option></select></div>
+    <div class="fr" id="rTotal"><label class="lab" for="total">総額</label><div class="iline"><input type="number" id="total" min="0" step="any" value="5000"><span class="u">万円</span></div></div>
+    <div class="fr" id="rLand"><label class="lab" for="land">土地</label><div class="iline"><input type="number" id="land" min="0" step="any" value="2800"><span class="u">万円（土地に消費税はかかりません）</span></div></div>
+    <div class="fr" id="rBldg"><label class="lab" for="bldgEx">建物（税抜）</label><div class="iline"><input type="number" id="bldgEx" min="0" step="any" value="2000"><span class="u">万円</span></div></div>
+    <div class="fr" id="rTax"><label class="lab" for="tax">消費税額</label><div class="iline"><input type="number" id="tax" min="0" step="any" value="200"><span class="u">万円</span></div></div>
+    <div class="fr" id="rBldgIn"><label class="lab" for="bldgIn">建物（税込）</label><div class="iline"><input type="number" id="bldgIn" min="0" step="any" value="2200"><span class="u">万円</span></div></div>
+  </div>
+  <h2><span class="no">02</span>仲介する会社</h2>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="vendor">消費税の区分</label><select id="vendor"><option value="taxable">課税事業者（税抜の1.1倍まで）</option><option value="exempt">免税事業者（税抜の1.04倍まで）</option></select></div>
+    <div class="fr"><label class="lab" for="role">立場</label><select id="role"><option value="broker">媒介（ふつうの仲介）</option><option value="agency">代理（2倍まで）</option></select></div>
+    <div class="fr"><span class="lab">空家等の特例</span><label class="check"><input type="checkbox" id="special"><span>税抜800万円以下で、媒介契約のときに特例の額に合意した</span></label></div>
+  </div>
+  <h2><span class="no">03</span>結果</h2>
+  <div id="saleOut"></div>
+</section>
+
+<section id="rentBox" hidden>
+  <h2><span class="no">01</span>賃貸の条件</h2>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="rent">賃料（税抜・1か月）</label><div class="iline"><input type="number" id="rent" min="0" step="any" value="10"><span class="u">万円（消費税を含まない額。共益費は別に確かめてください）</span></div></div>
+    <div class="fr"><label class="lab" for="use">建物の使い方</label><select id="use"><option value="res">住むためだけ</option><option value="biz">店舗・事務所など（住居をかねるものを含む）</option></select></div>
+    <div class="fr" id="rConsent"><span class="lab">依頼者の承諾</span><label class="check"><input type="checkbox" id="consent"><span>依頼を受けるときに、0.55か月分をこえる承諾を得た（あとからの承諾は認められません）</span></label></div>
+    <div class="fr"><span class="lab">長期の空家等</span><label class="check"><input type="checkbox" id="vacant"><span>1年をこえて使っていないなどで、媒介契約のときに合意した（募集中のアパートの空き室は入りません）</span></label></div>
+    <div class="fr" id="rKey"><label class="lab" for="key">返さない権利金（税抜）</label><div class="iline"><input type="number" id="key" min="0" step="any"><span class="u">万円（居住用以外のみ。礼金も入り、敷金など返すものは入りません）</span></div></div>
+    <div class="fr"><label class="lab" for="vendor2">仲介する会社</label><select id="vendor2"><option value="taxable">課税事業者</option><option value="exempt">免税事業者</option></select></div>
+  </div>
+  <h2><span class="no">02</span>結果</h2>
+  <div id="rentOut"></div>
+</section>
+
+<h2>知っておきたいこと</h2>
+<ul class="small">
+  <li>依頼者の一方につきの上限です。売買は、売主と買主のそれぞれから受けられます。業者が2社以上でも、依頼者の一方から受ける合計がこの額までです。</li>
+  <li>免税事業者は、消費税として別にもらえません。仕入れの消費税の分として、税抜の0.04倍までが上限です。</li>
+  <li>別に受けられるのは、依頼者に頼まれた広告の実費や、事前に承諾を得た特別な費用です。案内料や申込料は受けられません。</li>
+  <li>800万円以下の特例は、空き家でない物件にも使えます。</li>
+</ul>
+<p class="muted small">根拠：<a href="https://www.mlit.go.jp/totikensangyo/const/content/001750229.pdf">国土交通省の報酬告示（令和6年改正）</a>／<a href="https://www.mlit.go.jp/totikensangyo/const/content/001881261.pdf">宅地建物取引業法の解釈・運用の考え方</a>／<a href="https://www.mlit.go.jp/totikensangyo/const/1_6_bf_000013.html">国土交通省の案内</a>。2026年11月2日に確認。</p>
+</main>
+<script src="../共通/common.js"></script>
+<script src="zei_calc.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id), num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+  const fmt = v => Math.round(v).toLocaleString() + "円";
+  const hide = (id, h) => { $(id).hidden = h; };
+  function sale() {
+    const seller = $("seller").value, none = seller !== "taxable", how = none ? "none" : $("how").value;
+    hide("howRow", none); hide("rTotal", how === "split"); hide("rLand", how !== "split"); hide("rBldg", how !== "split"); hide("rTax", how !== "tax"); hide("rBldgIn", how !== "bldgIn");
+    const s = ZEI.splitPrice({ mode: how, total: num("total") * 1e4, land: num("land") * 1e4, bldgEx: num("bldgEx") * 1e4, tax: num("tax") * 1e4, bldgIn: num("bldgIn") * 1e4 });
+    if (!s.ok) { $("saleOut").innerHTML = `<p class="note caution">${s.msg}</p>`; return; }
+    if (!(s.priceEx > 0)) { $("saleOut").innerHTML = `<p class="muted">価格を入れてください。</p>`; return; }
+    const r = ZEI.brokerSale({ priceEx: s.priceEx, vendor: $("vendor").value, special: $("special").checked, agency: $("role").value === "agency" });
+    let h = `<div class="figures"><div class="figure main"><div class="k">上限（依頼者の一方につき）</div><div class="v">${fmt(r.cap)}</div><div class="s">${r.m === 1.1 ? "消費税込み" : "免税事業者の上限（税抜の1.04倍）"}</div></div>
+      <div class="figure"><div class="k">計算のもと（税抜の代金）</div><div class="v">${fmt(s.priceEx)}</div><div class="s">${none ? "消費税なしとして計算" : `土地 ${fmt(s.land)}＋建物 ${fmt(s.bldgEx)}`}</div></div></div>`;
+    h += `<div class="tablewrap"><table class="steps"><tbody>`;
+    if (!none) h += `<tr><td class="lab">総額（税込）</td><td class="num">${fmt(s.total)}</td><td class="how">土地＋建物（税抜）＋消費税 ${fmt(s.tax)}</td></tr>`;
+    h += `<tr><td class="lab">税抜の報酬の上限</td><td class="num">${fmt(r.baseEx)}</td><td class="how">${s.priceEx <= 2e6 ? "代金×5%" : s.priceEx <= 4e6 ? "代金×4%＋2万円" : "代金×3%＋6万円"}</td></tr>`;
+    if (r.usedSpecial) h += `<tr><td class="lab">空家等の特例</td><td class="num">300,000円</td><td class="how">800万円以下の物件で、合意があれば30万円（税抜）まで</td></tr>`;
+    if ($("role").value === "agency") h += `<tr><td class="lab">代理</td><td class="num">${fmt(r.ex)}</td><td class="how">媒介の2倍まで（相手方からも受けるときは合計で）</td></tr>`;
+    h += `<tr><td class="lab">消費税の区分</td><td class="num">${fmt(r.cap)}</td><td class="how">税抜×${r.m}</td></tr></tbody></table></div>`;
+    if (r.usedSpecial) h += `<p class="muted small">特例を使わないときの上限は ${fmt(r.normalCap)} です。</p>`;
+    else if ($("special").checked && !r.canSpecial) h += `<p class="note caution">税抜の代金が800万円をこえるので、特例は使えません。</p>`;
+    if (!r.usedSpecial && r.canSpecial && !$("special").checked && r.baseEx < 3e5) h += `<p class="muted small">800万円以下なので、合意があれば空家等の特例（税抜30万円まで）を使えます。</p>`;
+    if (seller === "taxable" && how !== "split") h += `<p class="muted small">消費税額が分からないときは、売主か売買契約書で確かめてください。土地と建物の分け方で、上限の額が変わります。</p>`;
+    $("saleOut").innerHTML = h;
+  }
+  function rent() {
+    const res = $("use").value === "res"; hide("rConsent", !res); hide("rKey", res);
+    const r = ZEI.brokerRent({ rentEx: num("rent") * 1e4, vendor: $("vendor2").value, residential: res, consent: $("consent").checked, vacant: $("vacant").checked, keyMoneyEx: num("key") * 1e4 });
+    if (!(num("rent") > 0)) { $("rentOut").innerHTML = `<p class="muted">賃料を入れてください。</p>`; return; }
+    const biz = !res;
+    let h = `<div class="figures"><div class="figure main"><div class="k">貸主と借主の合計の上限</div><div class="v">${fmt(r.totalCap)}</div><div class="s">賃料${$("vacant").checked ? "2か月分（長期の空家等の特例）" : "1か月分"}×${r.m}</div></div>
+      <div class="figure"><div class="k">借主から受けられる上限</div><div class="v">${fmt(r.tenantCap)}</div><div class="s">${res && !$("consent").checked ? "承諾なしの居住用は0.55か月分" : "合計の範囲で"}</div></div>
+      <div class="figure"><div class="k">貸主から受けられる上限</div><div class="v">${fmt(r.ownerCap)}</div><div class="s">借主から受ける分と合わせて合計まで</div></div></div>`;
+    if (r.keyCap != null) h += `<p>権利金で計算する場合の上限（依頼者の一方につき）：<b>${fmt(r.keyCap)}</b>。賃料での計算と、どちらか一方を使います。</p>`;
+    if ($("vacant").checked) h += `<p class="muted small">特例で普通の上限をこえて受けられるのは貸主からの分だけです。</p>`;
+    if (biz) h += `<p class="muted small">店舗・事務所などの賃料には消費税がかかります。賃料は消費税を含まない額で入れてください。</p>`;
+    $("rentOut").innerHTML = h;
+  }
+  const all = () => { sale(); rent(); };
+  document.querySelectorAll("input,select").forEach(e => e.addEventListener("input", all));
+  $("tab").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    $("tab").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    hide("saleBox", b.dataset.v !== "sale"); hide("rentBox", b.dataset.v !== "rent");
+  }));
+  all();
+})();
+</script>
+</body>
+</html>
