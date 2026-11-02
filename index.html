@@ -3,47 +3,38 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex,nofollow">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>不動産ツール</title>
-<link rel="stylesheet" href="共通/common.css">
-<style>
-  .tools { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rule-strong); }
-  .tools li { border-bottom: 1px solid var(--rule); }
-  .tools a { display: grid; grid-template-columns: 11em 1fr; gap: 16px; padding: 16px 0; color: var(--ink); text-decoration: none; }
-  .tools a:hover .name { color: var(--accent); }
-  .tools .name { font-family: var(--font-head); font-size: 17px; }
-  .tools .desc { color: var(--ink-2); font-size: 14px; }
-  .tools .state { font-size: 12px; color: var(--muted); }
-  @media (max-width: 640px) { .tools a { grid-template-columns: 1fr; gap: 2px; } }
-</style>
+<meta name="description" content="相場を調べる、物件を調べる、資料を作る、お金を計算する不動産の道具。">
+<meta name="theme-color" content="#0A0A0A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="不動産ツール">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="共通/icons/app-180.png">
+<link rel="icon" type="image/png" href="共通/icons/app-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@400;500&family=Shippori+Mincho:wght@400;500&display=swap">
+<link rel="stylesheet" href="共通/home.css">
 </head>
 <body>
-<nav class="toolnav" data-current=""></nav>
-<main class="page">
-  <div class="page-head">
-    <div class="eyebrow">試作版</div>
-    <h1>不動産ツール</h1>
-    <p class="lead">相場を調べる、物件を調べる、資料を作る、お金を計算する。買う人が自分で使っても、担当者が確認表として使っても役に立つように作っています。</p>
-  </div>
-  <p class="note caution">この版は、中身を確かめるために公開している試作版です。国や自治体が作ったものではありません。表示や計算は目安で、重要事項説明・建築確認・税の申告などの手続には使えません。</p>
-  <ul class="tools">
-    <li><a href="相場マップ試作/web/index.html"><span class="name">相場マップ</span><span class="desc">町ごとの売買の相場と流動性。半径で集計でき、賃貸は自分の成約例を入れて見られます。マンション・戸建・土地の種類、土地の形・道路・間口・築年・駅からの距離・広さで絞りこめます。<br><span class="state">東京都・神奈川県・埼玉県・千葉県（2021年〜2026年3月）</span></span></a></li>
-    <li><a href="物件調査/index.html"><span class="name">物件調査</span><span class="desc">住所から位置を出し、用途地域・建ぺい率・容積率・高さの制限などを1枚にまとめます。</span></a></li>
-    <li><a href="マイソク/index.html"><span class="name">マイソク</span><span class="desc">物件資料を読みこんで項目を取り出し、手で直して、販売図面を作ります。</span></a></li>
-    <li><a href="シミュレーター/loan.html"><span class="name">住宅ローン</span><span class="desc">毎月の返済、金利が上がったとき、年収に対する返済の割合、買うときの諸費用。</span></a></li>
-    <li><a href="シミュレーター/chintai.html"><span class="name">賃貸の初期費用</span><span class="desc">敷金・礼金・仲介手数料・保証会社・保険・オプションまで、借りる人が払うお金をすべて。</span></a></li>
-    <li><a href="シミュレーター/shushi.html"><span class="name">収支</span><span class="desc">収益物件の利回りと、35年間の手残り。</span></a></li>
-    <li><a href="シミュレーター/shuzen.html"><span class="name">修繕・リフォーム</span><span class="desc">直す場所を1つずつ積み上げて、費用の幅を出します。築年数から替えどきも。</span></a></li>
-    <li><a href="シミュレーター/kenchiku.html"><span class="name">建築・ボリューム</span><span class="desc">道路（4辺）・斜線制限・日影規制・高度地区・旗竿地の条例・構造と耐火から、建てられる大きさと家の形を出し、建築費の目安につなげます。</span></a></li>
-    <li><a href="シミュレーター/tochi.html"><span class="name">土地活用</span><span class="desc">宅地を何区画に分けられるか、アパートなら何戸・共用部はどれくらいか、その地域で駐車場が要りそうかを出します。</span></a></li>
-    <li><a href="シミュレーター/sekisan.html"><span class="name">積算の目安</span><span class="desc">相続税路線価（無ければ固定資産税路線価・公示価格から換算）と、建物の残りの年数から、土地＋建物の積算価格を出します。</span></a></li>
-    <li><a href="シミュレーター/chukai.html"><span class="name">仲介手数料</span><span class="desc">売買と賃貸の上限。土地と建物を分けて、課税事業者・免税事業者、800万円以下の特例まで。</span></a></li>
-    <li><a href="シミュレーター/inshi.html"><span class="name">印紙代</span><span class="desc">売買・ローン・工事・賃貸・領収書の印紙の額。軽減の期限と通数も。</span></a></li>
-    <li><a href="シミュレーター/zeikin.html"><span class="name">税の概算</span><span class="desc">買うとき・持っている間・売るときの税を整理し、しくみに沿った概算を出します。</span></a></li>
-    <li><a href="接道/index.html"><span class="name">接道の特例</span><span class="desc">道路に2m以上接していない土地で使える、建築基準法43条2項の認定・許可（以前の43条ただし書）の条件と、市街化調整区域の50戸連たんを、市区町村から出します。<br><span class="state">東京都・神奈川県・埼玉県・千葉県・大阪府</span></span></a></li>
-  </ul>
-  <div class="disclaimer">どの道具も目安を出すものです。実際の価格・制限・融資の条件は、不動産会社・金融機関・建築士・役所で必ず確かめてください。</div>
+<div class="wall" aria-hidden="true"></div>
+<main>
+  <header class="top">
+    <div class="logo"><b>不動産ツール</b><small>REAL ESTATE TOOLS</small></div>
+    <div class="date" id="today"></div>
+    <button type="button" class="iconbtn" id="add" aria-label="道具を追加"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 6v20M6 16h20"/></svg></button>
+    <button type="button" class="iconbtn" id="edit" aria-label="並べ替え"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 9h20M6 16h20M6 23h20"/><path d="M11 6v6M21 13v6M13 20v6"/></svg></button>
+    <button type="button" class="textbtn" id="done" hidden>完了</button>
+  </header>
+  <div class="apps" id="grid"></div>
+  <button type="button" class="hint" id="hint">追加した道具は、上から順に増えます。<br>長押しすると、好きな場所へ動かせます。</button>
 </main>
-<script src="共通/common.js"></script>
+<div class="tray"><div class="dockbox"><nav class="dock" id="dock" aria-label="ドック（無料の道具）"></nav></div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="共通/tools.js"></script>
+<script src="共通/home.js"></script>
 </body>
 </html>

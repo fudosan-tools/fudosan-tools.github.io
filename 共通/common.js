@@ -1,4 +1,4 @@
-/* 不動産ツール 共通の上メニューと「お客様向け／担当者向け」の切りかえ。
+/* 不動産ツール 共通の上の段（ホームへ戻る）と「お客様向け／担当者向け」の切りかえ。
    使い方：<nav class="toolnav" data-current="loan"></nav> を置いて、このファイルを読みこむ。 */
 (function () {
   "use strict";
@@ -26,14 +26,24 @@
   try { mode = localStorage.getItem("fudosanMode") || "client"; } catch (e) {}
   document.documentElement.setAttribute("data-mode", mode);
 
+  // 見出しの帯は黒いので、帯に入るのは小見出し・題名・説明だけにして、注意書きなどは帯の下へ出す
+  function tidyHead() {
+    var head = document.querySelector(".page-head");
+    if (!head) return;
+    var after = head.nextSibling;
+    [].slice.call(head.children).forEach(function (c) {
+      if (c.tagName !== "H1" && !c.classList.contains("eyebrow") && !c.classList.contains("lead")) head.parentNode.insertBefore(c, after);
+    });
+  }
   function render() {
+    tidyHead();
     var nav = document.querySelector("nav.toolnav");
     if (!nav) return;
     var cur = nav.getAttribute("data-current");
-    var html = '<div class="in"><a class="brand" href="' + base + 'index.html">不動産ツール</a>';
-    TOOLS.forEach(function (t) {
-      html += '<a class="tool' + (t[0] === cur ? " on" : "") + '" href="' + base + t[2] + '">' + t[1] + "</a>";
-    });
+    var name = "";
+    TOOLS.forEach(function (t) { if (t[0] === cur) name = t[1]; });
+    var html = '<div class="in"><a class="brand" href="' + base + 'index.html"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M20 6L10 16l10 10"/></svg>ホーム</a>' +
+      '<span class="here">' + name + "</span>";
     html += '<div class="mode seg" role="group" aria-label="表示の切りかえ">' +
       '<button type="button" data-m="client">お客様向け</button><button type="button" data-m="staff">担当者向け</button></div></div>';
     nav.innerHTML = html;
