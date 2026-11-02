@@ -13,9 +13,9 @@ window.FUDOSAN_TOOLS = [
   { id: "zeikin", name: "税の概算", path: "シミュレーター/zeikin.html", plan: "free", icon: "zeikin.png",
     desc: "買うとき・持っている間・売るときの税を整理し、しくみに沿った概算を出します。",
     svg: '<rect x="7" y="4" width="18" height="24" rx="1"/><path d="M11 9h10M12 23l8-8"/><circle cx="12.500" cy="16.500" r="1.500"/><circle cx="19.500" cy="21.500" r="1.500"/>' },
-  { id: "setsudou", name: "接道の特例", path: "接道/index.html", plan: "free", icon: "setsudou.png",
-    desc: "道路に2m以上接していない土地で使える、43条2項の認定・許可と50戸連たんの条件を、市区町村から出します。",
-    svg: '<path d="M4 26h24M4 22h24"/><path d="M8 18V6h10v7h6v5h-6"/><path d="M18 18h-4"/>' },
+  { id: "sekisan", name: "積算の目安", path: "シミュレーター/sekisan.html", plan: "free", icon: "sekisan.png",
+    desc: "路線価などと建物の残りの年数から、土地＋建物の積算価格の目安を出します。",
+    svg: '<path d="M16 5l12 6-12 6-12-6z"/><path d="M4 16l12 6 12-6M4 21l12 6 12-6"/>' },
   { id: "map", name: "相場マップ", path: "相場マップ試作/web/index.html", plan: "monthly", icon: "map.png",
     desc: "町ごとの売買の相場と流動性。半径や駅の数で集計でき、用途地域も重ねられます。",
     svg: '<path d="M4 8l8-3 8 3 8-3v19l-8 3-8-3-8 3z"/><path d="M12 5v19M20 8v19"/>' },
@@ -43,7 +43,7 @@ window.FUDOSAN_TOOLS = [
   { id: "tochi", name: "土地活用", path: "シミュレーター/tochi.html", plan: "buy", icon: "tochi.png",
     desc: "宅地を何区画に分けられるか、アパートなら何戸か、その地域で駐車場が要りそうかを出します。",
     svg: '<path d="M5 6h22v20H5z"/><path d="M16 6v20M5 16h22"/><path d="M9 12l2-2 2 2M20 22l2-2 2 2"/>' },
-  { id: "sekisan", name: "積算の目安", path: "シミュレーター/sekisan.html", plan: "buy", icon: "sekisan.png",
-    desc: "路線価などと建物の残りの年数から、土地＋建物の積算価格の目安を出します。",
-    svg: '<path d="M16 5l12 6-12 6-12-6z"/><path d="M4 16l12 6 12-6M4 21l12 6 12-6"/>' }
+  { id: "setsudou", name: "接道の特例", path: "接道/index.html", plan: "monthly", icon: "setsudou.png",
+    desc: "道路に2m以上接していない土地で使える、43条2項の認定・許可と50戸連たんの条件を、市区町村から出します。",
+    svg: '<path d="M4 26h24M4 22h24"/><path d="M8 18V6h10v7h6v5h-6"/><path d="M18 18h-4"/>' }
 ];

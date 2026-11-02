@@ -4,7 +4,7 @@
   "use strict";
   var TOOLS = window.FUDOSAN_TOOLS, BY = {};
   TOOLS.forEach(function (t) { BY[t.id] = t; });
-  var KEY = "fudosanHome.v1", STORE = "store", DOCK_MAX = 4;
+  var KEY = "fudosanHome.v2", STORE = "store", DOCK_MAX = 4;
   var LONG_MS = 450, MOVE_PX = 8;
   var FREE = TOOLS.filter(function (t) { return t.plan === "free"; }).map(function (t) { return t.id; });
   var PLAN = { free: "無料", buy: "買い切り", monthly: "月額" };
@@ -32,6 +32,16 @@
   function load() { try { return clean(JSON.parse(localStorage.getItem(KEY))); } catch (e) { return clean(null); } }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   function onHome(id) { return S.grid.indexOf(id) >= 0 || S.dock.indexOf(id) >= 0; }
+  // 確認用の入口：?all=1 で開くと、全部の道具を入れた状態にする（売り始める前に外す）
+  function fillForCheck() {
+    if (!/[?&]all=1(&|$)/.test(location.search)) return;
+    TOOLS.forEach(function (t) {
+      if (!onHome(t.id)) S.grid.push(t.id);
+      if (t.plan !== "free" && S.owned.indexOf(t.id) < 0) S.owned.push(t.id);
+    });
+    save();
+    try { history.replaceState(null, "", location.pathname); } catch (e) {}
+  }
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function glyph(t) {
@@ -278,6 +288,6 @@
   var d = new Date();
   $("#today").innerHTML = d.getFullYear() + "." + ("0" + (d.getMonth() + 1)).slice(-2) + "." + ("0" + d.getDate()).slice(-2) + "<small>" + "日月火水木金土".charAt(d.getDay()) + "曜日</small>";
 
-  S = load(); save(); render();
+  S = load(); fillForCheck(); save(); render();
   window.FUDOSAN_HOME = { state: function () { return JSON.parse(JSON.stringify(S)); }, clean: clean };
 })();

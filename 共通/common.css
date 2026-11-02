@@ -10,7 +10,7 @@
   --muted: #8b887f;        /* さらに弱い文字 */
   --rule: #e2dfd8;         /* 細い線 */
   --rule-strong: #b9b5ab;  /* 強い線 */
-  --accent: #141414;       /* 炭の黒：選択中・主ボタン・数字の強調（ホーム画面に合わせた。2026-11-02） */
+  --accent: #141414;       /* 黒：選択中・主ボタン・数字の強調（ホーム画面に合わせた。2026-11-02） */
   --accent-weak: #ecebe6;
   --head: #f1efea;         /* 表の見出し行の地 */
   --alert: #a3402a;        /* 朱：注意・必須 */
@@ -44,9 +44,9 @@ a { color: var(--accent); text-underline-offset: 3px; }
 
 /* ---- ページの骨組み ---- */
 .page { max-width: 1120px; margin: 0 auto; padding: 28px 16px 64px; }
-/* 見出しの帯：ホーム画面と同じ炭の写真 */
+/* 見出しの帯：ホーム画面と同じ背景 */
 .page-head { margin: -28px calc(50% - 50vw) 28px; padding: 30px max(16px, calc(50vw - 544px)); color: #f2f1ee;
-  background: linear-gradient(90deg, #0a0a0a 0%, #0a0a0a 30%, rgba(10, 10, 10, .55) 100%), #0a0a0a url('img/hero.jpg') right center/cover no-repeat; }
+  background: linear-gradient(90deg, #040d1e 0%, #040d1e 30%, rgba(4, 13, 30, .15) 100%), #040d1e url('img/wall_wide.jpg') right center/cover no-repeat; }
 .page-head .eyebrow { color: rgba(242, 241, 238, .7); }
 .page-head .lead { color: rgba(242, 241, 238, .82); }
 .page-head a { color: #f2f1ee; }
