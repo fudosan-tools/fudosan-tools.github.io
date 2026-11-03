@@ -21,6 +21,12 @@
       const b = +c.bldgIn || 0; r.bldgEx = b / 1.1; r.tax = b - r.bldgEx; r.land = total - b;
     } else if (c.mode === "split") {
       r.land = +c.land || 0; r.bldgEx = +c.bldgEx || 0; r.tax = r.bldgEx * 0.1; r.total = r.land + r.bldgEx + r.tax;
+    } else if (c.mode === "eval") {
+      // 税込の総額を評価額の比で分ける（建物の分は税込と見て、1.1で割って税抜にする）
+      const L = +c.evalLand || 0, B = +c.evalBldg || 0;
+      if (!(L > 0) || !(B > 0)) return { ok: false, msg: "土地と建物の評価額を入れてください" };
+      const b = Math.round(total * B / (L + B));
+      r.bldgEx = Math.round(b / 1.1); r.tax = b - r.bldgEx; r.land = total - b;
     } else return { ok: false, msg: "分け方を選んでください" };
     if (r.land < -0.5) return { ok: false, msg: "建物の金額が総額より大きくなっています。入力を確かめてください" };
     r.land = Math.max(0, Math.round(r.land)); r.bldgEx = Math.round(r.bldgEx); r.tax = Math.round(r.tax);

@@ -229,6 +229,15 @@
   }
 
   /* ---------- 読み取り ---------- */
+  // 物件ノートから受けとる：#from=bukken で開かれたら、置いてある文を読む
+  function fromBukken() {
+    if (location.hash !== "#from=bukken") return;
+    var t = null;
+    try { t = localStorage.getItem("fudosanBukkenSend"); localStorage.removeItem("fudosanBukkenSend"); } catch (e) {}
+    if (!t) return;
+    $("#src").value = t;
+    applyParse(t);
+  }
   function applyParse(text) {
     var r = M.parse(text);
     if (!r.found.length && !r.kind) return;
@@ -724,6 +733,7 @@
     bindObi(); bindTatami(); renderImgList();
     if (imgs.length) $("#imgState").textContent = "画像もこのブラウザの中に保存しています。";
     renderAll();
+    fromBukken();
     window.addEventListener("resize", scaleSheet);
     document.addEventListener("modechange", function () { setTimeout(scaleSheet, 0); });
   }

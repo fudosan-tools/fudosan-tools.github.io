@@ -76,6 +76,12 @@
     else if (p.method === "koji") steps.push({ key: "conv", label: "公示価格・地価調査価格を相続税路線価の水準に",
       how: `${yen(input)}${p.chiikiPct != null && +p.chiikiPct !== 100 ? ` × 地点との差 ${p.chiikiPct}%` : ""} × 0.8`, unit: R });
     else steps.push({ key: "conv", label: "相続税路線価（正面の道路）", how: `${yen(input)}`, unit: R });
+    // ふつうの積算：面積 × 1㎡あたりの値段（相続税路線価の水準）。形や道路の補正は入れない
+    if (p.simple) {
+      const tax = R * area;
+      steps.push({ key: "area", label: "面積 × 1㎡あたりの値段", how: `${fmtM2(area)} × ${yen(R)}`, value: tax });
+      return finishLand({ ...p, riyouTeika: false, shidouM2: 0, right: "own" }, { area, tax, steps, unit: R, base: R });
+    }
     const d = p.district || "futsu", conv = v => toRosenka(p.method, (+v || 0) * (p.method === "koji" ? (p.chiikiPct == null ? 100 : +p.chiikiPct) / 100 : 1));
     // 1 一路線：正面路線価 × 奥行価格補正率
     const ok = okuyukiRate(d, +p.depthM);
@@ -281,7 +287,36 @@
   }
   function prefOf(addr) { const m = /^(東京都|神奈川県|千葉県|埼玉県)/.exec(String(addr || "").trim()); return m ? m[1] : ""; }
 
-  const API = { HOSEI, TSUBO, LEVEL, toRosenka, trunc2, okuyukiRate, sokuhoRate, nihouRate, maguchiRate, chodaiRate, fuseiTableRate, kageFromSotei,
+  // 住所 → 国税庁の路線価図のページ番号。idx は data/rosenka_index.js の window.ROSENKA_INDEX
+  // 戻り値：{ pref, city, code, path, town, nums }（町が索引に無いときは town が null＝倍率地域のことがある）。市区町村も分からなければ null
+  const KANSUJI = { "一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10 };
+  function normTown(s) {
+    return String(s).normalize("NFKC").replace(/\s/g, "").replace(/^大字/, "").replace(/[ヶケが]/g, "ケ").replace(/之/g, "ノ")
+      .replace(/([一二三四五六七八九十]+)丁目/g, (m, k) => (k.length === 2 && k[0] === "十" ? 10 + KANSUJI[k[1]] : k.length === 2 && k[1] === "十" ? KANSUJI[k[0]] * 10 : k.length === 3 ? KANSUJI[k[0]] * 10 + KANSUJI[k[2]] : KANSUJI[k]) + "丁目");
+  }
+  function findRosenkaMaps(idx, addr) {
+    if (!idx || !idx.prefs) return null;
+    const a = String(addr || "").normalize("NFKC").replace(/\s/g, "");
+    const prefs = Object.keys(idx.prefs), pref = prefs.find(p => a.startsWith(p));
+    if (!pref) return null;
+    const rest = a.slice(pref.length), P = idx.prefs[pref];
+    const city = Object.keys(P.cities).filter(c => rest.startsWith(c)).sort((x, y) => y.length - x.length)[0];
+    if (!city) return { pref, city: null, code: null, path: P.path, town: null, nums: [] };   // 路線価図の無い市区町村（倍率地域だけ）のことがある
+    const c = P.cities[city], tail = normTown(rest.slice(city.length));
+    const keys = Object.keys(c.towns), keyOf = k => normTown(k);
+    const out = { pref, city, code: c.code, path: P.path, town: null, nums: [] };
+    // 「桜上水5丁目40番」→「桜上水5」。丁目が無ければ、いちばん長く一致する町名
+    const cho = /^(.+?)(\d+)丁目/.exec(tail);
+    let hit = cho ? keys.find(k => keyOf(k) === cho[1] + cho[2]) : null;
+    if (!hit) hit = keys.filter(k => tail.startsWith(keyOf(k))).sort((x, y) => y.length - x.length)[0];
+    if (hit) { out.town = hit; out.nums = c.towns[hit]; }
+    return out;
+  }
+  function rosenkaMapUrl(idx, f, no) { return `https://www.rosenka.nta.go.jp/main_${idx.meta.year}/${f.path}/prices/html/${no}f.htm`; }
+  function rosenkaCityUrl(idx, f) { return `https://www.rosenka.nta.go.jp/main_${idx.meta.year}/${f.path}/prices/${f.code}fr.htm`; }
+  function bairitsuCityUrl(idx, f) { return `https://www.rosenka.nta.go.jp/main_${idx.meta.year}/${f.path}/ratios/` + (f.code ? `html/${f.code}rf.htm` : "city_frm.htm"); }
+
+  const API = { findRosenkaMaps, rosenkaMapUrl, rosenkaCityUrl, bairitsuCityUrl, HOSEI, TSUBO, LEVEL, toRosenka, trunc2, okuyukiRate, sokuhoRate, nihouRate, maguchiRate, chodaiRate, fuseiTableRate, kageFromSotei,
     kiboRate, kiboMinArea, kiboDistrictOK, gakeRate, tokkeiRate, land, extras, STRUCTS, UNIT_PRESETS, NTA_KOJI_R7, ntaUnit, building, total,
     distM, tileKey, tileKeysAround, nearest, USE_NAMES, yen, man, fmtM2, rosenkaUrl, prefOf, ROSENKA_PREF, fromKatachi, isFlagLot };
   if (typeof module !== "undefined" && module.exports) module.exports = API;

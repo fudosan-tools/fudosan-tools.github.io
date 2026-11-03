@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>積算の目安（土地＋建物）</title>
-<link rel="stylesheet" href="../共通/common.css?v=192f0179">
+<link rel="stylesheet" href="../共通/common.css?v=66fb1f6c">
 <style>
 /* このページだけで足した部品（共通に無いもの） */
 [hidden] { display: none !important; }   /* .iline（display:flex）に hidden を付けても隠れるように */
@@ -66,10 +66,10 @@ details.ktbox .kt { min-width: 0; }
 <div class="page-head">
   <div class="eyebrow">お金の計算</div>
   <h1>積算の目安（土地＋建物）</h1>
-  <p class="lead">積算は、金融機関がお金を貸すときによく使う「土地の値段＋建物の値段」の見方です。この道具はその<b>目安</b>を出すもので、不動産の鑑定評価ではありません。土地は国税庁の<b>相続税路線価</b>（道路ごとに決めた1㎡あたりの値段）を基本にし、無いときは固定資産税路線価や公示価格から換算します。建物は「いま建てなおすといくらか × 残りの年数の割合」で出します。</p>
+  <p class="lead">積算は、金融機関がお金を貸すときによく使う「土地の値段＋建物の値段」の見方です。この道具はその<b>目安</b>を出すもので、不動産の鑑定評価ではありません。土地は<b>面積 × 相続税路線価</b>、建物は<b>建てなおす単価 × 延床面積 × 残りの耐用年数 ÷ 耐用年数</b>で出します。路線価が分からないときは、近くの公示価格などから路線価の水準に直して概算します。</p>
 </div>
 
-<p class="note caution">ここで出す数字は目安です。金融機関ごとに計算のしかた（土地の掛け目・建物の単価・耐用年数の扱い）はちがい、公表されていません。土地の評価は国税庁の財産評価基本通達の計算を使っていますが、正面の道路の決め方・地区の区分・面積の測り方などで変わります。最後は金融機関・税理士・不動産鑑定士に確かめてください。</p>
+<p class="note caution">ここで出す数字は目安です。金融機関ごとに計算のしかた（土地の掛け目・建物の単価・耐用年数の扱い）はちがい、公表されていません。最後は金融機関・税理士・不動産鑑定士に確かめてください。</p>
 
 <!-- 01 物件 -->
 <section>
@@ -96,11 +96,12 @@ details.ktbox .kt { min-width: 0; }
 <!-- 02 土地の値段のもと -->
 <section>
   <h2><span class="no">02</span>土地の値段のもと</h2>
-  <p class="small">上から順に、あるものを使います。相続税路線価が一番の基本です。</p>
+  <p class="small">上から順に、あるものを使います。相続税路線価が一番の基本です。住所の「位置をさがす」を押すと、その町の路線価図へのリンクを出します。路線価の数字は図を見て入れてください。路線価が空なら、いちばん近い公示地・基準地の値段 × 0.8 で概算します。</p>
   <div class="methodseg segscroll"><div class="seg" role="group" aria-label="土地の値段のもと" id="methodSeg">
     <button type="button" data-m="rosenka">1 相続税路線価</button><button type="button" data-m="bairitsu">1' 倍率地域</button>
     <button type="button" data-m="kotei">2 固定資産税路線価</button><button type="button" data-m="koji">3 公示価格・地価調査</button></div></div>
 
+  <div id="rosenkaMaps" class="note" hidden></div>
   <div class="formrows" id="m_rosenka">
     <div class="fr"><label class="lab" for="rosenkaK">相続税路線価</label>
       <div class="iline"><input type="number" id="rosenkaK" min="0" step="1" inputmode="decimal"><span class="u">千円/㎡</span>
@@ -150,7 +151,9 @@ details.ktbox .kt { min-width: 0; }
 
 <!-- 03 土地の形と道路 -->
 <section id="shapeSec">
-  <h2><span class="no">03</span>土地の形と道路（国税庁の補正）</h2>
+  <h2><span class="no">03</span>土地の形と道路（ふだんは入れません）</h2>
+  <label class="check"><input type="checkbox" id="useHosei"><span>相続税の評価のように、形や道路の補正も入れる</span></label>
+  <div id="hoseiBody" hidden>
   <p class="small">国税庁の「財産評価基本通達」の表で、形や道路の条件による補正をします。分からない欄は空のままでかまいません（その補正はしません）。</p>
   <details class="more ktbox" id="ktBox"><summary>形を図で入れる（いびつな形・測量図の座標）</summary>
     <p class="small">長方形でない土地は、ここで形を入れると、国税庁の決め方（想定整形地＝土地をすっぽり囲む、正面の道路に面した長方形）で <b>間口・奥行・土地の形・かげ地割合・面積</b> を下の欄に入れます。入れた欄には「土地の形から入れた・要確認」の印が付きます。印の付いた欄を手で直すと、その欄は手で入れた値を使います。角地・二方路は候補を知らせるだけで、自動では選びません。</p>
@@ -215,6 +218,7 @@ details.ktbox .kt { min-width: 0; }
       <select id="right"><option value="own">所有権（ふつう）</option><option value="shakuchi">借地権（土地を借りている）</option></select>
       <span class="hint">借地権なら × 借地権割合（02の記号）。積算では借地の物件は担保にとりにくく、金融機関によっては評価しないこともあります。</span></div>
   </div>
+  </div>
 </section>
 
 <!-- 04 税の評価に入らない事情 -->
@@ -275,6 +279,7 @@ details.ktbox .kt { min-width: 0; }
 <!-- 06 結果 -->
 <section>
   <h2><span class="no">06</span>積算価格</h2>
+  <p class="small">土地＝面積 × 相続税路線価。建物＝建てなおす単価 × 延床面積 × 残りの耐用年数 ÷ 耐用年数。</p>
   <div class="figures" id="figs"></div>
   <div id="warn"></div>
 
@@ -361,7 +366,7 @@ details.ktbox .kt { min-width: 0; }
 <script src="../共通/hosei_data.js"></script>
 <script src="sekisan_calc.js"></script>
 <script src="data/chika/index.js"></script>
-<script src="../共通/common.js?v=192f0179"></script>
+<script src="../共通/common.js?v=66fb1f6c"></script>
 <script src="../共通/katachi.js"></script>
 <script src="../共通/katachi_ui.js"></script>
 <script src="../共通/gake.js"></script>
@@ -384,7 +389,7 @@ details.ktbox .kt { min-width: 0; }
     gakePct: null, gakeDir: "北", tokkeiPct: null, setbackM2: null, shidouM2: null, shidouPublic: false, riyouTeika: false, riyouShare: 100, right: "own",
     ex: {}, exCostMan: null,
     noBld: false, struct: "w", floorM2: 100, builtYear: THIS_YEAR - 20, age: 20, unitSrc: "bank", unitPref: "東京都", unitMan: null, over: "zero", residualPct: 10,
-    basis: "tax", kz: null, ktOn: false, ktMan: {}, ktAuto: {}, v: 1 };
+    basis: "tax", useHosei: false, kojiAuto: false, kz: null, ktOn: false, ktMan: {}, ktAuto: {}, v: 1 };
   var ST = JSON.parse(JSON.stringify(DEF));
   try { var sv = JSON.parse(localStorage.getItem("sekisanState") || "null"); if (sv && sv.v === 1) Object.assign(ST, sv); } catch (e) {}
   // 物件調査などから URL で受けとる：?addr=…&area=…(㎡)&youto=…&lat=…&lon=…&price=…(万円)&floor=…(㎡)&built=…(西暦)&struct=w|ls3|ls4|s|rc|src
@@ -417,7 +422,7 @@ details.ktbox .kt { min-width: 0; }
   var NUM = ["areaM2", "priceMan", "rosenkaK", "koteiHyokaMan", "bairitsu", "koteiUnit", "kojiUnit", "chiikiPct", "depthM", "frontM", "kagePct", "soteiM2",
     "sideUnit", "sideDepthM", "rearUnit", "tsuroM2", "gakePct", "tokkeiPct", "setbackM2", "shidouM2", "riyouShare", "exCostMan", "floorM2", "builtYear", "age", "unitMan", "residualPct"];
   var TXT = ["addr", "youto", "letter", "reiwa", "useFilter", "district", "shape", "corner", "gakeDir", "right", "struct", "unitSrc", "unitPref", "over", "sandai"];
-  var CHK = ["rear", "mudouro", "shidouPublic", "riyouTeika", "noBld"];
+  var CHK = ["rear", "mudouro", "shidouPublic", "riyouTeika", "noBld", "useHosei"];
   var PAIRS = { areaM2: "areaT", soteiM2: "soteiT", tsuroM2: "tsuroT", setbackM2: "setbackT", shidouM2: "shidouT", floorM2: "floorT" };
   var r2 = function (v) { return Math.round(v * 100) / 100; };
   // 横・裏の道路の値は、土地の値段のもとごとに分けてしまう（路線価は千円、ほかは円で、単位がちがうため）
@@ -443,7 +448,7 @@ details.ktbox .kt { min-width: 0; }
     if (k === "soteiM2" || (k === "areaM2" && ST.soteiM2)) ST.kagePct = ST.soteiM2 > 0 && ST.areaM2 > 0 ? Math.round(S.kageFromSotei(ST.soteiM2, ST.areaM2)) : ST.kagePct;
     if (k === "kagePct") ST.soteiM2 = null;
     if (k === "unitMan") ST.unitSrc = "self";
-    if (k === "rosenkaK" || k === "koteiUnit" || k === "kojiUnit") ST.kojiPick = k === "kojiUnit" ? "" : ST.kojiPick;
+    if (k === "rosenkaK" || k === "koteiUnit" || k === "kojiUnit") { ST.kojiPick = k === "kojiUnit" ? "" : ST.kojiPick; if (k === "kojiUnit") ST.kojiAuto = false; }
     update(k); }); });
   Object.keys(PAIRS).forEach(function (k) { $(PAIRS[k]).addEventListener("input", function () {
     ktHand(PAIRS[k]);
@@ -455,7 +460,7 @@ details.ktbox .kt { min-width: 0; }
     ST[k] = this.value;
     if (k === "youto") ST.youtoAuto = false;
     if (k === "district") ST.districtAuto = false;
-    if (k === "addr") { ST.pref = S.prefOf(ST.addr) || ST.pref; }
+    if (k === "addr") { ST.pref = S.prefOf(ST.addr) || ST.pref; ST.hitTitle = ""; $("rosenkaMaps").hidden = true; }
     update(k); }); });
   CHK.forEach(function (k) { $(k).addEventListener("change", function () { ST[k] = this.checked; update(k); }); });
   $("kibo").addEventListener("change", function () { ST.kibo = this.checked; update("kibo"); });
@@ -533,7 +538,7 @@ details.ktbox .kt { min-width: 0; }
     var f = unitFactor();
     var main = ST.method === "rosenka" ? ST.rosenkaK : ST.method === "kotei" ? ST.koteiUnit : ST.kojiUnit;
     var kiboAuto = S.kiboDistrictOK(ST.district) && ST.areaM2 >= S.kiboMinArea(ST.sandai === "1");
-    return { method: ST.method, areaM2: ST.areaM2 || 0, unitInput: (main || 0) * f, chiikiPct: ST.chiikiPct == null ? 100 : ST.chiikiPct,
+    return { simple: !ST.useHosei, method: ST.method, areaM2: ST.areaM2 || 0, unitInput: (main || 0) * f, chiikiPct: ST.chiikiPct == null ? 100 : ST.chiikiPct,
       koteiHyoka: (ST.koteiHyokaMan || 0) * 1e4, bairitsu: ST.bairitsu || 0,
       district: ST.district, depthM: ST.depthM, frontM: ST.frontM, shape: ST.shape, kagePct: ST.kagePct,
       corner: ST.corner, sideUnit: (ST[key("sideUnit")] || 0) * f, sideDepthM: ST.sideDepthM, rear: ST.rear, rearUnit: (ST[key("rearUnit")] || 0) * f,
@@ -552,6 +557,7 @@ details.ktbox .kt { min-width: 0; }
     document.querySelectorAll("#methodSeg button").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-m") === m); });
     ["rosenka", "bairitsu", "kotei", "koji"].forEach(function (k) { $("m_" + k).hidden = k !== m; });
     $("shapeSec").hidden = !nb;
+    $("hoseiBody").hidden = !ST.useHosei;
     $("kageRow").hidden = ST.shape !== "fusei";
     $("sideRow").hidden = ST.corner === "none";
     $("rearRow").hidden = !ST.rear;
@@ -602,7 +608,8 @@ details.ktbox .kt { min-width: 0; }
     if (m === "bairitsu" && !(ST.koteiHyokaMan && ST.bairitsu)) warn.push("固定資産税評価額と倍率を入れてください。");
     if (m === "kotei" && !ST.koteiUnit) warn.push("固定資産税路線価を入れてください。");
     if (m === "koji" && !ST.kojiUnit) warn.push("公示価格・地価調査価格を入れるか、下の表の「使う」を押してください。");
-    if (nb && ST.shape === "fusei" && !(ST.kagePct >= 10)) warn.push("不整形地は、かげ地割合（または想定整形地の面積）を入れると補正されます。");
+    if (m === "koji" && ST.kojiAuto) warn.push("路線価が入っていないので、いちばん近い地点の値段 × 0.8 で概算しています（" + ST.kojiPick + "）。路線価が分かったら「1 相続税路線価」に入れてください。");
+    if (nb && ST.useHosei && ST.shape === "fusei" && !(ST.kagePct >= 10)) warn.push("不整形地は、かげ地割合（または想定整形地の面積）を入れると補正されます。");
     if (X.rows.some(function (r) { return r.id === "saikenchiku"; })) warn.push("再建築不可の物件は、金融機関の担保評価がとても低くなる（評価しない）ことが多いです。");
     if (ST.right === "shakuchi") warn.push("借地権の物件は、金融機関によって評価のしかたが大きくちがいます。");
     $("warn").innerHTML = warn.map(function (w) { return '<p class="note caution">' + esc(w) + "</p>"; }).join("");
@@ -731,10 +738,38 @@ details.ktbox .kt { min-width: 0; }
         var hit = all[0], c = hit.geometry.coordinates;
         ST.lat = c[1]; ST.lon = c[0]; ST.pref = PREF_RE.exec(hit.properties.title)[1];
         geoMsg("見つかりました：" + hit.properties.title + (all.length > 1 ? "（ほかに " + (all.length - 1) + " 件の候補。ちがうときは都県・市区町村の名前からくわしく入れてください）" : ""));
+        ST.hitTitle = hit.properties.title;
+        showRosenkaMaps(/丁目|番/.test(ST.addr) && PREF_RE.test(ST.addr) ? ST.addr : hit.properties.title);
         update("near"); loadNear();
       })
       .catch(function () { geoMsg("住所検索につながりませんでした。インターネットの接続を確かめてください。公示価格は手で入れられます。", true); });
   });
+  // 住所から、国税庁の路線価図へ直接飛べるようにする（数字は図を見て人が入れる）
+  function showRosenkaMaps(addr) {
+    var box = $("rosenkaMaps");
+    function draw() {
+      var idx = window.ROSENKA_INDEX, f = S.findRosenkaMaps(idx, addr);
+      if (!f) { box.hidden = true; return; }
+      var y = "令和" + idx.meta.reiwa + "年分";
+      if (f.town) {
+        box.innerHTML = "<b>" + esc(f.city + f.town) + " の路線価図（" + y + "・" + f.nums.length + "枚）</b><br>" +
+          f.nums.map(function (n) { return '<a href="' + S.rosenkaMapUrl(idx, f, n) + '" target="_blank" rel="noopener">' + n + "</a>"; }).join("　") +
+          '<br><span class="small">物件が面している道路に書かれた数字を読んでください（例：300D は 30万円/㎡）。番地で1枚に絞れないので、町にかかる図を全部出しています。</span>' +
+          '<div class="btns" style="margin-top:6px"><button type="button" class="btn" id="goRosenka">読んだ路線価を入れる</button></div>';
+      } else if (!f.city) {
+        box.innerHTML = "路線価図の一覧に、この市区町村が見つかりません。路線価がない地域（倍率地域）か、住所の書き方のちがいかもしれません。<br>" +
+          '<a href="' + S.bairitsuCityUrl(idx, f) + '" target="_blank" rel="noopener">評価倍率表（' + esc(f.pref) + "）</a>";
+      } else {
+        box.innerHTML = "<b>" + esc(f.city) + "</b> の索引に、この町名が見つかりません。路線価がない地域（倍率地域）か、住所の書き方のちがいかもしれません。<br>" +
+          '<a href="' + S.rosenkaCityUrl(idx, f) + '" target="_blank" rel="noopener">町名の一覧</a>　<a href="' + S.bairitsuCityUrl(idx, f) + '" target="_blank" rel="noopener">評価倍率表</a>';
+      }
+      box.hidden = false;
+      var go = $("goRosenka");
+      if (go) go.addEventListener("click", function () { ST.method = "rosenka"; update("method"); $("rosenkaK").focus(); });
+    }
+    if (window.ROSENKA_INDEX) { draw(); return; }
+    var sc = document.createElement("script"); sc.src = "data/rosenka_index.js"; sc.onload = draw; document.head.appendChild(sc);
+  }
   var loaded = {}, nearRows = [];
   function loadTiles(keys, done) {
     var need = keys.filter(function (k) { return IDX && IDX.tiles[k] && !loaded[k]; }), left = need.length;
@@ -764,6 +799,13 @@ details.ktbox .kt { min-width: 0; }
   function renderNear() {
     if (ST.lat == null || !nearRows.length) return;
     var list = S.nearest(nearRows, ST.lat, ST.lon, 8, ST.useFilter);
+    // 路線価が入っていないときは、いちばん近い地点から概算する
+    if (ST.method === "rosenka" && !ST.rosenkaK && !ST.kojiUnit && list.length) {
+      var r0 = list[0];
+      ST.method = "koji"; ST.kojiUnit = r0.price; ST.kojiAuto = true;
+      ST.kojiPick = r0.no + "（" + r0.year + "年 " + (r0.kind === "公示" ? "地価公示" : "地価調査") + "）";
+      update("init");
+    }
     $("nearMeta").textContent = "地価公示 " + IDX.meta.years.L01.join("・") + "年1月1日／地価調査 " + IDX.meta.years.L02.join("・") + "年7月1日の値段。近い順に8地点まで";
     if (!list.length) { $("nearList").innerHTML = '<p class="small muted">近くに、この種類の地点がありません。種類を変えてみてください。</p>'; return; }
     $("nearList").innerHTML = '<div class="tablewrap"><table class="pick"><thead><tr><th>地点</th><th>所在</th><th>距離</th><th>値段</th><th>前年比</th><th>地積</th><th>用途地域</th><th>道路</th><th>駅</th><th></th></tr></thead><tbody>' +
@@ -776,7 +818,7 @@ details.ktbox .kt { min-width: 0; }
       '<p class="small muted">地点は「その地域のふつうの形・広さの土地」です。物件と地点で、駅からの距離・道路の幅・用途地域がちがうときは「地点との差」で直してください。地価公示と地価調査が同じ地点のこともあります。</p>';
     $("nearList").querySelectorAll("[data-use]").forEach(function (b) { b.addEventListener("click", function () {
       var r = list[+b.getAttribute("data-use")];
-      ST.method = "koji"; ST.kojiUnit = r.price; ST.kojiPick = r.no + "（" + r.year + "年 " + (r.kind === "公示" ? "地価公示" : "地価調査") + "）";
+      ST.method = "koji"; ST.kojiUnit = r.price; ST.kojiAuto = false; ST.kojiPick = r.no + "（" + r.year + "年 " + (r.kind === "公示" ? "地価公示" : "地価調査") + "）";
       update("near"); $("m_koji").scrollIntoView({ block: "nearest" }); }); });
   }
 
@@ -791,9 +833,9 @@ details.ktbox .kt { min-width: 0; }
 
   buildEx();
   gkBuild();
-  if (ST.ktOn && ST.kz) { $("ktBox").open = true; ktMount(); }
+  if (ST.ktOn && ST.kz) { ST.useHosei = true; $("ktBox").open = true; ktMount(); }
   update("init");
-  if (ST.lat != null) loadNear();
+  if (ST.lat != null) { loadNear(); if (ST.hitTitle || PREF_RE.test(ST.addr || "")) showRosenkaMaps(ST.hitTitle || ST.addr); }
   else if (fromUrl && ST.addr) $("geoBtn").click();
 })();
 </script>

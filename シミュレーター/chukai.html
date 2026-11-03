@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>仲介手数料の上限</title>
-<link rel="stylesheet" href="../共通/common.css?v=192f0179">
+<link rel="stylesheet" href="../共通/common.css?v=66fb1f6c">
 <style>
 [hidden] { display: none !important; }
 .iline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
@@ -34,6 +34,7 @@ td.how { color: var(--ink-2); font-size: 12px; text-align: left; white-space: no
       <option value="taxable" selected>会社・個人事業の課税事業者（建物に消費税がかかる）</option>
       <option value="sellerExempt">免税事業者（消費税をとらない）</option></select></div>
     <div class="fr" id="howRow"><label class="lab" for="how">入れ方</label><select id="how">
+      <option value="eval">総額（税込）と評価額から自動で分ける</option>
       <option value="split">土地と建物（税抜）を別々に入れる</option>
       <option value="tax">総額（税込）と消費税額を入れる</option>
       <option value="bldgIn">総額（税込）と建物の税込価格を入れる</option></select></div>
@@ -41,6 +42,8 @@ td.how { color: var(--ink-2); font-size: 12px; text-align: left; white-space: no
     <div class="fr" id="rLand"><label class="lab" for="land">土地</label><div class="iline"><input type="number" id="land" min="0" step="any" value="2800"><span class="u">万円（土地に消費税はかかりません）</span></div></div>
     <div class="fr" id="rBldg"><label class="lab" for="bldgEx">建物（税抜）</label><div class="iline"><input type="number" id="bldgEx" min="0" step="any" value="2000"><span class="u">万円</span></div></div>
     <div class="fr" id="rTax"><label class="lab" for="tax">消費税額</label><div class="iline"><input type="number" id="tax" min="0" step="any" value="200"><span class="u">万円</span></div></div>
+    <div class="fr" id="rEval"><span class="lab">固定資産税評価額</span><div class="iline"><span class="u">土地</span><input type="number" id="evalLand" min="0" step="any" value="1800"><span class="u">万円</span><span class="u">建物</span><input type="number" id="evalBldg" min="0" step="any" value="900"><span class="u">万円</span></div>
+      <span class="hint">評価証明書や納税通知書の「価格（評価額）」です。土地の「課税標準額」は住宅用地の特例で小さくなっているので使いません。建物の評価額は消費税を含まない値として扱います。</span></div>
     <div class="fr" id="rBldgIn"><label class="lab" for="bldgIn">建物（税込）</label><div class="iline"><input type="number" id="bldgIn" min="0" step="any" value="2200"><span class="u">万円</span></div></div>
   </div>
   <h2><span class="no">02</span>仲介する会社</h2>
@@ -74,9 +77,10 @@ td.how { color: var(--ink-2); font-size: 12px; text-align: left; white-space: no
   <li>別に受けられるのは、依頼者に頼まれた広告の実費や、事前に承諾を得た特別な費用です。案内料や申込料は受けられません。</li>
   <li>800万円以下の特例は、空き家でない物件にも使えます。</li>
 </ul>
+<p class="muted small">土地と建物の分け方の根拠：<a href="https://www.nta.go.jp/taxes/shiraberu/taxanswer/shohi/6301_qa.htm">国税庁 No.6301</a>（時価の比のほか、相続税評価額や固定資産税評価額を使った按分を例示）／<a href="https://www.nta.go.jp/law/tsutatsu/kihon/shohi/10/01.htm">消費税法基本通達 10-1-5</a>。最後の判断は税理士に確かめてください。</p>
 <p class="muted small">根拠：<a href="https://www.mlit.go.jp/totikensangyo/const/content/001750229.pdf">国土交通省の報酬告示（令和6年改正）</a>／<a href="https://www.mlit.go.jp/totikensangyo/const/content/001881261.pdf">宅地建物取引業法の解釈・運用の考え方</a>／<a href="https://www.mlit.go.jp/totikensangyo/const/1_6_bf_000013.html">国土交通省の案内</a>。2026年11月2日に確認。</p>
 </main>
-<script src="../共通/common.js?v=192f0179"></script>
+<script src="../共通/common.js?v=66fb1f6c"></script>
 <script src="zei_calc.js"></script>
 <script>
 (function () {
@@ -86,14 +90,15 @@ td.how { color: var(--ink-2); font-size: 12px; text-align: left; white-space: no
   const hide = (id, h) => { $(id).hidden = h; };
   function sale() {
     const seller = $("seller").value, none = seller !== "taxable", how = none ? "none" : $("how").value;
-    hide("howRow", none); hide("rTotal", how === "split"); hide("rLand", how !== "split"); hide("rBldg", how !== "split"); hide("rTax", how !== "tax"); hide("rBldgIn", how !== "bldgIn");
-    const s = ZEI.splitPrice({ mode: how, total: num("total") * 1e4, land: num("land") * 1e4, bldgEx: num("bldgEx") * 1e4, tax: num("tax") * 1e4, bldgIn: num("bldgIn") * 1e4 });
+    hide("howRow", none); hide("rTotal", how === "split"); hide("rLand", how !== "split"); hide("rBldg", how !== "split"); hide("rTax", how !== "tax"); hide("rBldgIn", how !== "bldgIn"); hide("rEval", how !== "eval");
+    const s = ZEI.splitPrice({ mode: how, evalLand: num("evalLand") * 1e4, evalBldg: num("evalBldg") * 1e4, total: num("total") * 1e4, land: num("land") * 1e4, bldgEx: num("bldgEx") * 1e4, tax: num("tax") * 1e4, bldgIn: num("bldgIn") * 1e4 });
     if (!s.ok) { $("saleOut").innerHTML = `<p class="note caution">${s.msg}</p>`; return; }
     if (!(s.priceEx > 0)) { $("saleOut").innerHTML = `<p class="muted">価格を入れてください。</p>`; return; }
     const r = ZEI.brokerSale({ priceEx: s.priceEx, vendor: $("vendor").value, special: $("special").checked, agency: $("role").value === "agency" });
     let h = `<div class="figures"><div class="figure main"><div class="k">上限（依頼者の一方につき）</div><div class="v">${fmt(r.cap)}</div><div class="s">${r.m === 1.1 ? "消費税込み" : "免税事業者の上限（税抜の1.04倍）"}</div></div>
       <div class="figure"><div class="k">計算のもと（税抜の代金）</div><div class="v">${fmt(s.priceEx)}</div><div class="s">${none ? "消費税なしとして計算" : `土地 ${fmt(s.land)}＋建物 ${fmt(s.bldgEx)}`}</div></div></div>`;
     h += `<div class="tablewrap"><table class="steps"><tbody>`;
+    if (how === "eval") h += `<tr><td class="lab">建物（税込）</td><td class="num">${fmt(s.bldgEx + s.tax)}</td><td class="how">総額 × 建物の評価額 ÷（土地の評価額＋建物の評価額）</td></tr><tr><td class="lab">建物（税抜）</td><td class="num">${fmt(s.bldgEx)}</td><td class="how">建物（税込）÷ 1.1</td></tr><tr><td class="lab">消費税</td><td class="num">${fmt(s.tax)}</td><td class="how">建物（税込）− 建物（税抜）</td></tr><tr><td class="lab">土地</td><td class="num">${fmt(s.land)}</td><td class="how">総額 − 建物（税込）</td></tr>`;
     if (!none) h += `<tr><td class="lab">総額（税込）</td><td class="num">${fmt(s.total)}</td><td class="how">土地＋建物（税抜）＋消費税 ${fmt(s.tax)}</td></tr>`;
     h += `<tr><td class="lab">税抜の報酬の上限</td><td class="num">${fmt(r.baseEx)}</td><td class="how">${s.priceEx <= 2e6 ? "代金×5%" : s.priceEx <= 4e6 ? "代金×4%＋2万円" : "代金×3%＋6万円"}</td></tr>`;
     if (r.usedSpecial) h += `<tr><td class="lab">空家等の特例</td><td class="num">300,000円</td><td class="how">800万円以下の物件で、合意があれば30万円（税抜）まで</td></tr>`;
@@ -102,7 +107,8 @@ td.how { color: var(--ink-2); font-size: 12px; text-align: left; white-space: no
     if (r.usedSpecial) h += `<p class="muted small">特例を使わないときの上限は ${fmt(r.normalCap)} です。</p>`;
     else if ($("special").checked && !r.canSpecial) h += `<p class="note caution">税抜の代金が800万円をこえるので、特例は使えません。</p>`;
     if (!r.usedSpecial && r.canSpecial && !$("special").checked && r.baseEx < 3e5) h += `<p class="muted small">800万円以下なので、合意があれば空家等の特例（税抜30万円まで）を使えます。</p>`;
-    if (seller === "taxable" && how !== "split") h += `<p class="muted small">消費税額が分からないときは、売主か売買契約書で確かめてください。土地と建物の分け方で、上限の額が変わります。</p>`;
+    if (how === "eval") h += `<p class="note caution">評価額の比で分けた目安です。税理士によっては、建物の評価額を税抜と見て1.1倍してから分ける考え方もあり、その場合は金額が少し変わります。売買契約書に土地と建物の価格が書いてあるときは、その額を「土地と建物を別々に入れる」で使います。</p>`;
+    if (seller === "taxable" && how !== "split" && how !== "eval") h += `<p class="muted small">消費税額が分からないときは、売主か売買契約書で確かめてください。土地と建物の分け方で、上限の額が変わります。</p>`;
     $("saleOut").innerHTML = h;
   }
   function rent() {
@@ -118,6 +124,10 @@ td.how { color: var(--ink-2); font-size: 12px; text-align: left; white-space: no
     if (biz) h += `<p class="muted small">店舗・事務所などの賃料には消費税がかかります。賃料は消費税を含まない額で入れてください。</p>`;
     $("rentOut").innerHTML = h;
   }
+  // 物件ノートから受けとる：?total=…&evalLand=…&evalBldg=…（万円）
+  const ps = new URLSearchParams(location.search);
+  ["total", "evalLand", "evalBldg"].forEach(k => { if (+ps.get(k) > 0) $(k).value = +ps.get(k); });
+  if (+ps.get("evalLand") > 0 && +ps.get("evalBldg") > 0) { $("seller").value = "taxable"; $("how").value = "eval"; }
   const all = () => { sale(); rent(); };
   document.querySelectorAll("input,select").forEach(e => e.addEventListener("input", all));
   $("tab").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>物件ノート</title>
+<link rel="stylesheet" href="../共通/common.css?v=66fb1f6c">
+<style>
+  .btnrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+  .btn { min-height: 38px; }
+  .filebtn { position: relative; display: inline-flex; align-items: center; min-height: 38px; }
+  .filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .status { font-size: 13px; color: var(--ink-2); min-height: 1.6em; margin: 6px 0; }
+  .plist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+  .plist li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  .plist button.open { text-align: left; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; min-height: 40px; min-width: 0; }
+  .plist b { font-family: var(--font-head); font-weight: 500; font-size: 15px; overflow-wrap: anywhere; }
+  .plist small { display: block; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+  .plist li.on b { text-decoration: underline; text-underline-offset: 4px; }
+  #src { width: 100%; min-height: 120px; font: inherit; font-size: 13px; line-height: 1.6; }
+  .dlist { list-style: none; margin: 0; padding: 0; }
+  .dlist li { padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .dlist .h { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .dlist .nm { overflow-wrap: anywhere; font-weight: 500; }
+  .dlist select { min-height: 34px; font-size: 13px; max-width: 100%; }
+  .dlist details { margin-top: 6px; }
+  .dlist pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 12px; color: var(--ink-2); max-height: 240px; overflow: auto; background: var(--head); padding: 8px; margin: 6px 0 0; }
+  .ftable { display: grid; grid-template-columns: minmax(7em, 13em) minmax(0, 1fr); gap: 0 12px; align-items: start; }
+  .ftable .k { padding: 12px 0 0; font-size: 13px; color: var(--ink-2); }
+  .ftable .v { padding: 6px 0; border-bottom: 1px solid var(--rule); min-width: 0; }
+  .ftable .v input { width: 100%; max-width: 100%; }
+  .ftable .src { display: block; font-size: 11.5px; color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
+  .ftable .alt { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+  .ftable .alt button { font-size: 12px; min-height: 30px; padding: 2px 8px; border: 1px solid var(--alert); color: var(--alert); background: var(--sheet); cursor: pointer; overflow-wrap: anywhere; text-align: left; }
+  @media (max-width: 520px) { .ftable { grid-template-columns: 1fr; } .ftable .k { padding-top: 10px; } }
+  textarea#memo { width: 100%; min-height: 90px; font: inherit; }
+  .plist .badge { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: 11px; border: 1px solid var(--alert); color: var(--alert); font-family: var(--font); font-weight: 400; }
+  .plist .badge.ok { border-color: var(--ok); color: var(--ok); }
+  .dlist pre s { color: var(--alert); }
+  .chk { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  .chk .q { font-weight: 500; overflow-wrap: anywhere; }
+  .chk .why { margin: 4px 0 0; font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
+  .chk .ans { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; }
+  .chk .ans button { min-height: 40px; min-width: 64px; }
+  .chk .ans button.on { background: var(--accent); color: #fff; }
+  .chk.done .q::before { content: "確認ずみ　"; color: var(--ok); font-size: 12px; font-weight: 400; }
+  .chk.warn .q { color: var(--alert); }
+  .chk .fix { margin-top: 8px; padding: 10px; background: var(--head); }
+  .chk .fix textarea { width: 100%; min-height: 60px; font: inherit; margin-top: 6px; }
+  .chk .fix .small { display: block; margin-top: 4px; }
+  .chkbar { position: sticky; top: 46px; z-index: 5; background: var(--paper); padding: 8px 0; border-bottom: 1px solid var(--rule-strong); font-size: 13px; }
+  .maps { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+  .maps figure { margin: 0; flex: 1 1 150px; max-width: 320px; }
+  .maps img { width: 100%; border: 1px solid var(--rule); display: block; }
+  .maps figcaption { font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+  .addp { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin: 10px 0; }
+  .addp label { display: flex; flex-direction: column; font-size: 12px; color: var(--ink-2); }
+  .addp input, .addp select { min-height: 38px; width: 8em; }
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="bukken"></nav>
+<main class="page">
+  <div class="page-head">
+    <div class="eyebrow">資料づくり</div>
+    <h1>物件ノート</h1>
+    <p class="lead">登記・評価証明・契約書・マイソクなどをまとめて入れると、項目を取り出して物件ごとに保存します。積算や手数料の計算へ、そのまま送れます。</p>
+  </div>
+  <p class="note caution">読み取りは目安です。必ず元の資料と見くらべてください。手書きや表の崩れた資料、写真やスキャンは、まちがいや読み落としが出やすくなります。資料と保存した内容はこの端末のブラウザの中だけに置き、外へ送りません。所有者の名前など個人の情報を含むので、共有の端末では使わないでください。</p>
+
+  <section>
+    <h2><span class="no">01</span>保存した物件</h2>
+    <div class="btnrow">
+      <button type="button" class="btn primary" id="newBtn">新しい物件</button>
+      <input type="search" id="q" placeholder="住所や物件名でさがす" aria-label="物件をさがす" style="flex:1 1 12em;min-height:38px;min-width:0">
+    </div>
+    <ul class="plist" id="plist"></ul>
+    <p class="small muted" id="emptyMsg" hidden>まだ物件はありません。「新しい物件」を押すか、下に資料を入れてください。</p>
+    <div class="btnrow">
+      <button type="button" class="btn" id="exportBtn">全部をファイルに書き出す</button>
+      <span class="btn filebtn">ファイルから読みこむ<input type="file" id="importFile" accept=".json,application/json" aria-label="書き出したファイルを読みこむ"></span>
+    </div>
+    <p class="status" id="listStatus" aria-live="polite"></p>
+  </section>
+
+  <section id="editor" hidden>
+    <h2><span class="no">02</span>資料を入れる</h2>
+    <div class="btnrow">
+      <span class="btn filebtn primary">PDF・画像を選ぶ（何枚でも）<input type="file" id="file" accept=".pdf,application/pdf,image/*,.txt,text/plain" multiple aria-label="物件資料のファイルを選ぶ"></span>
+    </div>
+    <p class="small muted">文字が入ったPDFはすぐ読みます。スキャンや写真は端末の中で文字を読むので、1枚あたり数十秒かかることがあります。はじめの1回だけ、読み取りの部品（約10MB）を読みこみます。</p>
+    <p class="status" id="fileStatus" aria-live="polite"></p>
+    <details><summary>文を貼りつけて入れる</summary>
+      <textarea id="src" placeholder="レインズの物件詳細、ポータルの物件ページ、メールの本文などを貼りつけます。"></textarea>
+      <div class="btnrow"><button type="button" class="btn" id="pasteBtn">この文を資料として入れる</button></div>
+    </details>
+    <ul class="dlist" id="dlist"></ul>
+
+    <h2><span class="no">03</span>筆ごとの確認（本地・私道・持分）</h2>
+    <p class="small">謄本は筆ごとに読み、下線の行は古い情報として今の値に使いません。機械の判定を、人が1つずつ確かめます。「いいえ」なら選び直すか、コメントで直せます（例：私道です、持分8分の1、地番は123番457、面積45.5㎡）。</p>
+    <div class="tablewrap"><table id="ptable"></table></div>
+    <details><summary class="small">筆を手で足す</summary>
+      <div class="addp">
+        <label>地番<input type="text" id="aChiban" placeholder="123番456"></label>
+        <label>面積（㎡）<input type="number" id="aArea" min="0" step="0.01" inputmode="decimal"></label>
+        <label>地目<input type="text" id="aChimoku" placeholder="宅地"></label>
+        <button type="button" class="btn" id="aBtn">足す</button>
+      </div>
+    </details>
+    <div class="maps" id="maps"></div>
+    <div class="chkbar" id="chkbar"></div>
+    <div class="fr"><label class="lab" for="checker">確認した人</label><input type="text" id="checker" placeholder="名前（任意）" autocomplete="off" style="max-width:14em"></div>
+    <div id="chks"></div>
+
+    <h2><span class="no">04</span>項目を確かめて直す</h2>
+    <p class="small">どの欄も手で直せます。資料どうしで値がちがう欄には、朱の枠でほかの候補を出します。押すとその値に変わります。</p>
+    <div class="ftable" id="ftable"></div>
+    <div class="fr" style="margin-top:14px"><label class="lab" for="memo">メモ</label><textarea id="memo"></textarea></div>
+
+    <h2><span class="no">05</span>ほかの道具へ送る</h2>
+    <p class="note caution" id="sendWarn" hidden></p>
+    <div class="btnrow" id="sendBtns">
+      <a class="btn" id="toSekisan">積算の目安</a>
+      <a class="btn" id="toChukai">仲介手数料（評価額で按分）</a>
+      <a class="btn" id="toSurvey">物件調査</a>
+      <a class="btn" id="toMaisoku">マイソクを作る</a>
+    </div>
+    <div class="btnrow"><button type="button" class="btn" id="delBtn">この物件を消す</button><span class="status" id="saveMsg" aria-live="polite"></span></div>
+  </section>
+
+  <p class="muted small">公図や測量図は、地番と面積を文字として照らし合わせます。図の形（細長い道路の形かどうか）は機械では判定しないので、図を見て人が確かめてください。読み取った値は資料の写しではなく、物件の事実の控えとして使ってください。他社の資料を使って広告を作るときは、売主や元付けの会社の承諾が必要です。</p>
+</main>
+<script src="../共通/tools.js?v=66fb1f6c"></script>
+<script src="../共通/common.js?v=66fb1f6c"></script>
+<script src="../マイソク/parse.js"></script>
+<script src="touki.js"></script>
+<script src="extract.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
