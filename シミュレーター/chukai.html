@@ -43,7 +43,7 @@ td.how { color: var(--ink-2); font-size: 12px; text-align: left; white-space: no
     <div class="fr" id="rBldg"><label class="lab" for="bldgEx">建物（税抜）</label><div class="iline"><input type="number" id="bldgEx" min="0" step="any" value="2000"><span class="u">万円</span></div></div>
     <div class="fr" id="rTax"><label class="lab" for="tax">消費税額</label><div class="iline"><input type="number" id="tax" min="0" step="any" value="200"><span class="u">万円</span></div></div>
     <div class="fr" id="rEval"><span class="lab">固定資産税評価額</span><div class="iline"><span class="u">土地</span><input type="number" id="evalLand" min="0" step="any" value="1800"><span class="u">万円</span><span class="u">建物</span><input type="number" id="evalBldg" min="0" step="any" value="900"><span class="u">万円</span></div>
-      <span class="hint">評価証明書や納税通知書の「価格（評価額）」です。土地の「課税標準額」は住宅用地の特例で小さくなっているので使いません。建物の評価額は消費税を含まない値として扱います。</span></div>
+      <span class="hint">評価証明書や納税通知書の「価格（評価額）」です。土地の「課税標準額」は住宅用地の特例で小さくなっているので使いません。税込の総額をこの比で分け、建物の分を税込として1.1で割ります。</span></div>
     <div class="fr" id="rBldgIn"><label class="lab" for="bldgIn">建物（税込）</label><div class="iline"><input type="number" id="bldgIn" min="0" step="any" value="2200"><span class="u">万円</span></div></div>
   </div>
   <h2><span class="no">02</span>仲介する会社</h2>

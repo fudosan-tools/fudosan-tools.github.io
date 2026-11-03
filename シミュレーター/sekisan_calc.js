@@ -75,7 +75,7 @@
     if (p.method === "kotei") steps.push({ key: "conv", label: "固定資産税路線価を相続税路線価の水準に", how: `${yen(input)} × 0.8 ÷ 0.7`, unit: R });
     else if (p.method === "koji") steps.push({ key: "conv", label: "公示価格・地価調査価格を相続税路線価の水準に",
       how: `${yen(input)}${p.chiikiPct != null && +p.chiikiPct !== 100 ? ` × 地点との差 ${p.chiikiPct}%` : ""} × 0.8`, unit: R });
-    else steps.push({ key: "conv", label: "相続税路線価（正面の道路）", how: `${yen(input)}`, unit: R });
+    else steps.push({ key: "conv", label: "相続税路線価（前面道路）", how: `${yen(input)}`, unit: R });
     // ふつうの積算：面積 × 1㎡あたりの値段（相続税路線価の水準）。形や道路の補正は入れない
     if (p.simple) {
       const tax = R * area;

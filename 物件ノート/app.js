@@ -112,7 +112,7 @@
     var m = X.merge(docsWithSum(cur));
     $("ftable").innerHTML = X.FIELDS.map(function (f) {
       var k = f[0], cands = m[k] || [], manual = cur.manual[k], val = manual != null ? manual : cands.length ? cands[0].value : "";
-      if (manual == null && !cands.length && !["name", "address", "price", "land", "bldg", "built", "structure", "evalLand", "evalBldg"].includes(k)) return "";
+      if (manual == null && !cands.length && !["name", "address", "price", "land", "bldg", "built", "structure", "evalLand", "evalBldg", "road", "rosenka"].includes(k)) return "";
       var from = manual != null ? "手で入れた値" : cands.length ? "資料：" + cands[0].docName : "";
       var others = cands.filter(function (c) { return String(c.value) !== String(val); });
       return '<div class="k"><label for="f_' + k + '">' + esc(f[1]) + (f[2] ? "（" + esc(f[2]) + "）" : "") + "</label></div>" +
@@ -233,6 +233,8 @@
     var y = /^(\d{4})/.exec(v.built || ""); if (y) q.set("built", y[1]);
     var sc = X.structCode(v.structure || ""); if (sc) q.set("struct", sc);
     if (v.youto) q.set("youto", v.youto);
+    if (v.road) q.set("road", v.road);
+    if (num(v.rosenka)) q.set("rosenka", num(v.rosenka));
     $("toSekisan").href = "../シミュレーター/sekisan.html?" + q.toString();
     var c = new URLSearchParams();
     if (num(v.price)) c.set("total", num(v.price));

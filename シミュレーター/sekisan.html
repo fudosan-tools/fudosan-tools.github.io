@@ -66,7 +66,7 @@ details.ktbox .kt { min-width: 0; }
 <div class="page-head">
   <div class="eyebrow">お金の計算</div>
   <h1>積算の目安（土地＋建物）</h1>
-  <p class="lead">積算は、金融機関がお金を貸すときによく使う「土地の値段＋建物の値段」の見方です。この道具はその<b>目安</b>を出すもので、不動産の鑑定評価ではありません。土地は<b>面積 × 相続税路線価</b>、建物は<b>建てなおす単価 × 延床面積 × 残りの耐用年数 ÷ 耐用年数</b>で出します。路線価が分からないときは、近くの公示価格などから路線価の水準に直して概算します。</p>
+  <p class="lead">積算は、金融機関がお金を貸すときによく使う「土地の値段＋建物の値段」の見方です。この道具はその<b>目安</b>を出すもので、不動産の鑑定評価ではありません。土地は<b>面積 × 前面道路の相続税路線価</b>、建物は<b>建てなおす単価 × 延床面積 × 残りの耐用年数 ÷ 耐用年数</b>で出します。前面道路の路線価が無い地域は、固定資産税路線価などから路線価の水準に直して概算します。</p>
 </div>
 
 <p class="note caution">ここで出す数字は目安です。金融機関ごとに計算のしかた（土地の掛け目・建物の単価・耐用年数の扱い）はちがい、公表されていません。最後は金融機関・税理士・不動産鑑定士に確かめてください。</p>
@@ -96,17 +96,23 @@ details.ktbox .kt { min-width: 0; }
 <!-- 02 土地の値段のもと -->
 <section>
   <h2><span class="no">02</span>土地の値段のもと</h2>
-  <p class="small">上から順に、あるものを使います。相続税路線価が一番の基本です。住所の「位置をさがす」を押すと、その町の路線価図へのリンクを出します。路線価の数字は図を見て入れてください。路線価が空なら、いちばん近い公示地・基準地の値段 × 0.8 で概算します。</p>
+  <p class="small">路線価は道路ごとに決まっているので、住所だけでは分かりません。<b>前面道路（物件が面している道路）の相続税路線価</b>を路線価図で読んで入れてください。住所の「位置をさがす」を押すと、地図と路線価図へのリンクを出します。路線価が無い地域は、ほかの3つのどれかで相続税路線価の水準に直します。</p>
   <div class="methodseg segscroll"><div class="seg" role="group" aria-label="土地の値段のもと" id="methodSeg">
     <button type="button" data-m="rosenka">1 相続税路線価</button><button type="button" data-m="bairitsu">1' 倍率地域</button>
     <button type="button" data-m="kotei">2 固定資産税路線価</button><button type="button" data-m="koji">3 公示価格・地価調査</button></div></div>
 
   <div id="rosenkaMaps" class="note" hidden></div>
   <div class="formrows" id="m_rosenka">
-    <div class="fr"><label class="lab" for="rosenkaK">相続税路線価</label>
+    <div class="fr"><label class="lab" for="rosenkaK">前面道路の相続税路線価</label>
       <div class="iline"><input type="number" id="rosenkaK" min="0" step="1" inputmode="decimal"><span class="u">千円/㎡</span>
         <span class="u">借地権割合の記号</span><select id="letter"><option>A</option><option>B</option><option>C</option><option selected>D</option><option>E</option><option>F</option><option>G</option></select></div>
-      <span class="hint">路線価図で、物件が面している道路に書いてある数字（千円単位）です。例：「300D」なら 30万円/㎡、記号Dは借地権割合60%。</span></div>
+      <span class="hint">路線価図で、前面道路に書いてある数字（千円単位）です。例：「300D」なら 30万円/㎡、記号Dは借地権割合60%。道路が2本以上あるときは、高い方を入れます（形の補正を入れるときは、路線価×奥行補正の高い方）。</span></div>
+    <div class="fr"><label class="lab" for="roadNote">前面道路のメモ</label>
+      <input type="text" id="roadNote" class="wide" placeholder="例：南側 公道 幅員4.5m" autocomplete="off">
+      <span class="hint">路線価図で探す道路を間違えないための控えです。物件ノートの接道の欄から入ります。計算には使いません。</span></div>
+    <div class="fr"><span class="lab">数字が無いとき</span>
+      <label class="check"><input type="checkbox" id="noRoadPrice"><span>前面道路に路線価が書かれていない（私道など）</span></label>
+      <span class="hint">その道路がつながる、路線価のある道路の数字を入れて概算します。特定路線価は相続税・贈与税の申告のために税務署へ申し出るものなので、ここでは使いません。</span></div>
     <div class="fr"><span class="lab">路線価図を開く</span>
       <div class="iline"><select id="reiwa"><option value="8">令和8年分（2026年）</option><option value="7">令和7年分（2025年）</option><option value="6">令和6年分（2024年）</option></select>
         <a id="rosenkaLink" href="https://www.rosenka.nta.go.jp/" target="_blank" rel="noopener">国税庁 路線価図・評価倍率表</a></div>
@@ -124,7 +130,7 @@ details.ktbox .kt { min-width: 0; }
   </div>
 
   <div class="formrows" id="m_kotei" hidden>
-    <div class="fr"><label class="lab" for="koteiUnit">固定資産税路線価</label>
+    <div class="fr"><label class="lab" for="koteiUnit">前面道路の固定資産税路線価</label>
       <div class="iline"><input type="number" id="koteiUnit" min="0" step="100" inputmode="decimal"><span class="u">円/㎡</span>
         <a href="https://www.chikamap.jp/" target="_blank" rel="noopener">全国地価マップ（固定資産税路線価）</a></div>
       <div class="conv" id="koteiConv"></div>
@@ -142,7 +148,8 @@ details.ktbox .kt { min-width: 0; }
   </div>
 
   <div id="nearBox">
-    <h3>近くの公示地・基準地</h3>
+    <h3>近くの公示地・基準地（参考）</h3>
+    <p class="small">地点の値段で、前面道路の路線価ではありません。自動では使いません。路線価が分からないときだけ「使う」を押してください。</p>
     <div class="iline small"><span>種類</span><select id="useFilter"><option value="0">住宅地</option><option value="5">商業地</option><option value="9">工業地</option><option value="all">すべて</option></select>
       <span class="sub" id="nearMeta"></span></div>
     <div id="nearList"><p class="small muted">住所の「位置をさがす」を押すと出ます。</p></div>
@@ -279,7 +286,7 @@ details.ktbox .kt { min-width: 0; }
 <!-- 06 結果 -->
 <section>
   <h2><span class="no">06</span>積算価格</h2>
-  <p class="small">土地＝面積 × 相続税路線価。建物＝建てなおす単価 × 延床面積 × 残りの耐用年数 ÷ 耐用年数。</p>
+  <p class="small">土地＝面積 × 前面道路の相続税路線価。建物＝建てなおす単価 × 延床面積 × 残りの耐用年数 ÷ 耐用年数。</p>
   <div class="figures" id="figs"></div>
   <div id="warn"></div>
 
@@ -389,10 +396,12 @@ details.ktbox .kt { min-width: 0; }
     gakePct: null, gakeDir: "北", tokkeiPct: null, setbackM2: null, shidouM2: null, shidouPublic: false, riyouTeika: false, riyouShare: 100, right: "own",
     ex: {}, exCostMan: null,
     noBld: false, struct: "w", floorM2: 100, builtYear: THIS_YEAR - 20, age: 20, unitSrc: "bank", unitPref: "東京都", unitMan: null, over: "zero", residualPct: 10,
-    basis: "tax", useHosei: false, kojiAuto: false, kz: null, ktOn: false, ktMan: {}, ktAuto: {}, v: 1 };
+    basis: "tax", useHosei: false, kojiAuto: false, roadNote: "", noRoadPrice: false, kz: null, ktOn: false, ktMan: {}, ktAuto: {}, v: 1 };
   var ST = JSON.parse(JSON.stringify(DEF));
   try { var sv = JSON.parse(localStorage.getItem("sekisanState") || "null"); if (sv && sv.v === 1) Object.assign(ST, sv); } catch (e) {}
-  // 物件調査などから URL で受けとる：?addr=…&area=…(㎡)&youto=…&lat=…&lon=…&price=…(万円)&floor=…(㎡)&built=…(西暦)&struct=w|ls3|ls4|s|rc|src
+  // 前の版が近くの地点から自動で入れた値は、前面道路の値段ではないので持ちこまない
+  if (ST.kojiAuto) { ST.method = "rosenka"; ST.kojiUnit = null; ST.kojiPick = ""; ST.kojiAuto = false; }
+  // 物件調査などから URL で受けとる：?addr=…&area=…(㎡)&youto=…&lat=…&lon=…&price=…(万円)&floor=…(㎡)&built=…(西暦)&struct=w|ls3|ls4|s|rc|src&road=…(接道)&rosenka=…(千円/㎡)
   var ps = new URLSearchParams(location.search), fromUrl = false;
   // 別の物件を URL で渡されたときは、前の物件の路線価などを持ちこまないよう、設定（単価のよりどころ・耐用年数の扱い・土地の値段の選び方など）以外は最初の状態にもどす
   if (ps.get("addr") || ps.get("area") || ps.get("lat")) {
@@ -407,6 +416,8 @@ details.ktbox .kt { min-width: 0; }
   if (+ps.get("floor") > 0) ST.floorM2 = +ps.get("floor");
   if (+ps.get("built") > 1900) { ST.builtYear = +ps.get("built"); ST.age = Math.max(0, THIS_YEAR - ST.builtYear); }
   if (S.STRUCTS[ps.get("struct")]) ST.struct = ps.get("struct");
+  if (ps.get("road")) ST.roadNote = ps.get("road");
+  if (+ps.get("rosenka") > 0) ST.rosenkaK = +ps.get("rosenka");
   // 土地の形（共通/katachi.js）：? か # の kz・kzr・kzf・kzt で受けとる。受けとったら、形の値を欄に入れる
   var K = window.Katachi, KU = window.KatachiUI;
   ST.ktMan = ST.ktMan || {}; ST.ktAuto = ST.ktAuto || {};
@@ -421,8 +432,8 @@ details.ktbox .kt { min-width: 0; }
   // ---------------------------------------------------------------- 入力欄と状態をつなぐ
   var NUM = ["areaM2", "priceMan", "rosenkaK", "koteiHyokaMan", "bairitsu", "koteiUnit", "kojiUnit", "chiikiPct", "depthM", "frontM", "kagePct", "soteiM2",
     "sideUnit", "sideDepthM", "rearUnit", "tsuroM2", "gakePct", "tokkeiPct", "setbackM2", "shidouM2", "riyouShare", "exCostMan", "floorM2", "builtYear", "age", "unitMan", "residualPct"];
-  var TXT = ["addr", "youto", "letter", "reiwa", "useFilter", "district", "shape", "corner", "gakeDir", "right", "struct", "unitSrc", "unitPref", "over", "sandai"];
-  var CHK = ["rear", "mudouro", "shidouPublic", "riyouTeika", "noBld", "useHosei"];
+  var TXT = ["addr", "youto", "roadNote", "letter", "reiwa", "useFilter", "district", "shape", "corner", "gakeDir", "right", "struct", "unitSrc", "unitPref", "over", "sandai"];
+  var CHK = ["noRoadPrice", "rear", "mudouro", "shidouPublic", "riyouTeika", "noBld", "useHosei"];
   var PAIRS = { areaM2: "areaT", soteiM2: "soteiT", tsuroM2: "tsuroT", setbackM2: "setbackT", shidouM2: "shidouT", floorM2: "floorT" };
   var r2 = function (v) { return Math.round(v * 100) / 100; };
   // 横・裏の道路の値は、土地の値段のもとごとに分けてしまう（路線価は千円、ほかは円で、単位がちがうため）
@@ -455,7 +466,7 @@ details.ktbox .kt { min-width: 0; }
     var v = num(this.value); ST[k] = v == null ? null : r2(v * TSUBO);
     if (k === "soteiM2" || (k === "areaM2" && ST.soteiM2)) ST.kagePct = ST.soteiM2 > 0 && ST.areaM2 > 0 ? Math.round(S.kageFromSotei(ST.soteiM2, ST.areaM2)) : ST.kagePct;
     update(PAIRS[k]); }); });
-  TXT.forEach(function (k) { $(k).addEventListener(k === "addr" || k === "youto" ? "input" : "change", function () {
+  TXT.forEach(function (k) { $(k).addEventListener(k === "addr" || k === "youto" || k === "roadNote" ? "input" : "change", function () {
     ktHand(k);
     ST[k] = this.value;
     if (k === "youto") ST.youtoAuto = false;
@@ -598,17 +609,18 @@ details.ktbox .kt { min-width: 0; }
     var area = ST.areaM2 || 0;
     var noLand = !(landUse > 0); // 土地の値段が入っていないと、合計と割合が建物だけの数字になるので見出しで知らせる
     $("figs").innerHTML =
-      '<div class="figure main"><div class="k">積算価格（土地＋建物）</div><div class="v">' + S.man(T.total) + '</div><div class="s">' + (noLand ? "土地の値段がまだ入っていません（建物だけの数字）" : ST.basis === "market" ? "土地は時価に戻した目安" : "土地は税の評価（路線価ベース）") + "</div></div>" +
-      '<div class="figure"><div class="k">土地</div><div class="v">' + S.man(landUse) + '</div><div class="s">' + (area ? S.man(landUse / area) + "/㎡・" + S.man(landUse / area * TSUBO) + "/坪" : "") + "</div></div>" +
+      '<div class="figure main"><div class="k">積算価格（土地＋建物）</div><div class="v">' + (noLand ? "—" : S.man(T.total)) + '</div><div class="s">' + (noLand ? (m === "rosenka" ? "前面道路の路線価を入れると出ます" : "土地の値段を入れると出ます") : ST.basis === "market" ? "土地は時価に戻した目安" : "土地は税の評価（路線価ベース）") + "</div></div>" +
+      '<div class="figure"><div class="k">土地</div><div class="v">' + (noLand ? "—" : S.man(landUse)) + '</div><div class="s">' + (area && !noLand ? S.man(landUse / area) + "/㎡・" + S.man(landUse / area * TSUBO) + "/坪" : "") + "</div></div>" +
       (B ? '<div class="figure"><div class="k">建物</div><div class="v">' + S.man(B.value) + '</div><div class="s">' + (B.expired ? "耐用年数を過ぎている" : "残り" + B.remain + "年／" + B.life + "年") + "</div></div>" : "") +
       '<div class="figure"><div class="k">売り出し価格に対して</div><div class="v">' + (T.ratio == null || noLand ? "—" : Math.round(T.ratio * 100) + "%") + '</div><div class="s">' + (noLand ? "土地の値段を入れると出ます" : T.ratio == null ? "売り出し価格を入れると出ます" : "積算 ÷ 売り出し価格（" + S.man((ST.priceMan || 0) * 1e4, 0) + "）") + "</div></div>";
     var warn = [];
     if (!area) warn.push("土地の面積を入れてください。");
-    if (m === "rosenka" && !ST.rosenkaK) warn.push("相続税路線価を入れてください（路線価図の数字。千円単位）。");
+    if (m === "rosenka" && !ST.rosenkaK) warn.push("前面道路の相続税路線価を入れてください（路線価図の数字。千円単位）。");
+    if (m === "rosenka" && ST.rosenkaK && ST.noRoadPrice) warn.push("前面道路に路線価が無いので、つながる道路の路線価で出した概算です。通路を含めた形の補正で、これより下がることがあります。");
     if (m === "bairitsu" && !(ST.koteiHyokaMan && ST.bairitsu)) warn.push("固定資産税評価額と倍率を入れてください。");
-    if (m === "kotei" && !ST.koteiUnit) warn.push("固定資産税路線価を入れてください。");
+    if (m === "kotei" && !ST.koteiUnit) warn.push("前面道路の固定資産税路線価を入れてください。");
     if (m === "koji" && !ST.kojiUnit) warn.push("公示価格・地価調査価格を入れるか、下の表の「使う」を押してください。");
-    if (m === "koji" && ST.kojiAuto) warn.push("路線価が入っていないので、いちばん近い地点の値段 × 0.8 で概算しています（" + ST.kojiPick + "）。路線価が分かったら「1 相続税路線価」に入れてください。");
+    if (m === "koji" && ST.kojiUnit) warn.push("地点の値段 × 0.8 の概算です。前面道路の路線価ではないので、道路がちがうと大きくずれます。路線価が分かったら「1 相続税路線価」に入れてください。");
     if (nb && ST.useHosei && ST.shape === "fusei" && !(ST.kagePct >= 10)) warn.push("不整形地は、かげ地割合（または想定整形地の面積）を入れると補正されます。");
     if (X.rows.some(function (r) { return r.id === "saikenchiku"; })) warn.push("再建築不可の物件は、金融機関の担保評価がとても低くなる（評価しない）ことが多いです。");
     if (ST.right === "shakuchi") warn.push("借地権の物件は、金融機関によって評価のしかたが大きくちがいます。");
@@ -752,10 +764,14 @@ details.ktbox .kt { min-width: 0; }
       if (!f) { box.hidden = true; return; }
       var y = "令和" + idx.meta.reiwa + "年分";
       if (f.town) {
-        box.innerHTML = "<b>" + esc(f.city + f.town) + " の路線価図（" + y + "・" + f.nums.length + "枚）</b><br>" +
+        var mapLinks = ST.lat == null ? "" : '<br><a href="https://maps.gsi.go.jp/#18/' + ST.lat + "/" + ST.lon + '/" target="_blank" rel="noopener">地理院地図</a>　<a href="https://www.google.com/maps/search/?api=1&query=' + ST.lat + "," + ST.lon + '" target="_blank" rel="noopener">Googleマップ</a>' +
+          '<br><span class="small">印は町や番地のあたりで、物件そのものとは限りません。</span>';
+        box.innerHTML = "<b>① 地図で物件と前面道路を確かめる</b>" + mapLinks +
+          "<br><b>② " + esc(f.city + f.town) + " の路線価図で、同じ道路の数字を読む（" + y + "・" + f.nums.length + "枚）</b><br>" +
           f.nums.map(function (n) { return '<a href="' + S.rosenkaMapUrl(idx, f, n) + '" target="_blank" rel="noopener">' + n + "</a>"; }).join("　") +
-          '<br><span class="small">物件が面している道路に書かれた数字を読んでください（例：300D は 30万円/㎡）。番地で1枚に絞れないので、町にかかる図を全部出しています。</span>' +
-          '<div class="btns" style="margin-top:6px"><button type="button" class="btn" id="goRosenka">読んだ路線価を入れる</button></div>';
+          '<br><span class="small">例：300D は 30万円/㎡。番地で1枚に絞れないので、町にかかる図を全部出しています。</span>' +
+          "<br><b>③ 読んだ数字を入れる</b>" +
+          '<div class="btns" style="margin-top:6px"><button type="button" class="btn" id="goRosenka">前面道路の路線価を入れる</button></div>';
       } else if (!f.city) {
         box.innerHTML = "路線価図の一覧に、この市区町村が見つかりません。路線価がない地域（倍率地域）か、住所の書き方のちがいかもしれません。<br>" +
           '<a href="' + S.bairitsuCityUrl(idx, f) + '" target="_blank" rel="noopener">評価倍率表（' + esc(f.pref) + "）</a>";
@@ -799,13 +815,6 @@ details.ktbox .kt { min-width: 0; }
   function renderNear() {
     if (ST.lat == null || !nearRows.length) return;
     var list = S.nearest(nearRows, ST.lat, ST.lon, 8, ST.useFilter);
-    // 路線価が入っていないときは、いちばん近い地点から概算する
-    if (ST.method === "rosenka" && !ST.rosenkaK && !ST.kojiUnit && list.length) {
-      var r0 = list[0];
-      ST.method = "koji"; ST.kojiUnit = r0.price; ST.kojiAuto = true;
-      ST.kojiPick = r0.no + "（" + r0.year + "年 " + (r0.kind === "公示" ? "地価公示" : "地価調査") + "）";
-      update("init");
-    }
     $("nearMeta").textContent = "地価公示 " + IDX.meta.years.L01.join("・") + "年1月1日／地価調査 " + IDX.meta.years.L02.join("・") + "年7月1日の値段。近い順に8地点まで";
     if (!list.length) { $("nearList").innerHTML = '<p class="small muted">近くに、この種類の地点がありません。種類を変えてみてください。</p>'; return; }
     $("nearList").innerHTML = '<div class="tablewrap"><table class="pick"><thead><tr><th>地点</th><th>所在</th><th>距離</th><th>値段</th><th>前年比</th><th>地積</th><th>用途地域</th><th>道路</th><th>駅</th><th></th></tr></thead><tbody>' +
