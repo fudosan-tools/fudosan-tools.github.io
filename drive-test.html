@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+<link rel="icon" type="image/png" href="icon-192.png?v=2">
+<meta name="apple-mobile-web-app-title" content="不動産ツール">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="color-scheme" content="light">
+<title>ドライブ読み込みの試し</title>
+<style>
+  :root { --ink: #1f2933; --sub: #52606d; --line: #cbd2d9; --main: #1d5fa8; --ok: #17693a; --ng: #a32020; --bg: #fff; --soft: #f5f7fa; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.7 -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p { margin: 0 0 16px; color: var(--sub); }
+  label { display: block; font-weight: 600; margin: 16px 0 4px; }
+  input { width: 100%; font-size: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+  button { width: 100%; margin-top: 20px; padding: 14px; font-size: 16px; font-weight: 600; color: #fff; background: var(--main); border: 0; border-radius: 8px; }
+  button:disabled { opacity: .55; }
+  ul { list-style: none; margin: 20px 0 0; padding: 0; }
+  li { padding: 12px; margin-bottom: 8px; background: var(--soft); border-radius: 8px; overflow-wrap: anywhere; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .ng { color: var(--ng); font-weight: 600; }
+  small { display: block; margin-top: 16px; color: var(--sub); }
+</style>
+</head>
+<body>
+<main>
+  <h1>ドライブ読み込みの試し</h1>
+  <p>鍵で公開フォルダを読めるかを確かめる画面です。鍵はGoogleへの問い合わせにだけ使い、保存しません。</p>
+
+  <label for="key">Googleの鍵（APIキー）</label>
+  <input id="key" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+
+  <label for="link">公開フォルダかファイルのリンク</label>
+  <input id="link" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://drive.google.com/drive/folders/...">
+
+  <button id="run" type="button">読めるか試す</button>
+  <ul id="out" aria-live="polite"></ul>
+  <small>ファイルの名前と中身は画面に出しません。結果の文字だけを教えてください。鍵は教えないでください。</small>
+</main>
+<script>
+(function () {
+  var API = "https://www.googleapis.com/drive/v3/files";
+  var out = document.getElementById("out");
+  var btn = document.getElementById("run");
+
+  function show(cls, text) {
+    var li = document.createElement("li");
+    li.className = cls;
+    li.textContent = text;
+    out.appendChild(li);
+  }
+
+  // リンクからフォルダかファイルの番号を取り出す
+  function parseLink(s) {
+    var m = String(s).match(/\/folders\/([\w-]{10,})/);
+    if (m) return { kind: "folder", id: m[1] };
+    m = String(s).match(/\/d\/([\w-]{10,})/) || String(s).match(/[?&]id=([\w-]{10,})/);
+    if (m) return { kind: "file", id: m[1] };
+    return null;
+  }
+
+  function explain(status, reason) {
+    var kind = String(reason).replace(/^API.KEY./, "");
+    if (kind === "INVALID" || reason === "badRequest") return "鍵の文字列が正しくないようです（貼りまちがい・作りたて直後など）";
+    if (reason === "accessNotConfigured" || reason === "SERVICE_DISABLED") return "このGoogleのプロジェクトでドライブの窓口（Google Drive API）が有効になっていません";
+    if (kind === "HTTP_REFERRER_BLOCKED") return "鍵の「使えるサイト」の制限に、この画面のサイトが入っていません";
+    if (kind === "SERVICE_BLOCKED") return "鍵の「使えるAPI」の制限に、Google Drive API が入っていません";
+    if (status === 403) return "読むことを断られました（理由は下の記号）";
+    if (status === 404) return "見つかりません（公開されていないか、リンクがちがいます）";
+    return "読めませんでした";
+  }
+
+  function fail(step, status, reason) {
+    show("ng", "× " + step + "：" + explain(status, reason) + "（記号 " + status + " / " + (reason || "不明") + "）");
+  }
+
+  async function ask(url, key) {
+    var r = await fetch(url, { headers: { "X-Goog-Api-Key": key } });
+    if (r.ok) return { ok: true, res: r };
+    var reason = "";
+    try {
+      var j = await r.json();
+      var e = j.error || {};
+      var info = (e.details || []).filter(function (d) { return d.reason; })[0];
+      reason = info ? info.reason : ((e.errors || [])[0] || {}).reason || "";
+    } catch (x) {}
+    return { ok: false, status: r.status, reason: reason };
+  }
+
+  async function readHead(file, key) {
+    var isGoogle = String(file.mimeType).indexOf("application/vnd.google-apps.") === 0;
+    var url = API + "/" + encodeURIComponent(file.id) + (isGoogle ? "/export?mimeType=application%2Fpdf" : "?alt=media&supportsAllDrives=true");
+    var a = await ask(url, key);
+    if (!a.ok) { fail("ファイルの中身", a.status, a.reason); return; }
+    var buf = new Uint8Array(await a.res.arrayBuffer());
+    var head = String.fromCharCode.apply(null, buf.subarray(0, 5));
+    var type = head === "%PDF-" ? "PDF" : buf[0] === 0xFF && buf[1] === 0xD8 ? "写真（JPEG）" : "その他";
+    show("ok", "○ ファイルの中身：読めました（" + type + "・" + Math.round(buf.length / 1024) + "KB）");
+  }
+
+  async function run() {
+    out.textContent = "";
+    var key = document.getElementById("key").value.trim();
+    var target = parseLink(document.getElementById("link").value.trim());
+    if (!key) { show("ng", "鍵を貼ってください"); return; }
+    if (!target) { show("ng", "リンクの形が読めません。ドライブのフォルダかファイルのリンクを貼ってください"); return; }
+    if (target.kind === "file") {
+      var f = await ask(API + "/" + encodeURIComponent(target.id) + "?fields=id,mimeType&supportsAllDrives=true", key);
+      if (!f.ok) { fail("ファイルの情報", f.status, f.reason); return; }
+      show("ok", "○ ファイルの情報：読めました");
+      await readHead(await f.res.json(), key);
+      return;
+    }
+    var q = "'" + target.id + "' in parents and trashed = false";
+    var url = API + "?pageSize=100&fields=files(id,mimeType,size)&supportsAllDrives=true&includeItemsFromAllDrives=true&q=" + encodeURIComponent(q);
+    var a = await ask(url, key);
+    if (!a.ok) { fail("フォルダの中の一覧", a.status, a.reason); return; }
+    var files = (await a.res.json()).files || [];
+    show(files.length ? "ok" : "ng", (files.length ? "○" : "×") + " フォルダの中の一覧：" + files.length + "件");
+    var plain = files.filter(function (x) { return x.size && x.mimeType !== "application/vnd.google-apps.folder"; });
+    plain.sort(function (x, y) { return Number(x.size) - Number(y.size); });
+    if (plain[0]) await readHead(plain[0], key);
+    else show("ng", "× ファイルの中身：フォルダの中に試せるファイルがありません");
+  }
+
+  btn.addEventListener("click", function () {
+    btn.disabled = true;
+    show("", "確かめています…");
+    run().catch(function (e) {
+      show("ng", "× 通信できませんでした（" + (e && e.name) + "）");
+    }).finally(function () { btn.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>
