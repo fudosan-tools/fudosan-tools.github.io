@@ -141,7 +141,7 @@ table.gakes td input[type=number] { width: 4.5em; }
     <h3>がけ・擁壁（高低差のある辺）</h3>
     <p class="muted">となりの土地や道路との間に高低差（がけ・擁壁＝土を止める壁）がある辺を入れると、がけ条例で建物を離す帯を敷地から除いて計算します。高さは、がけの下の地面から上の地面まで。角度は、擁壁ならほぼ垂直の90度、土の斜面なら斜面の角度です。</p>
     <div class="formrows">
-      <div class="fr"><span class="lab">がけ条例の地域</span><select id="v_gReg" data-s><option value="auto">自動（03の都県から）</option></select><span class="hint" id="v_gRegHint">市によって、がけの高さ（2m・3m）や測り方がちがいます</span></div>
+      <div class="fr"><span class="lab">がけ条例の地域</span><select id="v_gReg" data-s><option value="auto">自動（03の都道府県から）</option></select><span class="hint" id="v_gRegHint">市によって、がけの高さ（2m・3m）や測り方がちがいます</span></div>
       <div class="fr"><span class="lab">土砂災害の区域</span><select id="v_gDosha" data-s><option value="unknown">わからない</option><option value="none">区域の外</option><option value="yellow">警戒区域（イエロー）</option><option value="red">特別警戒区域（レッド）</option></select><span class="hint">都県の地図で確かめられます</span></div>
     </div>
     <div class="tablewrap subrows">
@@ -166,9 +166,9 @@ table.gakes td input[type=number] { width: 4.5em; }
     <h2><span class="no">03</span>地域の決まり</h2>
     <p class="muted">役所の「都市計画図」や、不動産の重要事項説明書に書いてあります。</p>
     <div class="formrows">
-      <div class="fr"><span class="lab">都県・市</span><select id="v_pref" data-s>
+      <div class="fr"><span class="lab">都道府県・市</span><select id="v_pref" data-s>
         <option value="tokyo">東京都</option><option value="kanagawa">神奈川県（横浜市・川崎市などをのぞく）</option><option value="yokohama">横浜市</option>
-        <option value="saitama">埼玉県</option><option value="chiba">千葉県</option><option value="other">そのほか・わからない</option></select>
+        <option value="saitama">埼玉県</option><option value="chiba">千葉県</option><option value="other">そのほかの道府県・わからない</option></select>
         <span class="hint">旗竿地の条例と、日影規制の例を選ぶのに使います。川崎市・相模原市・横須賀市などは独自の条例があるので「そのほか」にして役所で確認してください</span></div>
       <div class="fr"><span class="lab">用途地域</span><select id="v_zone" data-s></select></div>
       <div class="fr"><span class="lab">建ぺい率（指定）</span><select id="v_bcr" data-s></select><span class="hint">敷地のうち、建物を建ててよい割合</span></div>
@@ -186,7 +186,7 @@ table.gakes td input[type=number] { width: 4.5em; }
         <span class="hint">勾配が途中で変わらないときは、距離に 0 を入れてください</span></div>
       <div class="fr"><span class="lab">高度地区の最高の高さ</span><span class="unit-input"><input type="number" id="v_kodoMax" data-s min="0" step="1" value="0" aria-label="高度地区の最高の高さ"><span>m</span></span><span class="hint" id="v_kodoMaxHint">17m・22mなど。無ければ 0（横浜市・川崎市の型を選ぶと、その型の高さを使います）</span></div>
       <div class="fr"><span class="lab">そのほかの高さの上限</span><span class="unit-input"><input type="number" id="v_hMax" data-s min="0" step="0.5" value="0" aria-label="そのほかの高さの上限"><span>m</span></span><span class="hint">地区計画・建築協定・景観の条例などで高さが決まっているとき。無ければ 0</span></div>
-      <div class="fr"><span class="lab">日影規制</span><select id="v_shMode" data-s><option value="auto">都県の条例の例から自動で選ぶ</option><option value="none">かからない（として計算）</option><option value="manual">自分で選ぶ</option></select><span class="automark" id="v_shAuto" hidden>自動で入れた・要確認</span><span class="hint" id="v_shHint"></span></div>
+      <div class="fr"><span class="lab">日影規制</span><select id="v_shMode" data-s><option value="auto">都道府県の条例の例から自動で選ぶ</option><option value="none">かからない（として計算）</option><option value="manual">自分で選ぶ</option></select><span class="automark" id="v_shAuto" hidden>自動で入れた・要確認</span><span class="hint" id="v_shHint"></span></div>
       <div class="fr" id="v_shManWrap" hidden><span class="lab">日影の時間と測る高さ</span>
         <div class="pair"><select id="v_shGo" data-s aria-label="規制の時間（号）"></select><select id="v_shHm" data-s aria-label="測る高さ"><option value="1.5">測る高さ 1.5m</option><option value="4">測る高さ 4m</option><option value="6.5">測る高さ 6.5m</option></select></div>
         <span class="hint">「5m〜10mの所」と「10mより先」で、冬至の日に影になってよい時間（別表第四）。低層住居は測る高さ1.5m、それ以外は4mか6.5m</span></div>
@@ -685,7 +685,7 @@ table.gakes td input[type=number] { width: 4.5em; }
     }
     shInfo.sh = sh;
     var gReg = $('v_gReg').value;
-    if (gReg === 'auto') gReg = {tokyo:'tokyo', kanagawa:'kanagawa', yokohama:'yokohama', saitama:'saitama', chiba:'chiba'}[pref] || 'tokyo';
+    if (gReg === 'auto') gReg = {tokyo:'tokyo', kanagawa:'kanagawa', yokohama:'yokohama', saitama:'saitama', chiba:'chiba'}[pref] || 'unknown';
     var gk = {region:gReg, dosha:$('v_gDosha').value, sides:{}, cost:{oldType:$('v_gOld').value, newType:$('v_gNew').value, access:$('v_gAcc').value, neighbor:$('v_gNb').checked, road:$('v_gRoad').checked}};
     SIDES.forEach(function(k){ gk.sides[k] = {pos:$('v_gp' + k).value, H:Math.max(0, num('v_gh' + k, 0)), angle:Math.min(90, Math.max(1, num('v_ga' + k, 90))), wall:$('v_gw' + k).value, measure:$('v_gm' + k).value}; });
     return {
@@ -730,7 +730,7 @@ table.gakes td input[type=number] { width: 4.5em; }
     });
     $('v_gCostWrap').hidden = !needCost;
     var rgN = window.Gake ? window.Gake.region(p.gake.region) : null;
-    $('v_gRegHint').textContent = rgN ? '使う条文：' + window.Gake.ruleOf(rgN.id).short + (($('v_gReg').value === 'auto' && p.pref === 'other') ? '（都県が「そのほか」なので東京都の例）' : '') : '';
+    $('v_gRegHint').textContent = rgN ? '使う条文：' + window.Gake.ruleOf(rgN.id).short + (($('v_gReg').value === 'auto' && p.pref === 'other') ? '（都道府県が「そのほか」のときは条例を確かめていない仮の目安）' : '') : '';
     $('v_kcWrap').hidden = p.kodo !== 'custom';
     var kd = K.KODO[p.kodo];
     $('v_kodoMaxHint').textContent = (kd && kd.max) ? 'この型は最高 ' + kd.max + 'm（0のままならその値を使います）' : '17m・22mなど。無ければ 0';

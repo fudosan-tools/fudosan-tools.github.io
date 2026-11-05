@@ -171,7 +171,7 @@ function fireCaps(p){
 // ---------- 旗竿地（路地状敷地）の条例。都県ごと（政令市などの独自条例は「役所で確認」） ----------
 var PREFS = {
   tokyo:{name:'東京都'}, kanagawa:{name:'神奈川県（県の条例の市町村）'}, yokohama:{name:'横浜市'},
-  saitama:{name:'埼玉県'}, chiba:{name:'千葉県'}, other:{name:'そのほか・わからない'}
+  saitama:{name:'埼玉県'}, chiba:{name:'千葉県'}, other:{name:'そのほかの道府県・わからない'}
 };
 // L：路地状部分の長さ m、w：幅 m、area：延べ面積、floors、fire：耐火の度合い、use、units：住戸の数（わからなければ null）
 function flagRule(pref, L, w, area, floors, fireCls, use, siteArea){
@@ -288,7 +288,7 @@ function nichieiAuto(pref, zoneId, far, kodoKey){
     else if (res3) go = far<=200 ? ((k==='C1'||k==='C2') ? 1 : 2) : 2;
     else if (zoneId==='kin' || zoneId==='jko') go = far<=200 ? (k==='C1' ? 1 : k==='C2' ? 2 : null) : null;
   } else {
-    return {unknown:true, src:'都県が「そのほか」なので条例の例はありません。役所で確認してください'};
+    return {unknown:true, src:'この都道府県の条例の例はまだ入っていません。役所で確認してください'};
   }
   if (!go) return {unknown:true, src: src + '：この用途地域・容積率の例が表にありません。役所で確認してください'};
   var t = nichieiTimes(z.sh, go);
@@ -1179,7 +1179,7 @@ var PARAM_DEFS = [
   {k:'kado',    label:'角地緩和',       to:'corner',  f:normBool},
   {k:'nichiei', label:'日影規制の区域', to:'nichiei', f:normBool},
   {k:'zettai',  label:'絶対高さ',       to:'absH',    f:numParam, only:[10,12]},
-  {k:'ken',     alias:['pref'], label:'都県', to:'pref', f:normPref},
+  {k:'ken',     alias:['pref'], label:'都道府県', to:'pref', f:normPref},
   {k:'kozo',    alias:['struct'], label:'建物のつくり', to:'struct', f:normStruct},
   {k:'road_s',  label:'南の道路の幅',   to:'rS',      f:numParam, min:0, max:100},
   {k:'road_e',  label:'東の道路の幅',   to:'rE',      f:numParam, min:0, max:100},

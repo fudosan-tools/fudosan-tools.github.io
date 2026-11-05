@@ -120,7 +120,7 @@ details.ktbox .kt { min-width: 0; }
     <div class="fr"><span class="lab">路線価図を開く</span>
       <div class="iline"><select id="reiwa"><option value="8">令和8年分（2026年）</option><option value="7">令和7年分（2025年）</option><option value="6">令和6年分（2024年）</option></select>
         <a id="rosenkaLink" href="https://www.rosenka.nta.go.jp/" target="_blank" rel="noopener">国税庁 路線価図・評価倍率表</a></div>
-      <span class="hint">都県は住所から選びます。開いた先で市区町村 → 町名 → 路線価図の順にたどってください。路線価が無い地域（倍率地域）なら「1' 倍率地域」を使います。毎年7月1日ごろに新しい年の分が出ます。</span></div>
+      <span class="hint">都道府県は住所から選びます。開いた先で市区町村 → 町名 → 路線価図の順にたどってください。路線価が無い地域（倍率地域）なら「1' 倍率地域」を使います。毎年7月1日ごろに新しい年の分が出ます。</span></div>
   </div>
 
   <div class="formrows" id="m_bairitsu" hidden>
@@ -145,7 +145,7 @@ details.ktbox .kt { min-width: 0; }
     <div class="fr"><label class="lab" for="kojiUnit">公示価格・地価調査価格</label>
       <div class="iline"><input type="number" id="kojiUnit" min="0" step="100" inputmode="decimal"><span class="u">円/㎡</span></div>
       <div class="conv" id="kojiConv"></div>
-      <span class="hint">国が1月1日（公示）、都県が7月1日（地価調査）の値段を調べている地点の、1㎡あたりの値段です。相続税路線価は公示価格の約8割なので、× 0.8 で直します。</span></div>
+      <span class="hint">国が1月1日（公示）、都道府県が7月1日（地価調査）の値段を調べている地点の、1㎡あたりの値段です。相続税路線価は公示価格の約8割なので、× 0.8 で直します。</span></div>
     <div class="fr"><label class="lab" for="chiikiPct">地点との差</label>
       <div class="iline"><input type="number" id="chiikiPct" min="1" step="1" inputmode="decimal" class="w5"><span class="u">%（地点を100として、物件のある場所）</span></div>
       <span class="hint">駅からの距離・道路の広さ・まわりの様子が地点とちがうときに直します。分からなければ100のまま。</span></div>
@@ -202,7 +202,8 @@ details.ktbox .kt { min-width: 0; }
     <div class="fr"><span class="lab">大きな土地</span>
       <div class="iline"><label class="check"><input type="checkbox" id="kibo"><span>規模格差補正率を使う（地積規模の大きな宅地）</span></label>
         <select id="sandai"><option value="1">三大都市圏（500㎡以上）</option><option value="0">それ以外（1000㎡以上）</option></select><span class="sub" id="kiboOut"></span></div>
-      <span class="hint">普通住宅地区・普通商業地区で、三大都市圏なら500㎡以上。市街化調整区域・工業専用地域・容積率400%以上（東京23区は300%以上）の土地は使えません。1都3県でも三大都市圏に入らない市町村があります。</span></div>
+      <span class="hint" id="sandaiHint"></span>
+      <span class="hint">普通住宅地区・普通商業地区で、三大都市圏なら500㎡以上。市街化調整区域・工業専用地域・容積率400%以上（東京23区は300%以上）の土地は使えません。都府県によっては、三大都市圏に入らない市町村があります。</span></div>
     <div class="fr"><span class="lab">無道路地</span>
       <div class="iline"><label class="check"><input type="checkbox" id="mudouro"><span>道路に接していない・接道が2m未満</span></label></div>
       <div class="iline" id="tsuroRow" hidden><span class="u">道路まで通路をつくる面積</span><span class="m2pair iline"><input type="number" id="tsuroM2" min="0" step="0.01" inputmode="decimal" aria-label="通路の面積（㎡）"><span class="u">㎡</span><input type="number" id="tsuroT" min="0" step="0.01" inputmode="decimal" aria-label="通路の面積（坪）"><span class="u">坪</span></span></div>
@@ -213,7 +214,7 @@ details.ktbox .kt { min-width: 0; }
       <span class="hint">10%未満なら補正なし。向きは、がけの斜面が向いている方角。</span></div>
     <div class="fr"><span class="lab">土砂災害特別警戒区域</span>
       <div class="iline"><span class="u">土地のうち</span><input type="number" id="tokkeiPct" min="0" max="100" step="1" inputmode="decimal" class="w5"><span class="u">% が区域の中</span></div>
-      <span class="hint">いわゆるレッドゾーン。10%以上から補正（0.90〜0.70）。都県の土砂災害警戒区域の地図で確かめます。</span></div>
+      <span class="hint">いわゆるレッドゾーン。10%以上から補正（0.90〜0.70）。都道府県の土砂災害警戒区域の地図で確かめます。</span></div>
     <div class="fr"><span class="lab">セットバック</span>
       <div class="iline"><span class="u">道路にする部分</span><span class="m2pair iline"><input type="number" id="setbackM2" min="0" step="0.01" inputmode="decimal" aria-label="セットバックの面積（㎡）"><span class="u">㎡</span><input type="number" id="setbackT" min="0" step="0.01" inputmode="decimal" aria-label="セットバックの面積（坪）"><span class="u">坪</span></span></div>
       <span class="hint">前の道路が4m未満で、建てかえのときに下がる部分（面積にふくまれているとき）。その部分は7割引きます。</span></div>
@@ -476,6 +477,7 @@ details.ktbox .kt { min-width: 0; }
     if (k === "youto") ST.youtoAuto = false;
     if (k === "district") ST.districtAuto = false;
     if (k === "addr") { ST.pref = S.prefOf(ST.addr) || ST.pref; ST.hitTitle = ""; $("rosenkaMaps").hidden = true; }
+    if (k === "sandai") ST.sandaiHand = true;   // 手で選んだら、住所から自動で変えない
     update(k); }); });
   CHK.forEach(function (k) { $(k).addEventListener("change", function () { ST[k] = this.checked; update(k); }); });
   $("kibo").addEventListener("change", function () { ST.kibo = this.checked; update("kibo"); });
@@ -490,7 +492,7 @@ details.ktbox .kt { min-width: 0; }
     if (ST.gk.reg && ST.gk.reg !== "auto") return ST.gk.reg;
     var pref = ST.pref || (S.prefOf ? S.prefOf(ST.addr || "") : "") || "";
     var rg = GK ? GK.regionFor(pref, ST.addr || "") : null;
-    return rg ? rg.id : "tokyo";
+    return rg ? rg.id : "unknown";
   }
   function gkBuild() {
     if (!GK) { $("gkBox").hidden = true; return; }
@@ -566,7 +568,19 @@ details.ktbox .kt { min-width: 0; }
     if (ST.unitSrc === "nta") return S.ntaUnit(ST.unitPref, ST.struct);
     return (ST.unitMan || 0) * 1e4;
   }
+  // 三大都市圏かどうかを住所から決める（国税庁の表）。「一部」の市町村と、手で選んだときはそのまま
+  function sandaiFromAddr() {
+    var who = ST.hitTitle && !S.prefOf(ST.addr) ? ST.hitTitle : ST.addr;
+    var r = S.sandaiOf(who), hint = "";
+    if (r.kind === "all") hint = r.city + "は全域が三大都市圏です（500㎡以上）。";
+    else if (r.kind === "part") hint = r.city + "は一部だけが三大都市圏です。物件が区域の中か、市町村か府県の窓口で確かめてください。";
+    else if (r.kind === "none") hint = (r.pref || "") + "のこの場所は、国税庁の表では三大都市圏に入りません（1000㎡以上）。";
+    if (!ST.sandaiHand && (r.kind === "all" || r.kind === "none")) ST.sandai = r.kind === "all" ? "1" : "0";
+    var box = $("sandaiHint"); if (box) box.textContent = hint + (ST.sandaiHand ? "（手で選んだ値を使っています）" : "");
+    if ($("sandai") && $("sandai").value !== ST.sandai) $("sandai").value = ST.sandai;
+  }
   function update(changed) {
+    sandaiFromAddr();
     var m = ST.method, nb = m !== "bairitsu";
     // 見せる・隠す
     document.querySelectorAll("#methodSeg button").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-m") === m); });
@@ -584,7 +598,7 @@ details.ktbox .kt { min-width: 0; }
     document.querySelectorAll(".js-unit").forEach(function (e) { e.textContent = m === "rosenka" ? "千円/㎡" : "円/㎡"; });
     document.querySelectorAll(".js-unitname").forEach(function (e) { e.textContent = m === "rosenka" ? "路線価" : m === "kotei" ? "固定資産税路線価" : "値段"; });
     if (ST.unitSrc !== "self") ST.unitMan = Math.round(bldUnit() / 1e3) / 10;
-    // 路線価図のリンク（年・都県）
+    // 路線価図のリンク（年・都道府県）
     var pref = ST.pref || S.prefOf(ST.addr);
     $("rosenkaLink").href = S.rosenkaUrl(+ST.reiwa, pref);
     $("rosenkaLink").textContent = "国税庁 路線価図（令和" + ST.reiwa + "年分" + (pref ? "・" + pref : "") + "）";
@@ -739,7 +753,7 @@ details.ktbox .kt { min-width: 0; }
   $("ktBox").addEventListener("toggle", function () { if (this.open) ktMount(); });
 
   // ---------------------------------------------------------------- 住所 → 位置（国土地理院）と、近くの公示地・基準地
-  var PREF_RE = /^(東京都|神奈川県|千葉県|埼玉県)/;
+  var PREF_RE = S.PREF_RE;
   function geoMsg(t, err) { $("geoMsg").textContent = t; $("geoMsg").className = err ? "err" : ""; }
   $("geoBtn").addEventListener("click", function () {
     var q = (ST.addr || "").trim();
@@ -749,11 +763,10 @@ details.ktbox .kt { min-width: 0; }
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(function (list) {
         var all = (list || []).filter(function (h) { return h && h.properties && PREF_RE.test(h.properties.title); });
-        if (!PREF_RE.test(q)) all.sort(function (a, b) { return (/^東京都/.test(b.properties.title) ? 1 : 0) - (/^東京都/.test(a.properties.title) ? 1 : 0); });
-        if (!all.length) { geoMsg("1都3県（東京都・神奈川県・埼玉県・千葉県）の中では見つかりませんでした。市区町村の名前から入れてみてください。", true); return; }
+        if (!all.length) { geoMsg("住所が見つかりませんでした。都道府県と市区町村の名前から入れてみてください。", true); return; }
         var hit = all[0], c = hit.geometry.coordinates;
         ST.lat = c[1]; ST.lon = c[0]; ST.pref = PREF_RE.exec(hit.properties.title)[1];
-        geoMsg("見つかりました：" + hit.properties.title + (all.length > 1 ? "（ほかに " + (all.length - 1) + " 件の候補。ちがうときは都県・市区町村の名前からくわしく入れてください）" : ""));
+        geoMsg("見つかりました：" + hit.properties.title + (all.length > 1 ? "（ほかに " + (all.length - 1) + " 件の候補。ちがうときは都道府県・市区町村の名前からくわしく入れてください）" : ""));
         ST.hitTitle = hit.properties.title;
         showRosenkaMaps(/丁目|番/.test(ST.addr) && PREF_RE.test(ST.addr) ? ST.addr : hit.properties.title);
         update("near"); loadNear();
@@ -787,8 +800,15 @@ details.ktbox .kt { min-width: 0; }
       var go = $("goRosenka");
       if (go) go.addEventListener("click", function () { ST.method = "rosenka"; update("method"); $("rosenkaK").focus(); });
     }
-    if (window.ROSENKA_INDEX) { draw(); return; }
-    var sc = document.createElement("script"); sc.src = "data/rosenka_index.js"; sc.onload = draw; document.head.appendChild(sc);
+    // 目次（全国）→ その県のファイルの順に読む。全国を1枚にすると重いので、必要な県だけ読む
+    function loadPref() {
+      var idx = window.ROSENKA_INDEX, a = String(addr || "").normalize("NFKC").replace(/\s/g, ""), pref = Object.keys(idx.prefs).find(function (p) { return a.indexOf(p) === 0; });
+      var P = pref && idx.prefs[pref];
+      if (!P || (window.ROSENKA_PREFS && window.ROSENKA_PREFS[pref])) { draw(); return; }
+      var one = document.createElement("script"); one.src = "data/rosenka/p_" + P.no + ".js"; one.onload = one.onerror = draw; document.head.appendChild(one);
+    }
+    if (window.ROSENKA_INDEX) { loadPref(); return; }
+    var sc = document.createElement("script"); sc.src = "data/rosenka/index.js"; sc.onload = loadPref; document.head.appendChild(sc);
   }
   var loaded = {}, nearRows = [];
   function loadTiles(keys, done) {

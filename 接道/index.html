@@ -322,7 +322,10 @@
     msg.innerHTML = "";
     KJ = null;   // 前に出した役所の基準を残さない（kijunHtml で入れなおす）
     if (!res.ok) {
-      if (res.find && res.find.outside) o.innerHTML = '<p class="note caution">' + esc(res.find.outside) + "は、まだ対象にしていません（いまの対象：" + esc(S.prefs().join("・")) + "）。</p>";
+      if (res.find && res.find.outside) o.innerHTML = '<p class="note caution">' + esc(res.find.outside) + "の役所ごとの基準は、まだ入っていません（順番に足しています。いま入っている所：" + esc(S.prefs().join("・")) + "）。</p>" +
+        '<p>法律はどこでも同じです。道路に2m以上接していない土地は、原則として建てられません（建築基準法43条）。建てられるかは、役所の許可の基準（43条2項2号）や認定の基準（43条2項1号）で決まります。</p>' +
+        '<p><b>調べ方：</b>' + esc(res.find.outside) + 'の市区町村の「建築指導」の窓口で「43条2項の許可基準」と、道路の種別を調べる地図（指定道路図）を聞いてください。市街化調整区域なら「開発許可」の窓口で、50戸連たんの区域があるかも聞けます。</p>' +
+        '<p><a href="https://laws.e-gov.go.jp/law/325AC0000000201" target="_blank" rel="noopener">建築基準法（e-Gov法令検索）</a></p>';
       else o.innerHTML = '<p class="note caution">市区町村が見つかりませんでした。一覧から選ぶか、名前を確かめてください（いまの対象：' + esc(S.prefs().join("・")) + "）。</p>";
       return;
     }

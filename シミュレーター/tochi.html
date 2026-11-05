@@ -134,7 +134,7 @@ tr.ng td { color: var(--muted); }
     <div class="fr chk"><label class="check"><input type="checkbox" id="d_big" data-s><span>建てる家が「耐火・準耐火でなく、延べ面積200㎡超」（東京都・埼玉県では竿の幅が1m広くなる）</span></label></div>
     <div class="fr"><label class="lab" for="d_minW">1区画の最小の幅</label><span class="unit-input"><input type="number" id="d_minW" data-s min="2" step="0.5" value="5"><span>m</span></span><span class="hint">家を建てるのに要る幅・奥行の目安（法律ではなく、この道具の目安）</span></div>
     <div class="fr"><label class="lab" for="d_roadW">新しくつくる道路の幅</label><select id="d_roadW" data-s><option value="4">4m（位置指定道路のふつう）</option><option value="5">5m</option><option value="6">6m（開発許可のふつう）</option></select><span class="hint">建築基準法 第42条1項5号・施行令 第144条の4</span></div>
-    <div class="fr"><label class="lab" for="d_dev">開発許可が要る広さ</label><select id="d_dev" data-s><option value="500">500㎡（1都3県の市街化区域のふつう）</option><option value="300">300㎡（我孫子市・流山市）</option><option value="1000">1,000㎡（大網白里市・原則）</option><option value="3000">3,000㎡（東京の島しょなど）</option></select><span class="hint">都市計画法 第29条・施行令 第19条。市区町村を選ぶと自動で入ります</span></div>
+    <div class="fr"><label class="lab" for="d_dev">開発許可が要る広さ</label><select id="d_dev" data-s><option value="500">500㎡（三大都市圏の市街化区域のふつう）</option><option value="300">300㎡（我孫子市・流山市）</option><option value="1000">1,000㎡（三大都市圏の外の市街化区域の原則）</option><option value="3000">3,000㎡（東京の島しょなど）</option></select><span class="hint">都市計画法 第29条・施行令 第19条。市区町村を選ぶと自動で入ります</span></div>
   </div>
 </section>
 <section>
@@ -258,7 +258,7 @@ tr.ng td { color: var(--muted); }
     <tr><td>要る</td><td class="l">40%以上</td><td class="l">1戸に1台（ファミリーは2台）を求められることが多い。駐車場が無いと決まりにくい</td></tr>
   </table></div>
   <p class="muted">補正：1世帯あたりの乗用車（軽を除く）が0.55台以上なのに「あまり要らない」になる所（通勤の割合10%以上に限る）と、0.7台以上なのに「場所による」になる所は、1段上げます。都心の区は会社の車が多く数えられるので、通勤の割合が10%未満なら上げません。区切りの15%は東京23区でいちばん高い足立区（11.7%）より上、40%は1都3県の真ん中の値（39.2%）です。</p>
-  <details class="more"><summary>同じ都県の市区町村を、割合の高い順に見る</summary>
+  <details class="more"><summary>同じ都道府県の市区町村を、割合の高い順に見る</summary>
     <div class="tablewrap tall"><table id="p_list"></table></div>
   </details>
   <div class="srcs" id="p_srcs"></div>
@@ -311,7 +311,7 @@ tr.ng td { color: var(--muted); }
 </main>
 
 <script src="tochi_rules.js"></script>
-<script src="data/parking_1to3ken.js"></script>
+<script src="data/parking_zenkoku.js"></script>
 <script src="tochi_calc.js"></script>
 <script src="../共通/common.js?v=66fb1f6c"></script>
 <script src="../共通/katachi.js"></script>
@@ -319,7 +319,7 @@ tr.ng td { color: var(--muted); }
 <script>
 (function () {
   "use strict";
-  var T = window.TOCHI, RULES = window.TOCHI_RULES || {}, PK = window.PARKING_1TO3KEN || {rows:[], cities:[]};
+  var T = window.TOCHI, RULES = window.TOCHI_RULES || {}, PK = window.PARKING_ZENKOKU || {rows:[], cities:[]};
   var TSUBO = T.TSUBO, KEY = 'tochi_v1';
   function $(id) { return document.getElementById(id); }
   function fmt(n, d) { if (n == null || !isFinite(n)) return '-'; d = d == null ? 1 : d; return n.toLocaleString('ja-JP', {minimumFractionDigits:d, maximumFractionDigits:d}); }
@@ -335,6 +335,7 @@ tr.ng td { color: var(--muted); }
   function cityName(row) { var c = cityOf(row); return c ? c.name : (row ? row.name : ''); }   // 政令市の区は市の名前
   (function fillCity() {
     var sel = $('c_city'), prefs = ['東京都', '神奈川県', '埼玉県', '千葉県'], html = '';
+    ROWS.forEach(function (r) { if (prefs.indexOf(r.pref) < 0) prefs.push(r.pref); });
     prefs.forEach(function (p) {
       html += '<optgroup label="' + p + '">';
       ROWS.filter(function (r) { return r.pref === p; }).sort(function (a, b) { return a.code < b.code ? -1 : 1; }).forEach(function (r) {
@@ -928,7 +929,7 @@ tr.ng td { color: var(--muted); }
       com:!!T.zoneById(p.zone).com, ku:row.pref === '東京都' && /区$/.test(row.name) && /^131/.test(row.code)};
     var rules = T.parkingRuleMin(cn, row.pref, c), bike = T.bikeRuleMin(cn, c);
     var h = '<p><b>' + esc(row.name) + '</b>：' + (lv ? '駐車場が <b>' + lv.label + '</b> 地域（' + esc(lv.why.join('。')) + '）' : 'データなし') + '</p>';
-    h += '<div class="figures"><div class="figure main"><div class="k">用意する台数の目安（統計から）</div><div class="v">' + need.carsRound + '<small>台</small></div><div class="s">' + res.units + '戸 × 1世帯 ' + fmt(need.per, 2) + '台' + (need.basis === 'kei' ? '（軽も入れた数' + (cityRow && row.carsInclKeiPerHH == null ? '・市全体' : '') + '）' : '（軽を除く）') + ' × 部屋の広さの係数</div></div>';
+    h += '<div class="figures"><div class="figure main"><div class="k">用意する台数の目安（統計から）</div><div class="v">' + need.carsRound + '<small>台</small></div><div class="s">' + res.units + '戸 × 1世帯 ' + fmt(need.per, 2) + '台' + (need.basis === 'none' ? '（仮置き：この地域は台数の統計がまだ入っていません）' : need.basis === 'kei' ? '（軽も入れた数' + (cityRow && row.carsInclKeiPerHH == null ? '・市全体' : '') + '）' : '（軽を除く）') + ' × 部屋の広さの係数</div></div>';
     var rmax = rules.length ? Math.max.apply(null, rules.map(function (r) { return r.cars; })) : null;
     h += '<div class="figure"><div class="k">条例・要綱で決まった最低（例）</div><div class="v">' + (rmax != null ? rmax + '<small>台</small>' : '—') + '</div><div class="s">' + (rules.length ? '下の表' : 'この規模・地域では例なし') + '</div></div>';
     h += '<div class="figure"><div class="k">駐輪場の目安</div><div class="v">' + bike.bikes + '<small>台</small></div><div class="s">' + esc(bike.text) + '</div></div></div>';

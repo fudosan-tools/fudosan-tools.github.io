@@ -550,7 +550,7 @@ function bikeRuleMin(city, c) {
 }
 
 // =====================================================================
-// 駐車場が要る地域か（data/parking_1to3ken.js の数字から3段階）
+// 駐車場が要る地域か（data/parking_zenkoku.js の数字から3段階）
 // 主な物差し：通勤・通学で自家用車を使う人の割合（令和2年国勢調査）。15%未満／15〜40%／40%以上
 // 補正：1世帯あたりの乗用車（軽を除く）が多いのに通勤の割合が低い所は、1段上げる（会社の車が多い都心は上げない）
 // =====================================================================
@@ -571,6 +571,7 @@ function parkingNeed(row, cityRow, counts) {
   var per = row.carsInclKeiPerHH != null ? row.carsInclKeiPerHH : (cityRow && cityRow.carsInclKeiPerHH != null ? cityRow.carsInclKeiPerHH : null);
   var basis = 'kei';
   if (per == null) { per = row.carsPerHH; basis = 'reg'; }
+  if (per == null) { per = 1; basis = 'none'; }   // 台数の統計がまだ無い地域：1世帯1台で仮置き（画面で「仮」と知らせる）
   var cars = 0;
   Object.keys(counts).forEach(function (t) { cars += counts[t] * per * (PARK_K[t] || 1); });
   return {per:per, basis:basis, cars:cars, carsRound:Math.round(cars)};

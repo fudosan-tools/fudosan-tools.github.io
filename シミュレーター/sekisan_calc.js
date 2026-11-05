@@ -280,12 +280,48 @@
   function man(v, d = 1) { if (v == null || isNaN(v)) return "—"; return (Math.round(v / 1e4 * 10 ** d) / 10 ** d).toLocaleString("ja-JP", { minimumFractionDigits: d, maximumFractionDigits: d }) + "万円"; }
   function fmtM2(m2) { if (!(m2 >= 0)) return "—"; return (Math.round(m2 * 100) / 100) + "㎡（" + (m2 / TSUBO).toFixed(2) + "坪）"; }
   // 路線価図の場所（年・都県）
-  const ROSENKA_PREF = { "東京都": "tokyo/tokyo", "神奈川県": "tokyo/kanagawa", "千葉県": "tokyo/chiba", "埼玉県": "kanto/saitama" };
+  const ROSENKA_PREF = { "北海道": "sapporo/hokkaido", "青森県": "sendai/aomori", "岩手県": "sendai/iwate", "宮城県": "sendai/miyagi", "秋田県": "sendai/akita", "山形県": "sendai/yamagata", "福島県": "sendai/fukusima",
+    "茨城県": "kanto/ibaraki", "栃木県": "kanto/tochigi", "群馬県": "kanto/gunma", "埼玉県": "kanto/saitama", "千葉県": "tokyo/chiba", "東京都": "tokyo/tokyo", "神奈川県": "tokyo/kanagawa", "新潟県": "kanto/niigata",
+    "富山県": "kanazawa/toyama", "石川県": "kanazawa/isikawa", "福井県": "kanazawa/fukui", "山梨県": "tokyo/yamanasi", "長野県": "kanto/nagano", "岐阜県": "nagoya/gifu", "静岡県": "nagoya/sizuoka", "愛知県": "nagoya/aichi", "三重県": "nagoya/mie",
+    "滋賀県": "osaka/shiga", "京都府": "osaka/kyoto", "大阪府": "osaka/osaka", "兵庫県": "osaka/hyogo", "奈良県": "osaka/nara", "和歌山県": "osaka/wakayama", "鳥取県": "hirosima/tottori", "島根県": "hirosima/simane", "岡山県": "hirosima/okayama", "広島県": "hirosima/hirosima", "山口県": "hirosima/yamaguti",
+    "徳島県": "takamatu/tokusima", "香川県": "takamatu/kagawa", "愛媛県": "takamatu/ehime", "高知県": "takamatu/koti", "福岡県": "fukuoka/fukuoka", "佐賀県": "fukuoka/saga", "長崎県": "fukuoka/nagasaki", "熊本県": "kumamoto/kumamoto", "大分県": "kumamoto/oita", "宮崎県": "kumamoto/miyazaki", "鹿児島県": "kumamoto/kagosima", "沖縄県": "okinawa/okinawa" };
+  const PREF_RE = /^(北海道|青森県|岩手県|宮城県|秋田県|山形県|福島県|茨城県|栃木県|群馬県|埼玉県|千葉県|東京都|神奈川県|新潟県|富山県|石川県|福井県|山梨県|長野県|岐阜県|静岡県|愛知県|三重県|滋賀県|京都府|大阪府|兵庫県|奈良県|和歌山県|鳥取県|島根県|岡山県|広島県|山口県|徳島県|香川県|愛媛県|高知県|福岡県|佐賀県|長崎県|熊本県|大分県|宮崎県|鹿児島県|沖縄県)/;
+  // 三大都市圏（規模格差補正率の500㎡か1000㎡か、開発許可の500㎡の目安に使う）。
+  // 国税庁「地積規模の大きな宅地の評価」チェックシート2面の表（平成28年4月1日現在） https://www.nta.go.jp/publication/pamph/sozoku/pdf/chiseki_check.pdf
+  // all＝全域、part＝一部（物件が区域の中かは市町村か府県の窓口で確かめる）。ここに無い都道府県・市町村は三大都市圏ではない。
+  const list = s => s.split("、");
+  const SANDAI = {
+    "東京都": { all: list("特別区、武蔵野市、八王子市、立川市、三鷹市、青梅市、府中市、昭島市、調布市、町田市、小金井市、小平市、日野市、東村山市、国分寺市、国立市、福生市、狛江市、東大和市、清瀬市、東久留米市、武蔵村山市、多摩市、稲城市、羽村市、あきる野市、西東京市、瑞穂町、日の出町"), part: [] },
+    "埼玉県": { all: list("さいたま市、川越市、川口市、行田市、所沢市、加須市、東松山市、春日部市、狭山市、羽生市、鴻巣市、上尾市、草加市、越谷市、蕨市、戸田市、入間市、朝霞市、志木市、和光市、新座市、桶川市、久喜市、北本市、八潮市、富士見市、三郷市、蓮田市、坂戸市、幸手市、鶴ケ島市、日高市、吉川市、ふじみ野市、白岡市、伊奈町、三芳町、毛呂山町、越生町、滑川町、嵐山町、川島町、吉見町、鳩山町、宮代町、杉戸町、松伏町"), part: list("熊谷市、飯能市") },
+    "千葉県": { all: list("千葉市、市川市、船橋市、松戸市、野田市、佐倉市、習志野市、柏市、流山市、八千代市、我孫子市、鎌ケ谷市、浦安市、四街道市、印西市、白井市、富里市、酒々井町、栄町"), part: list("木更津市、成田市、市原市、君津市、富津市、袖ケ浦市") },
+    "神奈川県": { all: list("横浜市、川崎市、横須賀市、平塚市、鎌倉市、藤沢市、小田原市、茅ケ崎市、逗子市、三浦市、秦野市、厚木市、大和市、伊勢原市、海老名市、座間市、南足柄市、綾瀬市、葉山町、寒川町、大磯町、二宮町、中井町、大井町、松田町、開成町、愛川町"), part: list("相模原市") },
+    "茨城県": { all: list("龍ケ崎市、取手市、牛久市、守谷市、坂東市、つくばみらい市、五霞町、境町、利根町"), part: list("常総市") },
+    "京都府": { all: list("亀岡市、向日市、八幡市、京田辺市、木津川市、久御山町、井手町、精華町"), part: list("京都市、宇治市、城陽市、長岡京市、南丹市、大山崎町") },
+    "大阪府": { all: list("大阪市、堺市、豊中市、吹田市、泉大津市、守口市、富田林市、寝屋川市、松原市、門真市、摂津市、高石市、藤井寺市、大阪狭山市、忠岡町、田尻町"), part: list("岸和田市、池田市、高槻市、貝塚市、枚方市、茨木市、八尾市、泉佐野市、河内長野市、大東市、和泉市、箕面市、柏原市、羽曳野市、東大阪市、泉南市、四条畷市、交野市、阪南市、島本町、豊能町、能勢町、熊取町、岬町、太子町、河南町、千早赤阪村") },
+    "兵庫県": { all: list("尼崎市、伊丹市"), part: list("神戸市、西宮市、芦屋市、宝塚市、川西市、三田市、猪名川町") },
+    "奈良県": { all: list("大和高田市、安堵町、川西町、三宅町、田原本町、上牧町、王寺町、広陵町、河合町、大淀町"), part: list("奈良市、大和郡山市、天理市、橿原市、桜井市、五條市、御所市、生駒市、香芝市、葛城市、宇陀市、平群町、三郷町、斑鳩町、高取町、明日香村、吉野町、下市町") },
+    "愛知県": { all: list("名古屋市、一宮市、瀬戸市、半田市、春日井市、津島市、碧南市、刈谷市、安城市、西尾市、犬山市、常滑市、江南市、小牧市、稲沢市、東海市、大府市、知多市、知立市、尾張旭市、高浜市、岩倉市、豊明市、日進市、愛西市、清須市、北名古屋市、弥富市、みよし市、あま市、長久手市、東郷町、豊山町、大口町、扶桑町、大治町、蟹江町、阿久比町、東浦町、南知多町、美浜町、武豊町、幸田町、飛島村"), part: list("岡崎市、豊田市") },
+    "三重県": { all: list("四日市市、桑名市、木曽岬町、東員町、朝日町、川越町"), part: list("いなべ市") }
+  };
+  // 住所 → { pref, city, kind }。kind は all／part／none／""（都道府県か市町村が読めない）
+  function sandaiOf(addr) {
+    const a = String(addr || "").normalize("NFKC").replace(/\s/g, "").replace(/ヶ/g, "ケ");
+    const pm = PREF_RE.exec(a);
+    if (!pm) return { pref: "", city: "", kind: "" };
+    const pref = pm[1], rest = a.slice(pref.length), S = SANDAI[pref];
+    if (!S) return { pref, city: "", kind: "none" };
+    if (pref === "東京都" && /^[^市区町村]{1,4}区/.test(rest)) return { pref, city: "特別区", kind: "all" };
+    const norm = c => c.normalize("NFKC").replace(/ヶ/g, "ケ");
+    const has = arr => arr.find(c => rest.startsWith(norm(c)) || new RegExp("^.{1,5}郡" + norm(c)).test(rest));
+    const al = has(S.all); if (al) return { pref, city: al, kind: "all" };
+    const pa = has(S.part); if (pa) return { pref, city: pa, kind: "part" };
+    return /^.+?(市|郡.+?[町村]|[町村])/.test(rest) ? { pref, city: "", kind: "none" } : { pref, city: "", kind: "" };
+  }
   function rosenkaUrl(reiwa, pref) {
     const y = "main_r" + String(reiwa).padStart(2, "0");
     return ROSENKA_PREF[pref] ? `https://www.rosenka.nta.go.jp/${y}/${ROSENKA_PREF[pref]}/pref_frm.htm` : `https://www.rosenka.nta.go.jp/${y}/index.htm`;
   }
-  function prefOf(addr) { const m = /^(東京都|神奈川県|千葉県|埼玉県)/.exec(String(addr || "").trim()); return m ? m[1] : ""; }
+  function prefOf(addr) { const m = PREF_RE.exec(String(addr || "").trim()); return m ? m[1] : ""; }
 
   // 住所 → 国税庁の路線価図のページ番号。idx は data/rosenka_index.js の window.ROSENKA_INDEX
   // 戻り値：{ pref, city, code, path, town, nums }（町が索引に無いときは town が null＝倍率地域のことがある）。市区町村も分からなければ null
@@ -300,6 +336,7 @@
     const prefs = Object.keys(idx.prefs), pref = prefs.find(p => a.startsWith(p));
     if (!pref) return null;
     const rest = a.slice(pref.length), P = idx.prefs[pref];
+    if (!P.cities) P.cities = (root.ROSENKA_PREFS && root.ROSENKA_PREFS[pref]) || {};   // 県ごとのファイル（data/rosenka/p_<番号>.js）
     const city = Object.keys(P.cities).filter(c => rest.startsWith(c)).sort((x, y) => y.length - x.length)[0];
     if (!city) return { pref, city: null, code: null, path: P.path, town: null, nums: [] };   // 路線価図の無い市区町村（倍率地域だけ）のことがある
     const c = P.cities[city], tail = normTown(rest.slice(city.length));
@@ -318,7 +355,7 @@
 
   const API = { findRosenkaMaps, rosenkaMapUrl, rosenkaCityUrl, bairitsuCityUrl, HOSEI, TSUBO, LEVEL, toRosenka, trunc2, okuyukiRate, sokuhoRate, nihouRate, maguchiRate, chodaiRate, fuseiTableRate, kageFromSotei,
     kiboRate, kiboMinArea, kiboDistrictOK, gakeRate, tokkeiRate, land, extras, STRUCTS, UNIT_PRESETS, NTA_KOJI_R7, ntaUnit, building, total,
-    distM, tileKey, tileKeysAround, nearest, USE_NAMES, yen, man, fmtM2, rosenkaUrl, prefOf, ROSENKA_PREF, fromKatachi, isFlagLot };
+    distM, tileKey, tileKeysAround, nearest, USE_NAMES, yen, man, fmtM2, rosenkaUrl, prefOf, PREF_RE, sandaiOf, SANDAI, ROSENKA_PREF, fromKatachi, isFlagLot };
   if (typeof module !== "undefined" && module.exports) module.exports = API;
   else root.SEKISAN = API;
 })(typeof window !== "undefined" ? window : this);

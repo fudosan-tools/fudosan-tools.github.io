@@ -74,7 +74,7 @@
 <nav class="toolnav" data-current="survey"></nav>
 <main class="page">
   <header class="page-head">
-    <div class="eyebrow">物件調査シート（β版・1都3県：東京都・神奈川県・埼玉県・千葉県）</div>
+    <div class="eyebrow">物件調査シート（β版・全国）</div>
     <h1>物件調査シート</h1>
     <p class="lead">住所を入れると、その場所の用途地域（どんな建物を建ててよい地域か）、建ぺい率・容積率（土地にどれだけの大きさの建物を建ててよいか）、高さの制限、防火地域などを、東京都と国の公開データから調べて表示します。</p>
   </header>
@@ -88,7 +88,7 @@
       <button type="submit" class="btn primary">調べる</button>
     </form>
     <p class="search-msg" id="searchMsg">データを読みこんでいます。</p>
-    <p class="muted" style="margin:0">地番（登記簿の番号。例「123番4」）ではなく、郵便が届く住所で入れてください。東京都の区以外は、市町村の名前から入れると確実です。地図をクリックしても場所を選べます。</p>
+    <p class="muted" style="margin:0">地番（登記簿の番号。例「123番4」）ではなく、郵便が届く住所で入れてください。都道府県の名前から入れると確実です（同じ町名は全国にあります）。地図をクリックしても場所を選べます。</p>
   </section>
 
   <div class="print-only">
@@ -176,8 +176,8 @@
     <ul>
       <li>この結果は目安です。<strong>正式な内容は、市区町村の窓口（都市計画・建築の担当課）と都市計画図で必ず確かめてください。</strong>敷地が地域の境目にかかる場合、地区計画や条例で別の決まりがある場合など、ここに出ない制限があります。</li>
       <li>東京都：用途地域・高度地区・防火地域・地区計画・風致地区は、東京都都市整備局「都市計画決定情報GISデータ」（<a href="https://catalog.data.metro.tokyo.lg.jp/dataset/t000008d0000000028" target="_blank" rel="noopener">東京都オープンデータカタログサイト</a>、<a href="https://creativecommons.org/licenses/by/4.0/deed.ja" target="_blank" rel="noopener">CC BY 4.0</a>）を加工して作成。時点：用途地域・高度地区・防火地域 2025年3月31日、地区計画 2025年5月2日、風致地区 2013年12月17日。島しょ部は入っていません。</li>
-      <li>神奈川県・埼玉県・千葉県、および1都3県の区域区分（市街化区域・市街化調整区域）・都市計画区域・高度利用地区・特別用途地区：国土交通省「<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A55-2024.html" target="_blank" rel="noopener">国土数値情報（都市計画決定情報）</a>」2024年度版（CC BY 4.0）を加工して作成。市町村から集めたデータで、<strong>時点は市町村ごとにちがいます</strong>（結果の欄に出します）。国は「建築確認や重要事項説明の手続きに使うことは保証しない。範囲はおおよその位置」としています。高度地区は場所だけで、種類・高さは入っていません。横浜市は用途地域だけが公開されています。</li>
-      <li>一部の市町村（川口市・桶川市・川島町・横瀬町・芝山町）は、国のデータに容積率・建ぺい率が入っていないため、国土交通省「<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A29-2019.html" target="_blank" rel="noopener">国土数値情報（用途地域）</a>」2019年度版（CC BY 4.0）の値で補い、「古いデータ」と表示します。秦野市は補えるデータがありません。</li>
+      <li>東京都以外の道府県、および全国の区域区分（市街化区域・市街化調整区域）・都市計画区域・高度利用地区・特別用途地区：国土交通省「<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A55-2024.html" target="_blank" rel="noopener">国土数値情報（都市計画決定情報）</a>」2024年度版（CC BY 4.0）を加工して作成。市町村から集めたデータで、<strong>時点は市町村ごとにちがいます</strong>（結果の欄に出します）。国は「建築確認や重要事項説明の手続きに使うことは保証しない。範囲はおおよその位置」としています。高度地区は場所だけで、種類・高さは入っていません。横浜市は用途地域だけが公開されています。</li>
+      <li>一部の市町村は、国のデータに容積率・建ぺい率が入っていないため、国土交通省「<a href="https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A29-2019.html" target="_blank" rel="noopener">国土数値情報（用途地域）</a>」2019年度版（CC BY 4.0）の値で補い、「古いデータ」と表示します。秦野市は補えるデータがありません。</li>
       <li>住所から位置・地図で選んだ場所の町名：<a href="https://maps.gsi.go.jp/" target="_blank" rel="noopener">国土地理院</a>の住所検索・逆ジオコーダ（地理院地図で使われている仕組み。国土地理院は、主に地理院地図からの利用を想定し、予告なく変わることがあるとしています）。ピンは住所の代表点で、敷地とずれることがあります。</li>
       <li>地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>（淡色地図）。地図の表示に <a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a> を使っています。</li>
       <li>斜線制限などの説明：建築基準法 第52条・第53条・第55条・第56条・第56条の2・別表第3・別表第4（<a href="https://laws.e-gov.go.jp/law/325AC0000000201" target="_blank" rel="noopener">e-Gov法令検索</a>）、東京都の高度地区（各区の都市計画）。天空率による緩和、地区計画の高さの決まり、都県・市の建築の条例などは計算に入れていません。</li>
@@ -199,7 +199,7 @@
   var map, marker, hiYouto = null, hiKoudo = null, aroundLayer = null, renderer;
   var current = null; // いま調べている結果
   var goSeq = 0, aroundSeq = 0;
-  var PREF_RE = /^(東京都|神奈川県|埼玉県|千葉県)/;
+  var PREF_RE = /^(北海道|青森県|岩手県|宮城県|秋田県|山形県|福島県|茨城県|栃木県|群馬県|埼玉県|千葉県|東京都|神奈川県|新潟県|富山県|石川県|福井県|山梨県|長野県|岐阜県|静岡県|愛知県|三重県|滋賀県|京都府|大阪府|兵庫県|奈良県|和歌山県|鳥取県|島根県|岡山県|広島県|山口県|徳島県|香川県|愛媛県|高知県|福岡県|佐賀県|長崎県|熊本県|大分県|宮崎県|鹿児島県|沖縄県)/;
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function msg(t, err) { var m = $("searchMsg"); m.textContent = t; m.classList.toggle("err", !!err); }
@@ -296,21 +296,18 @@
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(function (list) {
         var all = (list || []).filter(function (h) { return h && h.properties && PREF_RE.test(h.properties.title); });
-        // 都県の名前が無い入力は、これまでどおり東京都の候補を先にする
-        if (!hasPref) all.sort(function (a, b) { return (/^東京都/.test(b.properties.title) ? 1 : 0) - (/^東京都/.test(a.properties.title) ? 1 : 0); });
         if (!all.length) {
-          msg((list && list.length ? "1都3県（東京都・神奈川県・埼玉県・千葉県）の中では見つかりませんでした。" : "見つかりませんでした。") +
-            "市区町村の名前から入れてみてください（例：川崎市中原区小杉町3丁目）。" + chibanNote, true);
+          msg("見つかりませんでした。都道府県と市区町村の名前から入れてみてください（例：大阪府豊中市新千里東町1丁目）。" + chibanNote, true);
           return;
         }
         var hit = all[0], c = hit.geometry.coordinates, title = hit.properties.title;
         // 「東京都」だけ、「川崎市中原区」だけ、のように大まかにしか当たらなかったときは場所を決めない
         if (!finerThanMuni(title)) {
-          msg("場所をしぼりこめませんでした（" + title + " までしか分かりません）。市区町村の名前と町名から入れてください（例：世田谷区成城6丁目8番1号）。" + chibanNote, true);
+          msg("場所をしぼりこめませんでした（" + title + " までしか分かりません）。都道府県・市区町村の名前と町名から入れてください（例：東京都世田谷区成城6丁目8番1号）。" + chibanNote, true);
           return;
         }
         var others = all.slice(1, 4).map(function (h) { return h.properties.title; });
-        msg("見つかりました：" + title + (all.length > 1 ? "（ほかに " + (all.length - 1) + " 件の候補" + (others.length ? "：" + others.join("、") + (all.length > 4 ? " など" : "") : "") + "。ちがう場合は、都県・市区町村の名前からくわしく入れてください）" : "") + chibanNote);
+        msg("見つかりました：" + title + (all.length > 1 ? "（ほかに " + (all.length - 1) + " 件の候補" + (others.length ? "：" + others.join("、") + (all.length > 4 ? " など" : "") : "") + "。ちがう場合は、都道府県・市区町村の名前からくわしく入れてください）" : "") + chibanNote);
         try { localStorage.setItem("surveyLastQ", q); } catch (e) {}
         go(c[1], c[0], title, true);
       })
@@ -414,7 +411,7 @@
     if (!r.inData || !r.youto) {
       if (!r.inData) {
         out.push('<div class="note caution">' + (r.loadFailed ? "この場所のデータ（data/tiles/" + esc(r.tileKey) + ".js）を読みこめませんでした。フォルダごと開いているか確かめてください。" :
-          "この場所は、読みこんだデータ（1都3県の本土）の外です（東京都の島しょ部、1都3県の外、海の上など）。下の「ほかの調べもの」から、その市区町村の都市計画図を見てください。") + "</div>");
+          "この場所には、国の都市計画のデータがありません（都市計画区域の外、海の上、データを公表していない市町村など）。下の「ほかの調べもの」から、その市区町村の都市計画図を見てください。") + "</div>");
       } else {
         var why;
         if (r.kuiki && r.kuiki.code === 23) why = "<strong>市街化調整区域</strong>です。市街化をおさえる区域で、原則として家やお店を建てられません（例外は都県・市の許可が要ります）。建てられるかどうかは、市町村の開発許可の窓口で必ず確かめてください。";
@@ -644,11 +641,11 @@
       ["地区計画・建築協定・風致地区", "地区独自の決まり（高さ・色・敷地の分け方など）"],
       ["敷地面積の最低限度", "土地を分けるときの面積の決まり"],
       ["道路の種類（建築基準法の道路か）", "指定道路図・道路台帳。42条2項道路ならセットバック"],
-      ["道路の幅と接道（2m以上接しているか）", "都県・市の条例の路地状敷地の決まりも"],
+      ["道路の幅と接道（2m以上接しているか）", "都道府県・市の条例の路地状敷地の決まりも"],
       ["都市計画道路の予定", "計画線に入ると建て方に制限"],
       ["建築確認・検査済証の履歴", "台帳記載事項証明書、建築計画概要書"],
       ["埋蔵文化財包蔵地か", "市区町村の教育委員会。工事前に届け出が要ることがある"],
-      ["土壌汚染（要措置区域・形質変更時要届出区域）", "都県の環境部局・市区町村の担当課"],
+      ["土壌汚染（要措置区域・形質変更時要届出区域）", "都道府県の環境部局・市区町村の担当課"],
       ["がけ条例", "高さ2mを超えるがけの近く（東京都建築安全条例第6条、各県・市の建築の条例）", "gkJorei"]
     ]],
     ["ライフライン", [
@@ -689,10 +686,10 @@
     if (!a || !b) return;
     var rg = G && r && r.muni ? G.regionFor(r.muni.pref, r.muni.name) : null;
     function lk(t, u) { return '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + "</a>"; }
-    if (!rg) { a.innerHTML = b.innerHTML = '<span class="muted">場所を調べると、その市区町村の決まりの要点が出ます（1都3県）。</span>'; return; }
-    var rule = G.ruleOf(rg.id), md = G.MORIDO_MAP[rg.morido], ds = G.DOSHA_MAP[rg.pref];
+    if (!rg) { a.innerHTML = b.innerHTML = '<span class="muted">場所を調べると、その市区町村の決まりの要点が出ます。</span>'; return; }
+    var rule = G.ruleOf(rg.id), md = G.MORIDO_MAP[rg.morido], ds = G.DOSHA_MAP[rg.pref] || G.DOSHA_MAP.nation;
     a.innerHTML = "<b>" + esc(rg.name) + "：" + esc(rule.short) + "</b><br>がけ：" + esc(rule.def) + "。<br>離す範囲：" + esc(rule.dist) + "。" + esc(rule.need) + "。<br>" +
-      rule.src.map(function (x) { return lk(x.t, x.u); }).join("・") + '<span class="muted">（確認日 ' + G.CHECKED + "）</span>";
+      rule.src.map(function (x) { return lk(x.t, x.u); }).join("・") + '<span class="muted">（確認日 ' + (rule.checked || G.CHECKED) + "）</span>" + (rule.extra && (rule.imported || rule.unverified) ? '<br><span class="muted">' + esc(rule.extra.join("。")) + "</span>" : "");
     b.innerHTML = "検査済証の無い擁壁・空石積み・増し積み・二段擁壁・大谷石・はらみ・ひび・水抜き穴の無いものは、安全と認められず「擁壁が無い」のと同じあつかいになることが多い。" +
       (md ? "<br>盛土規制法の区域：" + esc(md.by) + "（" + esc(md.zone) + "）" + lk("区域の案内", md.u) + (md.map ? "・" + lk("地図", md.map) : "") : "") +
       (ds ? "<br>土砂災害の区域：" + lk(ds.t, ds.u) : "") +
