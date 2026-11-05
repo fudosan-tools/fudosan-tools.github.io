@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="不動産ツール">
 <meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>物件ノート</title>
 <link rel="stylesheet" href="../共通/common.css?v=66fb1f6c">
 <style>
@@ -16,6 +17,14 @@
   .filebtn { position: relative; display: inline-flex; align-items: center; min-height: 38px; }
   .filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
   .status { font-size: 13px; color: var(--ink-2); min-height: 1.6em; margin: 6px 0; }
+  .drive { margin: 10px 0; }
+  .drive [hidden] { display: none; }
+  .drive label { display: block; font-size: 13px; color: var(--ink-2); margin: 10px 0 4px; }
+  .drive textarea, .drive input[type="password"] { width: 100%; font: inherit; font-size: 16px; min-width: 0; }
+  .drive textarea { min-height: 72px; }
+  .drive ol { margin: 6px 0; padding-left: 1.5em; font-size: 13px; }
+  .drive .result { margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; }
+  .drive .result li { padding: 4px 0; overflow-wrap: anywhere; }
   .plist { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
   .plist li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--rule); }
   .plist button.open { text-align: left; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; min-height: 40px; min-width: 0; }
@@ -95,6 +104,32 @@
     </div>
     <p class="small muted">文字が入ったPDFはすぐ読みます。スキャンや写真は端末の中で文字を読むので、1枚あたり数十秒かかることがあります。はじめの1回だけ、読み取りの部品（約10MB）を読みこみます。</p>
     <p class="status" id="fileStatus" aria-live="polite"></p>
+    <details class="drive" id="driveBox"><summary>Googleドライブのリンクから入れる</summary>
+      <label for="driveLinks">公開のリンク（フォルダでもファイルでも。メールの本文をそのまま貼っても、何本でも読みます）</label>
+      <textarea id="driveLinks" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://drive.google.com/drive/folders/..."></textarea>
+      <div id="driveKeyInput">
+        <label for="driveKey">Googleの鍵（APIキー）</label>
+        <input type="password" id="driveKey" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <details><summary class="small">鍵の作り方（はじめの1回だけ・追加の費用なし）</summary>
+          <ol>
+            <li><a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener">Google Drive API のページ</a>を開き、プロジェクトを作って「有効にする」を押します。</li>
+            <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">認証情報のページ</a>で「認証情報を作成」→「APIキー」を選びます。</li>
+            <li>鍵の設定で、アプリケーションの制限を「ウェブサイト」にして <code id="driveSite"></code> を足します。</li>
+            <li>APIの制限を「キーを制限」にして、Google Drive API だけを選んで保存します。</li>
+            <li>できた鍵を、上の欄に貼ります。</li>
+          </ol>
+          <p class="small muted">鍵はご自身で作ったものを使います。ほかの人に教えないでください。</p>
+        </details>
+      </div>
+      <p class="small" id="driveKeySaved" hidden>鍵：この端末に保存ずみ <button type="button" class="btn" id="driveKeyDel">鍵を消す</button></p>
+      <div class="btnrow">
+        <button type="button" class="btn primary" id="driveBtn">リンクから読む</button>
+        <button type="button" class="btn" id="driveStop" hidden>止める</button>
+      </div>
+      <p class="status" id="driveStatus" aria-live="polite"></p>
+      <ul class="result" id="driveResult"></ul>
+      <p class="small muted">読んでいる間は、この画面を開いたままにしてください（ほかのアプリに切りかえると読むのが止まります）。読めるのは「リンクを知っている全員」に公開された資料だけです。資料はGoogleからこの端末へ直接届き、ほかの所を通りません。鍵はこの端末のブラウザにだけ保存します。公開リンクは、リンクを知っている人なら誰でも見られます。所有者の名前など個人の情報が入った資料は、読みこんだら共有を止めることをおすすめします。</p>
+    </details>
     <details><summary>文を貼りつけて入れる</summary>
       <textarea id="src" placeholder="レインズの物件詳細、ポータルの物件ページ、メールの本文などを貼りつけます。"></textarea>
       <div class="btnrow"><button type="button" class="btn" id="pasteBtn">この文を資料として入れる</button></div>
@@ -140,6 +175,7 @@
 <script src="../マイソク/parse.js"></script>
 <script src="touki.js"></script>
 <script src="extract.js"></script>
+<script src="drive.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

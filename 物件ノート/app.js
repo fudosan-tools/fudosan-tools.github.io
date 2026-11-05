@@ -41,11 +41,21 @@
   // 筆の合計を、資料のひとつとして項目に入れる
   function docsWithSum(p) {
     var ps = parcelsOf(p);
-    if (!ps.some(function (x) { return x.kind === "land"; })) return p.docs;
-    var m = T.summary(ps), f = {};
+    if (!ps.length) return p.docs;
+    var m = T.summary(ps), f = {}, each = function (kind, k) { return ps.filter(function (x) { return x.kind === kind && x[k]; }).map(function (x) { return x[k]; }).join("、"); };
     if (m.hon) f.land = m.hon;
+    if (m.floor) f.bldg = m.floor;
     if (m.shi) f.shido = m.shi + "㎡（持分をかけると " + m.shiShare + "㎡）";
-    return [{ id: "sum", name: "筆ごとの合計", type: "touki", fields: f }].concat(p.docs);
+    if (each("land", "chiban")) f.chiban = each("land", "chiban");
+    if (each("bldg", "kaoku")) f.kaoku = each("bldg", "kaoku");
+    var at = ps.find(function (x) { return x.shozai; }); if (at) f.tokiShozai = at.shozai;
+    // 1筆ごとの値は合計に入っているので、資料どうしの「ちがい」にしない
+    var docs = p.docs.map(function (d) {
+      if (!d.fields || !d.fields.parcels) return d;
+      var g = Object.assign({}, d.fields); ["land", "bldg", "chiban", "kaoku", "tokiShozai"].forEach(function (k) { delete g[k]; });
+      return Object.assign({}, d, { fields: g });
+    });
+    return [{ id: "sum", name: "筆ごとの合計", type: "touki", fields: f }].concat(docs);
   }
   function values(p) {
     var m = X.merge(docsWithSum(p)), o = {};
@@ -106,7 +116,7 @@
         (d.blob ? '<button type="button" class="btn" data-view="' + esc(d.id) + '">元の資料</button>' : "") +
         '<button type="button" class="btn" data-rm="' + esc(d.id) + '">外す</button></div>' +
         (d.note ? '<p class="small note caution" style="margin:6px 0 0">' + esc(d.note) + "</p>" : "") +
-        "<details><summary class=\"small\">読み取った文（取り消し線は下線として読んだ部分）</summary><pre>" + esc(d.text || "（文字がありません）").split(T.ST).join("<s>").split(T.EN).join("</s>") + "</pre></details></li>";
+        "<details><summary class=\"small\">読み取った文（取り消し線は下線として読んだ部分）</summary><pre>" + esc(T.applyKeep(d.text || "（文字がありません）", cur.keep)).split(T.ST).join("<s>").split(T.EN).join("</s>") + "</pre></details></li>";
     }).join("");
     renderParcels();
     var m = X.merge(docsWithSum(cur));
@@ -127,26 +137,37 @@
   function label(x) { return x.kind === "bldg" ? "家屋番号 " + (x.kaoku || x.key) : "地番 " + (x.chiban || x.key); }
   function shareText(x) {
     if (x.humanShare) return x.humanShare.den + "分の" + x.humanShare.num;
-    return x.owners && x.owners.length ? T.ownersText(x.owners) : x.manual ? "未入力" : "読み取れていません";
+    return x.owners && x.owners.length ? T.ownersText(x.owners) : x.manual ? "未入力" : x.redacted ? "黒塗りで読めません" : "読み取れていません";
+  }
+  function readNote(x, what) {
+    var unread = what === "床面積" ? x.floorUnread : x.areaUnread, guess = what === "床面積" ? x.floorGuess : x.areaGuess, s = "";
+    if (unread) s += "。" + what + "を読み取れませんでした。資料を見て確かめてください";
+    if (guess) s += "。" + what + "は読みまちがいやすい数字を直した値です。資料と見くらべてください";
+    if (x.readAlt) s += "。読み方によって " + x.readAlt.join("、") + " とも読めました";
+    return s;
   }
   // 確認の質問。v は今の値で、値が変わったら答えをやり直す
   function buildChecks(p) {
     fillIn(p);
     var out = [], ps = parcelsOf(p);
     ps.forEach(function (x) {
-      if (x.kind === "bldg") out.push({ id: "bld:" + x.key, kind: "bld", key: x.key, v: x.key, q: label(x) + " の建物は、この物件のものであっていますか？", why: [x.structure, x.floorArea && x.floorArea + "㎡"].filter(Boolean).join("・") });
-      else out.push({ id: "role:" + x.key, kind: "role", key: x.key, v: x.role, q: label(x) + " は" + x.role + "であっていますか？", warn: x.conf === "低" && !x.byHuman,
-        why: [x.area != null ? x.area + "㎡" : "", x.chimoku].filter(Boolean).join("・") + "。" + (x.reasons || []).join("。") });
-      var sum = x.owners && x.owners.length ? T.shareSum(x.owners) : null;
-      out.push({ id: "share:" + x.key, kind: "share", key: x.key, v: shareText(x), q: label(x) + " の持分は「" + shareText(x) + "」であっていますか？", warn: sum != null && sum !== 1 && !x.humanShare, why: sum != null && sum !== 1 && !x.humanShare ? "持分を合計すると " + sum + " になり、1になりません。読み落としか、一部の持分だけの売買かもしれません。" : "" });
+      if (x.kind === "bldg") out.push({ id: "bld:" + x.key, kind: "bld", key: x.key, v: x.key + ":" + x.floorArea, q: label(x) + " の建物は、この物件のものであっていますか？", warn: !!(x.floorUnread || x.floorGuess || x.readAlt), why: [x.structure, x.floorArea && x.floorArea + "㎡"].filter(Boolean).join("・") + readNote(x, "床面積") });
+      else out.push({ id: "role:" + x.key, kind: "role", key: x.key, v: x.role, q: label(x) + " は" + x.role + "であっていますか？", warn: (x.conf === "低" && !x.byHuman) || !!(x.areaUnread || x.areaGuess || x.readAlt),
+        why: [x.area != null ? x.area + "㎡" : "", x.chimoku].filter(Boolean).join("・") + "。" + (x.reasons || []).join("。") + readNote(x, "地積") });
+      var sum = x.owners && x.owners.length ? T.shareSum(x.owners) : null, noOwner = sum == null && !x.manual && !x.humanShare;
+      out.push({ id: "share:" + x.key, kind: "share", key: x.key, v: shareText(x), q: noOwner ? label(x) + " の所有者と持分を読めませんでした。確かめましたか？" : label(x) + " の持分は「" + shareText(x) + "」であっていますか？", warn: noOwner || (sum != null && sum !== 1 && !x.humanShare), why: noOwner ? (x.redacted ? "所有者の部分が黒塗りのようです。" : "") + "黒塗りのない謄本で確かめ、「いいえ」から持分を入れてください。" : sum != null && sum !== 1 && !x.humanShare ? "持分を合計すると " + sum + " になり、1になりません。読み落としか、一部の持分だけの売買かもしれません。" : "" });
       (x.liens || []).forEach(function (l) { out.push({ id: "lien:" + x.key + ":" + l, kind: "ok", v: l, q: label(x) + " に「" + l + "」が残っていますが、あっていますか？", warn: true, why: "下線がある古い登記なら、消えているはずです。" }); });
       if (x.struck && x.struck.length) out.push({ id: "struck:" + x.key, kind: "struck", lines: x.struck, v: x.struck.join("／"), q: label(x) + " で、下線のある " + x.struck.length + " 行を古い情報として扱いました。あっていますか？", why: x.struck.join("　／　") });
     });
-    var m = X.merge(docsWithSum(p));
+    // 土地と建物で、所有権の登記の数がちがえば知らせる（名義の持ち主がちがった時期があるかもしれない）
+    var hb = ps.filter(function (x) { return x.kind === "bldg" && x.history && x.history.length; })[0];
+    var hl = hb && ps.filter(function (x) { return x.kind === "land" && x.history && x.history.length && x.key.split("-")[0] === hb.key.replace("b:", "").split("-")[0]; })[0];
+    if (hl && hb && hl.history.length !== hb.history.length) out.push({ id: "hist", kind: "ok", v: hl.history.length + "/" + hb.history.length, q: "土地と建物で、所有権の登記の数がちがいます（土地 " + hl.history.length + " 件・建物 " + hb.history.length + " 件）。理由を確かめましたか？", warn: true, why: "土地：" + hl.history.join("、") + "。建物：" + hb.history.join("、") + "。" });
+    var m = X.merge(docsWithSum(p)), tot = T.summary(ps);
     X.FIELDS.forEach(function (f) {
       var k = f[0], c = m[k]; if (!c || !c.length || p.manual[k] != null) return;
       var ocrDoc = p.docs.find(function (d) { return d.id === c[0].docId && d.ocr; });
-      if (c.length > 1) out.push({ id: "field:" + k, kind: "field", field: k, v: String(c[0].value), q: f[1] + "は「" + c[0].value + (f[2] || "") + "」であっていますか？", warn: true, why: "資料どうしで値がちがいます。" + c.map(function (x) { return x.docName + "：" + x.value; }).join("／") });
+      if (c.length > 1) out.push({ id: "field:" + k, kind: "field", field: k, v: String(c[0].value), q: f[1] + "は「" + c[0].value + (f[2] || "") + "」であっていますか？", warn: true, why: "資料どうしで値がちがいます。" + c.map(function (x) { return x.docName + "：" + x.value; }).join("／") + (k === "land" && tot.shi && c.some(function (x) { return parseFloat(x.value) === Math.round((tot.hon + tot.shi) * 100) / 100; }) ? "。本地と私道を足すと " + Math.round((tot.hon + tot.shi) * 100) / 100 + "㎡ で、資料の面積と同じです。道路の分が入っています。" : "") });
       else if (ocrDoc && (f[2] || /地番|所有者/.test(f[1]))) out.push({ id: "field:" + k, kind: "field", field: k, v: String(c[0].value), q: f[1] + "は「" + c[0].value + (f[2] || "") + "」であっていますか？", why: "画像から読んだ値です（" + c[0].docName + "）。" });
     });
     return out;
@@ -336,25 +357,63 @@
       var isD = function (xx) { var j = (y * W + xx) * 4; return px[j] < 130 && px[j + 1] < 130 && px[j + 2] < 130; };
       while (l > 0 && isD(l - 1)) l--;
       while (r < W - 1 && isD(r + 1)) r++;
-      if (r - l <= lineW * 1.6 + hh) return true;
+      if (r - l > lineW * 1.6 + hh) continue;
+      // 黒塗りの太い帯は下線ではない
+      var mid = (l + r) >> 1, thick = 1, yy = y + 1, isP = function (xx, y2) { if (y2 < 0 || y2 >= H) return false; var j = (y2 * W + xx) * 4; return px[j] < 130 && px[j + 1] < 130 && px[j + 2] < 130; };
+      while (isP(mid, yy)) { thick++; yy++; }
+      yy = y - 1; while (isP(mid, yy)) { thick++; yy--; }
+      if (thick > Math.max(5, hh * 0.4)) continue;
+      // 線の端に縦の線がつながっていれば、表の罫線なので下線ではない
+      var tied = function (xx) {
+        for (var dx = -2; dx <= 2; dx++) {
+          var down = true, up = true, n;
+          for (n = 3; n <= Math.max(6, hh * 0.5); n++) if (!isP(xx + dx, y + n)) { down = false; break; }
+          for (n = 3; n <= hh * 1.3; n++) if (!isP(xx + dx, y - n)) { up = false; break; }
+          if (down || up) return true;
+        }
+        return false;
+      };
+      if (tied(l) || tied(r)) continue;
+      return true;
     }
     return false;
   }
+  var ocrRed = 0;
   async function ocrCanvas(src, status) {
-    var w = await ocrWorker(status), c = await toCanvas(src);
+    var w = await ocrWorker(status), c = await toCanvas(src), ctx = c.getContext("2d");
+    // 下線は元の絵で見分け、文字は罫線と黒塗りを消した絵で読む
+    var px = ctx.getImageData(0, 0, c.width, c.height).data, im = ctx.getImageData(0, 0, c.width, c.height), info = T.cleanPage(im.data, c.width, c.height);
+    ctx.putImageData(im, 0, 0);
+    ocrRed += info.red;
+    await w.setParameters({ tessedit_pageseg_mode: info.table ? "6" : "3" });
     var r = await w.recognize(c, {}, { text: true, blocks: true });
     var blocks = r.data.blocks;
     if (!blocks || !blocks.length) return X.tidyOcr(r.data.text || "");
-    var px = c.getContext("2d").getImageData(0, 0, c.width, c.height).data, out = [];
+    var out = [];
     blocks.forEach(function (bk) { (bk.paragraphs || []).forEach(function (pa) { (pa.lines || []).forEach(function (ln) {
       var lw = ln.bbox.x1 - ln.bbox.x0;
       var ws = ln.words || [], marks = ws.map(function (wd) { return wordUnderlined(px, c.width, c.height, wd.bbox, lw); });
-      // 画像では言葉の切れ目で線を見落としやすいので、半分以上に線があれば行ぜんぶを下線とする
-      var many = marks.filter(Boolean).length * 2 >= ws.length && ws.length > 0;
-      var tx = ws.map(function (wd) { return wd.text; }).join(" ");
-      out.push(many ? T.ST + tx + T.EN : tx);
+      // 1行に表の欄がいくつか入るので、離れた所で区切り、区切りごとに半分以上に線があれば下線とする（言葉の切れ目で線を見落としやすいため）
+      var segs = [], lh = ln.bbox.y1 - ln.bbox.y0;
+      ws.forEach(function (wd, i) {
+        if (!segs.length || wd.bbox.x0 - ws[i - 1].bbox.x1 > lh * 0.9) segs.push({ t: [], m: 0 });
+        var s = segs[segs.length - 1]; s.t.push(wd.text); if (marks[i]) s.m++;
+      });
+      out.push(segs.map(function (s) {
+        var tx = s.t.join(" "), chars = s.t.join("").replace(/[\s|│\[\]_.,:;'"`~^-]/g, "").length;
+        return s.m * 2 >= s.t.length && chars >= 3 ? T.ST + tx + T.EN : tx;
+      }).join(" "));
     }); }); });
     return X.tidyOcr(out.join("\n"));
+  }
+  // 画像の大きさで読める字が変わる。謄本のページは数字が大事なので、3つの大きさで読み、あとで多数決する。make(長い辺) が絵を作る
+  async function ocrSizes(make, status) {
+    var text = await ocrCanvas(await make(2800), status), again = [];
+    if (/表\s*題\s*部/.test(text)) {
+      again.push(await ocrCanvas(await make(2400), status));
+      again.push(await ocrCanvas(await make(1800), status));
+    }
+    return { text: text, again: again };
   }
   async function readPdf(file, status) {
     var lib = await pdfLib(), pdf = await lib.getDocument({ data: await file.arrayBuffer(), cMapUrl: PARTS + "cmaps/", cMapPacked: true }).promise;
@@ -368,16 +427,20 @@
     var text = texts.join("\n"), note = pdf.numPages > pages ? "はじめの" + pages + "ページだけ読みました（全部で" + pdf.numPages + "ページ）。" : "";
     if (text.replace(/\s/g, "").length >= pages * 20) return { text: text, note: note, preview: pv };
     // 文字が入っていない（スキャンなど）ときは、ページを画像にして読む
-    var n = Math.min(pdf.numPages, MAX_OCR_PAGES), parts = [];
+    var n = Math.min(pdf.numPages, MAX_OCR_PAGES), parts = [], again = [];
     for (var q = 1; q <= n; q++) {
       status(file.name + "：画像から文字を読んでいます（" + n + "ページ中" + q + "ページ目）");
-      var pg = await pdf.getPage(q), vp0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: Math.min(3, 2200 / Math.max(vp0.width, vp0.height)) });
-      var c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height;
-      var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
-      await pg.render({ canvasContext: ctx, viewport: vp }).promise;
-      parts.push(await ocrCanvas(c, status));
+      var pg = await pdf.getPage(q);
+      var rd = await ocrSizes(async function (size) {
+        var vp0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: size / Math.max(vp0.width, vp0.height) });
+        var c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height;
+        var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+        await pg.render({ canvasContext: ctx, viewport: vp }).promise;
+        return c;
+      }, status);
+      parts.push(rd.text); rd.again.forEach(function (x, i) { again[i] = (again[i] || "") + "\n" + x; });
     }
-    return { text: parts.join("\n"), ocr: true, note: (pdf.numPages > n ? "はじめの" + n + "ページだけ読みました（全部で" + pdf.numPages + "ページ）。" : "") + "画像から読んだ文です。数字を必ず資料と見くらべてください。", preview: pv };
+    return { text: parts.join("\n"), again: again, ocr: true, note: (pdf.numPages > n ? "はじめの" + n + "ページだけ読みました（全部で" + pdf.numPages + "ページ）。" : "") + "画像から読んだ文です。数字を必ず資料と見くらべてください。", preview: pv };
   }
   async function pagePreview(pdf) {
     var pg = await pdf.getPage(1), v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: Math.min(2, 1200 / Math.max(v0.width, v0.height)) });
@@ -390,13 +453,22 @@
     if (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name)) return readPdf(file, status);
     if (/^image\//.test(file.type)) {
       status(file.name + "：画像から文字を読んでいます");
-      return { text: await ocrCanvas(file, status), ocr: true, note: "画像から読んだ文です。数字を必ず資料と見くらべてください。" };
+      var base = await toCanvas(file);
+      var rd = await ocrSizes(function (size) {
+        var s = Math.min(2, size / Math.max(base.width, base.height)), o = document.createElement("canvas");
+        o.width = Math.round(base.width * s); o.height = Math.round(base.height * s);
+        var x = o.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, o.width, o.height); x.imageSmoothingQuality = "high"; x.drawImage(base, 0, 0, o.width, o.height);
+        return o;
+      }, status);
+      return { text: rd.text, again: rd.again, ocr: true, note: "画像から読んだ文です。数字を必ず資料と見くらべてください。" };
     }
     return { text: await file.text() };
   }
   function addDoc(name, res, blob) {
     var p = ensureCur(), r = X.extract(res.text || "", null, name);
-    p.docs.push({ id: newId(), name: name, type: r.type, fields: r.fields, text: res.text || "", ocr: !!res.ocr, note: res.note || "", blob: blob || null, preview: res.preview || null });
+    if (res.again && res.again.length && r.fields.parcels) T.reread(r.fields.parcels, res.again.map(function (x) { return X.extract(x, r.type, name).fields.parcels; }));
+    if (res.red && r.fields.parcels) r.fields.parcels.forEach(function (x) { x.redacted = true; });
+    p.docs.push({ id: newId(), name: name, type: r.type, fields: r.fields, text: res.text || "", ocr: !!res.ocr, note: res.note || "", blob: blob || null, preview: res.preview || null, driveId: res.driveId || undefined });
     saveSoon();
   }
 
@@ -414,13 +486,82 @@
     ensureCur();
     for (var i = 0; i < files.length; i++) {
       try {
+        ocrRed = 0;
         var res = await readFile(files[i], function (m) { st.textContent = "（" + (i + 1) + "／" + files.length + "）" + m; });
+        res.red = ocrRed;
         addDoc(files[i].name, res, files[i]);
         done++; renderEditor();
       } catch (e) { bad.push(files[i].name + "（" + (e && e.message || e) + "）"); }
     }
     st.textContent = done + "件を読みました。" + (bad.length ? "読めなかった資料：" + bad.join("、") : "下の項目を資料と見くらべてください。");
   });
+  // ---------------------------------------------------------------- Googleドライブのリンク
+  var D = window.BukkenDrive, DRIVE_KEY = "fudosanDriveKey", driveStop = false;
+  function savedKey() { try { return localStorage.getItem(DRIVE_KEY) || ""; } catch (e) { return ""; } }
+  function showKey() {
+    var has = !!savedKey();
+    $("driveKeyInput").hidden = has; $("driveKeySaved").hidden = !has;
+  }
+  function driveNote(cls, text) {
+    var li = document.createElement("li"); if (cls) li.className = cls; li.textContent = text; $("driveResult").appendChild(li);
+  }
+  $("driveSite").textContent = location.host + "/*";
+  showKey();
+  $("driveKeyDel").addEventListener("click", function () {
+    try { localStorage.removeItem(DRIVE_KEY); } catch (e) {}
+    $("driveKey").value = ""; showKey(); $("driveStatus").textContent = "鍵を消しました。";
+  });
+  $("driveStop").addEventListener("click", function () { driveStop = true; this.disabled = true; $("driveStatus").textContent = "いま読んでいる資料が終わったら止めます。"; });
+  $("driveBtn").addEventListener("click", async function () {
+    var btn = this, st = $("driveStatus"), box = $("driveResult"), typed = $("driveKey").value.trim(), key = typed || savedKey();
+    box.textContent = "";
+    var parsed = D.parseLinks($("driveLinks").value);
+    if (!parsed.links.length) { st.textContent = "Googleドライブのリンクが見つかりません。フォルダかファイルのリンクを貼ってください。"; return; }
+    if (!key) { st.textContent = "Googleの鍵を入れてください。作り方は「鍵の作り方」にあります。"; return; }
+    if (/\s/.test(key)) { st.textContent = "鍵に空白がまざっています。貼り直してください。"; return; }
+    btn.disabled = true; driveStop = false; $("driveStop").hidden = false; $("driveStop").disabled = false;
+    try {
+      st.textContent = "リンクの中身を確かめています…";
+      var got = await D.collect(parsed.links, key), p = got.files.length ? ensureCur() : null, have = {}, added = 0, same = 0, bad = [], seenN = 0, moved = false;
+      got.errors.forEach(function (e) { driveNote("", "開けなかったリンク：" + e.message); });
+      // 鍵が使えたときだけ覚える（まちがった鍵を残さないため）。「見つからない」は鍵が通ったあとの返事。
+      if (typed && (got.errors.length < parsed.links.length || got.errors.some(function (e) { return e.status === 404; }))) { try { localStorage.setItem(DRIVE_KEY, typed); } catch (e) {} $("driveKey").value = ""; showKey(); }
+      if (p) p.docs.forEach(function (d) { if (d.driveId) have[d.driveId] = 1; });
+      for (var i = 0; i < got.files.length && !driveStop; i++) {
+        var f = got.files[i];
+        seenN = i + 1;
+        if (have[f.id]) { same++; continue; }
+        if (cur !== p) { driveStop = true; moved = true; break; }
+        var head = "（" + (i + 1) + "／" + got.files.length + "）";
+        try {
+          st.textContent = head + f.name + "：取ってきています";
+          var file = await D.download(f, key);
+          ocrRed = 0;
+          var res = await readFile(file, function (m) { st.textContent = head + m; });
+          res.red = ocrRed; res.driveId = f.id;
+          if (cur !== p) { driveStop = true; moved = true; break; }
+          addDoc(f.name, res, file);
+          have[f.id] = 1; added++; renderEditor();
+        } catch (e) { bad.push(f.path + "（" + (e && e.message || e) + "）"); }
+      }
+      var left = driveStop ? got.files.length - seenN : 0;
+      got.skipped.forEach(function (x) { driveNote("", "読まなかった資料：" + x.name + "（" + x.why + "）"); });
+      bad.forEach(function (x) { driveNote("", "読めなかった資料：" + x); });
+      if (same) driveNote("", "この物件にもう入っているので、読まなかった資料：" + same + "件");
+      if (got.cut) driveNote("", "多すぎるので、はじめの" + D.MAX_FILES + "件だけ読みました（残り" + got.cut + "件）");
+      if (moved) driveNote("", "読んでいる途中で別の物件を開いたので、止めました。読んでいた資料は入っていません");
+      else if (left > 0) driveNote("", "止めたので、読まなかった資料：" + left + "件");
+      if (parsed.others) driveNote("", "Googleドライブ以外のリンクは飛ばしました：" + parsed.others + "本");
+      if (!got.files.length && !got.errors.length && !got.skipped.length) driveNote("", "フォルダの中に資料がありません");
+      st.textContent = added ? added + "件を読みました。下の項目を資料と見くらべてください。" : "新しく読んだ資料はありません。下の説明を確かめてください。";
+      if (added && !got.errors.length && !bad.length && !left && !moved && !got.cut) $("driveLinks").value = "";
+    } catch (e) {
+      st.textContent = "読めませんでした：" + (e && e.message || e);
+    } finally {
+      btn.disabled = false; $("driveStop").hidden = true;
+    }
+  });
+
   $("pasteBtn").addEventListener("click", function () {
     var t = $("src").value.trim(); if (!t) return;
     addDoc("貼りつけた文 " + new Date().toLocaleString("ja-JP"), { text: t }); $("src").value = ""; renderEditor();

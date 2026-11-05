@@ -10,6 +10,8 @@
   function norm(s) {
     s = String(s || "");
     s = s.replace(/\r\n?/g, "\n");
+    // PDFの中で漢字が部首の文字（⼟ ⽊ ⽡ など）になっていることがあるので、ふつうの漢字にもどす
+    s = s.replace(/[\u2E80-\u2FDF]/g, function (c) { return c.normalize("NFKC"); }).replace(/戶/g, "戸");
     // 全角の英数字・記号を半角に（かっこ（）は日本語の文に多いので、そのまま残す）
     s = s.replace(/[\uFF01-\uFF07\uFF0A-\uFF5E]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
     s = s.replace(/　/g, " ").replace(/[‐‑‒–−]/g, "-");

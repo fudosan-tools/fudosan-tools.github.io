@@ -11,6 +11,8 @@
   function tidyOcr(t) {
     return String(t).replace(/([^\x00-\x7F])[ \t]+(?=[^\x00-\x7F])/g, "$1")
       .replace(/([^\x00-\x7F])[ \t]+(?=\d)/g, "$1").replace(/(\d)[ \t]+(?=[^\x00-\x7F])/g, "$1")
+      .replace(/\d(?:[ \t]+\d)+(?=[ \t]*[番年月日号階])/g, m => m.replace(/[ \t]/g, ""))
+      .replace(/\d[\d \t]*[:：][ \t]*\d[ \t]*\d?/g, m => m.replace(/[ \t]/g, ""))
       .replace(/\b\d{1,3}(?:\.\d{3})+(?=\s*(?:円|万円|$))/gm, m => m.replace(/\./g, ","));
   }
 
@@ -30,10 +32,13 @@
   var TYPE_BY_ID = {}; TYPES.forEach(function (t) { TYPE_BY_ID[t.id] = t; });
   // ファイルの名前も手がかりにする（公図や測量図は文字が少ないため）
   var NAME_HINT = { touki: /謄本|登記|全部事項/, hyoka: /評価|公課|名寄/, keiyaku: /契約/, juusetsu: /重説|重要事項/, kouzu: /公図/, sokuryo: /測量|求積/, kakunin: /確認済|検査済/, rent: /レントロール|賃料表/, maisoku: /マイソク|概要/ };
+  // 名前で役所の図面や調査の報告と分かる資料は、物件の値を読まない
+  var NAME_OTHER = /報告書|ハザード|都市計画|下水|水道台帳|道路種別|浸水|警戒|用途地域図/;
   function classify(text, name) {
+    if (name && NAME_OTHER.test(name)) return "other";
     var best = null, bestScore = 0;
     TYPES.forEach(function (t) {
-      var s = name && NAME_HINT[t.id] && NAME_HINT[t.id].test(name) ? 6 : 0;
+      var s = name && NAME_HINT[t.id] && NAME_HINT[t.id].test(name) ? 20 : 0;
       t.items.forEach(function (i) { if (text.indexOf(i[0]) >= 0) s += i[1]; });
       if (s > bestScore) { best = t; bestScore = s; }
     });
@@ -135,19 +140,35 @@
     if (a) { var m = yenOf(a[1] + "円"); if (m) f.monthlyRent = Math.round(m / 1e4 * 100) / 100; }
   }
 
+  // 「名 称」「構 造」のように1字ずつ空いた見出しをつなぐ（PDFの表に多い）
+  function joinSpaced(s) {
+    return String(s).replace(/(^|\s)([一-龠々])((?:[ \t]+[一-龠々]){1,4})(?=\s|$)/gm, function (m, a, b, c) { return a + b + c.replace(/[ \t]/g, ""); });
+  }
+  function rosenkaOf(s) {
+    var t = String(s).replace(/\s/g, ""), m = t.match(/路線価[^\d]{0,8}(\d[\d,]*)円\/?㎡/);
+    if (m) return Math.round(+m[1].replace(/,/g, "") / 10) / 100;
+    m = t.match(/路線価[^\d]{0,8}(\d[\d,]*)千円/);
+    return m ? +m[1].replace(/,/g, "") : null;
+  }
   // text：資料の文。type を渡さなければ種類を判定する。戻り値 { type, fields }
   function extract(text, type, name) {
     var marked = M.norm(text), norm = T.plain(marked);
-    var t = type || classify(norm, name), f = {}, r = M.parse(norm), d = r.data || {};
+    var t = type || classify(norm, name), f = {}, r = M.parse(joinSpaced(norm)), d = r.data || {};
     var COPY = ["name", "address", "madori", "kenpei", "yoseki", "youto", "road", "chimoku", "taiyo", "built", "structure", "floors", "units", "land", "bldg", "senyu", "price", "rent", "kanrihi", "shuzen", "kenri", "shido", "genkyo", "hikiwatashi", "parking"];
     // 登記や契約書の書き方をマイソクの規則で読むとまちがえやすいので、その資料の読み方を先に使う
     if (t === "touki") fromTouki(marked, f);
+    else if (/表\s*題\s*部/.test(norm) && /権\s*利\s*部/.test(norm)) f.parcels = T.parseRecords(marked);   // 公図などと謄本がひとつのPDFに入っているとき
     if (t === "kouzu" || t === "sokuryo") f.labels = T.mapLabels(norm);
     if (t === "hyoka") fromHyoka(norm, f);
     if (t === "keiyaku") fromKeiyaku(norm, f);
     if (t === "rent") fromRent(norm, f);
     var skip = { touki: ["name", "price", "rent", "kanrihi", "shuzen"], hyoka: ["price", "rent", "name", "land", "bldg", "built"], keiyaku: ["taiyo", "rent"], kouzu: ["name", "price", "land", "bldg"] }[t] || [];
-    COPY.forEach(function (k) { if (f[k] == null && d[k] != null && d[k] !== "" && skip.indexOf(k) < 0) f[k] = d[k]; });
+    // 登記や図面、役所の資料は、その資料の読み方で取れた値のほかは、次の項目だけをマイソクの規則で読む
+    var only = { touki: ["chimoku"], kouzu: [], sokuryo: ["land"], other: ["youto", "kenpei", "yoseki"] }[t];
+    COPY.forEach(function (k) { if (f[k] == null && d[k] != null && d[k] !== "" && skip.indexOf(k) < 0 && (!only || only.indexOf(k) >= 0)) f[k] = d[k]; });
+    var tl = norm.match(/取引(?:態様|形態)[:：\s]*([^\n]*)/);
+    if (f.taiyo && (!/売主|貸主|代理|媒介|仲介/.test(f.taiyo) || (tl && !/売主|貸主|代理|媒介|仲介/.test(tl[1])))) delete f.taiyo;
+    if (t === "maisoku" || t === "juusetsu" || t === "keiyaku") { var ro = rosenkaOf(norm); if (ro != null) f.rosenka = ro; }
     // 資料の題名を物件名にしない
     if (f.name && /(証明書|契約書|説明書|通知書|報告書|物件概要|測量図|確認済証|検査済証|規約)$/.test(f.name)) delete f.name;
     if (d.sta1) { f.sta = d.sta1; if (d.line1) f.line = d.line1; if (d.walk1 != null) f.walk = d.walk1; }
@@ -179,6 +200,9 @@
       Object.keys(doc.fields || {}).forEach(function (k) {
         var v = doc.fields[k]; if (v == null || v === "" || typeof v === "object") return;
         var list = out[k] || (out[k] = []);
+        // 構造は「木造」と「木造瓦葺平家建」のように詳しさがちがうだけのことが多いので、種類が同じならちがいにしない
+        var sameKind = k === "structure" && structCode(v) ? list.filter(function (x) { return structCode(x.value) === structCode(v); })[0] : null;
+        if (sameKind) { if (String(v).length > String(sameKind.value).length) { sameKind.value = v; sameKind.docId = doc.id; sameKind.docName = doc.name; sameKind.type = doc.type; } return; }
         if (!list.some(function (x) { return same(x.value, v); })) list.push({ value: v, docId: doc.id, docName: doc.name, type: doc.type });
       });
     });
