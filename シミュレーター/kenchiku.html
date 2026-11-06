@@ -458,6 +458,12 @@ table.gakes td input[type=number] { width: 4.5em; }
   // ---------- 選択肢 ----------
   var zoneSel = $('v_zone');
   K.ZONES.forEach(function(z){ var o = document.createElement('option'); o.value = z.id; o.textContent = z.name; zoneSel.appendChild(o); });
+  // 建築費の統計の場所：まだ手で選んでいなければ、都道府県に合わせる（東京都以外は全国平均）
+  (function(){
+    var reg = $('c_region'), pref = $('v_pref'), hand = false;
+    reg.addEventListener('change', function(){ hand = true; });
+    pref.addEventListener('change', function(){ if (hand) return; var v = pref.value === 'tokyo' ? 'tokyo' : 'national'; if (reg.value !== v) { reg.value = v; reg.dispatchEvent(new Event('input', {bubbles:true})); hand = false; } });
+  })();
   // がけ条例の地域（共通/gake.js）
   var GK = window.Gake;
   if (GK) (function(){
