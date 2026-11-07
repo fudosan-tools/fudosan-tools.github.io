@@ -168,8 +168,8 @@ table.gakes td input[type=number] { width: 4.5em; }
     <div class="formrows">
       <div class="fr"><span class="lab">都道府県・市</span><select id="v_pref" data-s>
         <option value="tokyo">東京都</option><option value="kanagawa">神奈川県（横浜市・川崎市などをのぞく）</option><option value="yokohama">横浜市</option>
-        <option value="saitama">埼玉県</option><option value="chiba">千葉県</option><option value="other">そのほかの道府県・わからない</option></select>
-        <span class="hint">旗竿地の条例と、日影規制の例を選ぶのに使います。川崎市・相模原市・横須賀市などは独自の条例があるので「そのほか」にして役所で確認してください</span></div>
+        <option value="saitama">埼玉県</option><option value="chiba">千葉県</option><option value="other">わからない</option></select>
+        <span class="hint">旗竿地の条例と、日影規制の例を選ぶのに使います。独自の条例がある市は、市の名前を選んでください（一覧に無い市は都道府県を選び、役所で確認してください）</span></div>
       <div class="fr"><span class="lab">用途地域</span><select id="v_zone" data-s></select></div>
       <div class="fr"><span class="lab">建ぺい率（指定）</span><select id="v_bcr" data-s></select><span class="hint">敷地のうち、建物を建ててよい割合</span></div>
       <div class="fr"><span class="lab">容積率（指定）</span><select id="v_far" data-s></select><span class="hint">敷地に対する、全部の階の床の合計の割合</span></div>
@@ -285,7 +285,7 @@ table.gakes td input[type=number] { width: 4.5em; }
       <li>天空率（斜線のかわりに「空の見え方」で確かめる方法。使うともっと建てられることが多い）</li>
       <li>日影規制は、建物を階ごとの箱と屋根で表した目安です。正式には建築士が日影図で確かめます。敷地と隣地の高さのちがい、ほかの建物、区域の境目は入っていません</li>
       <li>敷地が東西南北からずれている形、長方形でない形、土地の高低差</li>
-      <li>地区計画・建築協定・各自治体の条例（窓先空地など）。がけ条例は「がけ・擁壁」の欄に入れた辺だけ、帯を除く形で入れています（がけが斜めの辺・敷地の中の高低差は入っていません）。旗竿地と日影の条例は都県の主な決まりだけで、政令市などの独自の条例は入っていません</li>
+      <li>地区計画・建築協定・各自治体の条例（窓先空地など）。がけ条例は「がけ・擁壁」の欄に入れた辺だけ、帯を除く形で入れています（がけが斜めの辺・敷地の中の高低差は入っていません）。旗竿地の条例は、全国の都道府県と独自の条例がある主な市を公式資料で入れました（確かめられなかった所は「役所で確認」と出します）。日影の条例は1都3県だけです</li>
       <li>公園・川・線路に面した緩和（北側斜線・隣地斜線）、特定行政庁が指定する区域の特別な数値（住居系の道路斜線1.5・隣地斜線2.5 など）、特定道路による容積率の緩和</li>
       <li>容積率に入れなくてよい部分（駐車場・共用廊下・地下室・エレベーターなど）。実際の延床はもう少し大きくできることがあります</li>
       <li>屋上の手すり・階段室・設備などの高さ、軒の出</li>
@@ -410,6 +410,7 @@ table.gakes td input[type=number] { width: 4.5em; }
     <li>建築基準法施行令 第132条（2以上の前面道路）・第135条の12（日影の緩和）・第136条の2（防火地域・準防火地域の建築物）：<a href="https://laws.e-gov.go.jp/law/325CO0000000338">e-Gov法令検索 建築基準法施行令</a></li>
     <li>東京都建築安全条例 第3条・第3条の2・第10条（路地状敷地）：<a href="https://www.reiki.metro.tokyo.lg.jp/reiki/reiki_honbun/g101RG00001306.html">東京都例規集</a>／東京都日影による中高層建築物の高さの制限に関する条例：<a href="https://www.reiki.metro.tokyo.lg.jp/reiki/reiki_honbun/g101RG00001307.html">東京都例規集</a></li>
     <li>神奈川県建築基準条例（第4条・第4条の2・第5条）：<a href="https://www.pref.kanagawa.jp/docs/cz4/cnt/f360239/index.html">神奈川県</a>／横浜市建築基準条例（第4条・第4条の4・第5条）：<a href="https://cgi.city.yokohama.lg.jp/somu/reiki/reiki_honbun/g202RG00000906.html">横浜市例規集</a></li>
+    <li>1都3県の外の旗竿地（路地状敷地）の条例：各道府県・市の建築基準条例（どの条文かは結果の「根拠」に出ます。2026年11月に公式資料で確認）</li>
     <li>埼玉県建築基準法施行条例（第3条・第8条の2・第10条）：<a href="https://ops-jg.d1-law.com/opensearch/SrJbF01/init?jctcd=8A7FF90CEA&amp;houcd=H335901010037">埼玉県法規集</a>／千葉県建築基準法施行条例（第7条・第8条・第46条の2）：<a href="https://www.pref.chiba.lg.jp/kenchiku/zyourei-kaisetu/kaisetu20250701.html">千葉県</a></li>
     <li>高度地区：東京都（<a href="https://www.city.sumida.lg.jp/matizukuri/tosi_keikaku/tosi_keikaku/youtitiiki_gaiyou/h22henkou/koudochikugaiyou.files/kodokeikakusho.pdf">墨田区の計画書</a>）、<a href="https://www.city.yokohama.lg.jp/business/bunyabetsu/kenchiku/tetsuduki/kisoku/toriatsukai.files/08_5-4.pdf">横浜市</a>、<a href="https://www.city.kawasaki.jp/500/cmsfiles/contents/0000181/181412/keikakusyo.pdf">川崎市</a>、<a href="https://www.city.chiba.jp/toshi/toshi/keikaku/gaiyou/documents/koudochiku_keikakusyo_kiteisyo20230929.pdf">千葉市</a>、<a href="https://www.city.saitama.lg.jp/001/010/014/001/p062554_d/fil/keikakusyo.pdf">さいたま市</a>の計画書（区・市ごとに最高の高さがちがうので、必ずその区市の都市計画図で確認）</li>
     <li>民法 第234条（建物は境界線から50cm以上離す）：<a href="https://laws.e-gov.go.jp/law/129AC0000000089">e-Gov法令検索 民法</a></li>
@@ -424,6 +425,7 @@ table.gakes td input[type=number] { width: 4.5em; }
 
 <script src="../共通/common.js?v=66fb1f6c"></script>
 <script src="../共通/gake.js"></script>
+<script src="data/flag_zenkoku.js"></script>
 <script src="kenchiku_calc.js"></script>
 <script src="../共通/katachi.js"></script>
 <script src="../共通/katachi_ui.js"></script>
@@ -458,12 +460,34 @@ table.gakes td input[type=number] { width: 4.5em; }
   // ---------- 選択肢 ----------
   var zoneSel = $('v_zone');
   K.ZONES.forEach(function(z){ var o = document.createElement('option'); o.value = z.id; o.textContent = z.name; zoneSel.appendChild(o); });
+  // 1都3県の外の都道府県・独自の条例の市（data/flag_zenkoku.js）。「わからない」の前に、都道府県の順で並べる
+  (function(){
+    var sel = $('v_pref'), other = sel.querySelector('option[value="other"]'), FZ = window.FLAG_ZENKOKU;
+    if (!FZ || !FZ.list) return;
+    var groups = {}, order = [];
+    FZ.list.forEach(function(x){ if (!groups[x.pref]){ groups[x.pref] = []; order.push(x.pref); } groups[x.pref].push(x); });
+    order.forEach(function(pn){
+      var g = document.createElement('optgroup'); g.label = pn;
+      groups[pn].forEach(function(x){ var o = document.createElement('option'); o.value = 'z:' + x.key; o.textContent = x.key === pn ? pn + (groups[pn].length > 1 ? '（市の条例の所をのぞく）' : '') : x.key; g.appendChild(o); });
+      sel.appendChild(g);
+    });
+    if (other) sel.appendChild(other);   // 「わからない」はいちばん下に戻す
+  })();
   // 建築費の統計の場所：まだ手で選んでいなければ、都道府県に合わせる（東京都以外は全国平均）
   (function(){
     var reg = $('c_region'), pref = $('v_pref'), hand = false;
     reg.addEventListener('change', function(){ hand = true; });
     pref.addEventListener('change', function(){ if (hand) return; var v = pref.value === 'tokyo' ? 'tokyo' : 'national'; if (reg.value !== v) { reg.value = v; reg.dispatchEvent(new Event('input', {bubbles:true})); hand = false; } });
   })();
+  // 都道府県・市の値（"z:愛知県" "z:名古屋市"）から、がけ条例の地域を選ぶ。無ければ 'unknown'
+  function gakeOfPref(pref){
+    var G = window.Gake;
+    if (!G || typeof pref !== 'string' || pref.indexOf('z:') !== 0) return 'unknown';
+    var key = pref.slice(2), fz = K.flagZen(pref), pn = fz ? fz.pref : key, hit = null;
+    G.REGIONS.forEach(function(rg){ if (!hit && rg.name === key && G.PREF_NAME[rg.pref] === pn) hit = rg.id; });
+    if (!hit) G.REGIONS.forEach(function(rg){ if (!hit && rg.name === pn && rg.id === rg.pref) hit = rg.id; });
+    return hit || 'unknown';
+  }
   // がけ条例の地域（共通/gake.js）
   var GK = window.Gake;
   if (GK) (function(){
@@ -604,7 +628,7 @@ table.gakes td input[type=number] { width: 4.5em; }
     if (u.key==='kenpei' || u.key==='youseki') return u.value + '%';
     if (u.key==='area') return areaBoth(u.value, 2);
     if (u.key==='tsubo') return fmt(u.value, 2) + '坪（' + fmt(u.value*TSUBO, 2) + '㎡）';
-    if (u.key==='ken' || u.key==='pref') return K.PREFS[u.value].name;
+    if (u.key==='ken' || u.key==='pref') return K.prefLabel(u.value);
     if (u.key==='kozo' || u.key==='struct') return K.STRUCTS[u.value].name;
     return u.value + 'm';
   }
@@ -682,7 +706,7 @@ table.gakes td input[type=number] { width: 4.5em; }
       shInfo.auto = na;
       if (na.none) sh = null;
       else if (na.unknown){
-        if (shAutoFromUrl || pref !== 'other'){ var t = K.nichieiTimes(z.sh, 1); sh = {hm: z.sh===1 ? 1.5 : 4, t1:t.t1, t2:t.t2, go:1, guess:true}; }
+        if (shAutoFromUrl || (pref !== 'other' && pref.indexOf('z:') !== 0)){ var t = K.nichieiTimes(z.sh, 1); sh = {hm: z.sh===1 ? 1.5 : 4, t1:t.t1, t2:t.t2, go:1, guess:true}; }
         else sh = null;
       } else sh = {hm:na.hm, t1:na.t1, t2:na.t2, go:na.go};
     } else if (mode === 'manual' && z.sh){
@@ -691,7 +715,7 @@ table.gakes td input[type=number] { width: 4.5em; }
     }
     shInfo.sh = sh;
     var gReg = $('v_gReg').value;
-    if (gReg === 'auto') gReg = {tokyo:'tokyo', kanagawa:'kanagawa', yokohama:'yokohama', saitama:'saitama', chiba:'chiba'}[pref] || 'unknown';
+    if (gReg === 'auto') gReg = {tokyo:'tokyo', kanagawa:'kanagawa', yokohama:'yokohama', saitama:'saitama', chiba:'chiba'}[pref] || gakeOfPref(pref);
     var gk = {region:gReg, dosha:$('v_gDosha').value, sides:{}, cost:{oldType:$('v_gOld').value, newType:$('v_gNew').value, access:$('v_gAcc').value, neighbor:$('v_gNb').checked, road:$('v_gRoad').checked}};
     SIDES.forEach(function(k){ gk.sides[k] = {pos:$('v_gp' + k).value, H:Math.max(0, num('v_gh' + k, 0)), angle:Math.min(90, Math.max(1, num('v_ga' + k, 90))), wall:$('v_gw' + k).value, measure:$('v_gm' + k).value}; });
     return {
@@ -736,7 +760,7 @@ table.gakes td input[type=number] { width: 4.5em; }
     });
     $('v_gCostWrap').hidden = !needCost;
     var rgN = window.Gake ? window.Gake.region(p.gake.region) : null;
-    $('v_gRegHint').textContent = rgN ? '使う条文：' + window.Gake.ruleOf(rgN.id).short + (($('v_gReg').value === 'auto' && p.pref === 'other') ? '（都道府県が「そのほか」のときは条例を確かめていない仮の目安）' : '') : '';
+    $('v_gRegHint').textContent = rgN ? '使う条文：' + window.Gake.ruleOf(rgN.id).short + (($('v_gReg').value === 'auto' && p.gake.region === 'unknown') ? '（地域が分からないときは、条例を確かめていない仮の目安）' : '') : '';
     $('v_kcWrap').hidden = p.kodo !== 'custom';
     var kd = K.KODO[p.kodo];
     $('v_kodoMaxHint').textContent = (kd && kd.max) ? 'この型は最高 ' + kd.max + 'm（0のままならその値を使います）' : '17m・22mなど。無ければ 0';
@@ -867,7 +891,7 @@ table.gakes td input[type=number] { width: 4.5em; }
     if (!p.flag.on) return;
     var f = r.plan.flag, h = '';
     if (!f){ $('o_flag').innerHTML = ''; return; }
-    h += '<div class="kv"><div>入れた形</div><div>路地状部分 幅 ' + fmt(p.flag.w,1) + 'm × 長さ ' + fmt(p.flag.L,1) + 'm（' + esc(K.PREFS[p.pref].name) + '）</div>';
+    h += '<div class="kv"><div>入れた形</div><div>路地状部分 幅 ' + fmt(p.flag.w,1) + 'm × 長さ ' + fmt(p.flag.L,1) + 'm（' + esc(K.prefLabel(p.pref)) + '）</div>';
     h += '<div>必要な幅</div><div>' + fmt(f.need,1) + 'm 以上 ' + (f.banned ? lv('alert','建てられない') : f.ok ? lv('ok','足りている') : lv('alert','足りない')) + '</div>';
     h += '<div>根拠</div><div>' + esc(f.src) + '</div></div>';
     h += f.lines.map(function(s){ return '<p class="note">' + esc(s) + '</p>'; }).join('');

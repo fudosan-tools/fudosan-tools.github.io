@@ -239,6 +239,8 @@ function flagRule(pref, L, w, area, floors, fireCls, use, siteArea){
       r.lines.push('共同住宅で100㎡超は、路地状部分の幅が長さ ' + fmt1(L) + 'm に応じて ' + b7 + 'm 以上（第7条）');
       if (area > 100){ var b8 = area <= 200 ? 3 : area <= 500 ? 4 : 5; needW(b8); }
     }
+  } else if (flagZen(pref)){
+    zenFlag(flagZen(pref), r, L, w, area, floors, fr, use, needW);
   } else {
     r.src = '建築基準法 第43条（自治体の条例は役所で確認）';
     r.lines.push('建築基準法では道路に2m以上接すること。自治体の条例で、長さに応じてもっと広い幅が要ることが多いので役所で確認してください');
@@ -248,6 +250,68 @@ function flagRule(pref, L, w, area, floors, fireCls, use, siteArea){
   return r;
 }
 function fmt1(n){ return (Math.round(n*10)/10).toString(); }
+
+// ---------- 1都3県の外の旗竿地の条例（data/flag_zenkoku.js。2026-11-07） ----------
+// 都道府県・市の値は "z:愛知県" "z:名古屋市" の形。データが無ければ null
+function flagZen(pref){
+  if (typeof pref !== 'string' || pref.indexOf('z:') !== 0) return null;
+  var d = root.FLAG_ZENKOKU, key = pref.slice(2);
+  if (!d || !d.list) return null;
+  for (var i = 0; i < d.list.length; i++) if (d.list[i].key === key) return d.list[i];
+  return null;
+}
+function prefLabel(pref){
+  if (PREFS[pref]) return PREFS[pref].name;
+  if (typeof pref === 'string' && pref.indexOf('z:') === 0) return pref.slice(2);
+  return PREFS.other.name;
+}
+// 行（rows）が当てはまるか。L は長さ、条件の欄は延べ面積・耐火・階数
+function zenHit(row, fz, L, area, floors, fr){
+  var lo = row.L ? row.L[0] : 0, hi = row.L ? row.L[1] : null;
+  if (lo) { if (fz.lowIncl ? L < lo - EPS : L <= lo + EPS) return false; }
+  if (hi != null && (fz.highIncl === false ? L >= hi - EPS : L > hi + EPS)) return false;
+  if (row.areaOver != null && !(area > row.areaOver)) return false;
+  if (row.notFire && fr) return false;
+  if (row.floorsMin != null && !(floors >= row.floorsMin)) return false;
+  return true;
+}
+function noteSaysTable(fz){ return (fz.notes || []).some(function(n){ return /表/.test(n) && /(無い|ない|なし)/.test(n); }); }
+function zenFlag(fz, r, L, w, area, floors, fr, use, needW){
+  if (fz.status === 'todo' || (fz.status === 'unverified' && !(fz.rows || []).length && !(fz.apartRows || []).length)){
+    r.src = '建築基準法 第43条（' + fz.key + 'の条例はまだ入っていません。役所で確認）';
+    r.lines.push('建築基準法では道路に2m以上接すること。自治体の条例で、長さに応じてもっと広い幅が要ることが多いので役所で確認してください');
+    return;
+  }
+  r.src = fz.law + (fz.status === 'unverified' ? '（条文の原文を確かめられていない目安）' : '');
+  var rows = (fz.rows || []).concat(use === 'apart' ? (fz.apartRows || []) : []);
+  var base = 2, all = 2, calcNote = '';
+  rows.forEach(function(row){
+    if (!zenHit(row, fz, L, area, floors, fr)) return;
+    var rw = row.wLin ? Math.ceil((row.wLin[0] + (L - row.wLin[1]) / row.wLin[2]) * 100 - EPS) / 100 : row.w;   // 式の行（京都市など）は長さから計算
+    if (rw > all) all = rw;
+    if (row.areaOver == null && !row.notFire && row.floorsMin == null && rw > base) base = rw;
+  });
+  (fz.calc || []).forEach(function(c){   // 長さに比べる式（宮城県・秋田県：長さの1/10、延べ200㎡超は1/7 など）
+    if (c.use === 'apart' && use !== 'apart') return;
+    if (c.floorsMin != null && !(floors >= c.floorsMin)) return;
+    if (c.floorsMax != null && floors > c.floorsMax) return;
+    if (c.areaMax != null && area > c.areaMax) return;
+    var ratio = (c.ratioAreaOver && area > c.ratioAreaOver.area) ? c.ratioAreaOver.ratio : c.ratio;
+    var cw = Math.ceil(L * ratio * 100 - EPS) / 100;
+    if (c.cap != null) cw = Math.min(cw, c.cap);
+    if (cw > all){ all = cw; calcNote = c.note || ''; }
+  });
+  needW(all);
+  var noLen = rows.every(function(row){ return !row.L || (!row.L[0] && row.L[1] == null); }) && !(fz.calc || []).length;
+  if (noLen && !noteSaysTable(fz)) r.lines.push(rows.length ? 'この条例には、路地状部分の長さで幅が変わる表はありません（延べ面積・使い方などで、道路に接する長さが決まります）' : 'この条例には、路地状部分の長さで幅が決まる表はありません。建築基準法の2m以上（第43条）');
+  if (rows.length || (fz.calc || []).length){
+    r.lines.push('路地状部分の長さ ' + fmt1(L) + 'm → 幅 ' + all + 'm 以上' + (calcNote ? '（' + calcNote + '）' : all > base ? '（延べ面積・燃えにくさ・階数の条件で、ふつうの ' + base + 'm より広くなります）' : ''));
+    if (all > base && w >= base && w + EPS < all) r.fix.push('延べ面積・階数を小さくするか、耐火・準耐火建築物にすれば幅 ' + base + 'm で足りるかもしれません（条例で確認）');
+  }
+  if (use === 'apart' && fz.apart) r.lines.push('共同住宅：' + fz.apart + '（くわしくは役所で確認）');
+  (fz.notes || []).forEach(function(n){ r.lines.push(n); });
+  if (fz.status === 'unverified') r.lines.push('この地域の条文は、まだ原文で確かめられていません。役所で確認してください');
+}
 
 // ---------- 日影規制（第56条の2・別表第四）。自治体の条例の例 ----------
 var NICHIEI_GO = {1:{1:[3,2],2:[4,2.5],3:[5,3]}, 2:{1:[3,2],2:[4,2.5],3:[5,3]}, 3:{1:[4,2.5],2:[5,3]}};
@@ -288,7 +352,7 @@ function nichieiAuto(pref, zoneId, far, kodoKey){
     else if (res3) go = far<=200 ? ((k==='C1'||k==='C2') ? 1 : 2) : 2;
     else if (zoneId==='kin' || zoneId==='jko') go = far<=200 ? (k==='C1' ? 1 : k==='C2' ? 2 : null) : null;
   } else {
-    return {unknown:true, src:'この都道府県の条例の例はまだ入っていません。役所で確認してください'};
+    return {unknown:true, src:(String(pref).indexOf('z:')===0 ? pref.slice(2) + 'の日影規制の条例の例はまだ入っていません' : 'この都道府県の条例の例はまだ入っていません') + '。役所で確認してください'};
   }
   if (!go) return {unknown:true, src: src + '：この用途地域・容積率の例が表にありません。役所で確認してください'};
   var t = nichieiTimes(z.sh, go);
@@ -1122,6 +1186,8 @@ function normPref(raw){
   if (/^(saitama|埼玉|埼玉県|11)$/.test(s)) return 'saitama';
   if (/^(chiba|千葉|千葉県|12)$/.test(s)) return 'chiba';
   if (/^(other|その他|そのほか)$/.test(s)) return 'other';
+  var d = root.FLAG_ZENKOKU;
+  if (d && d.list) for (var i = 0; i < d.list.length; i++){ var k = d.list[i].key; if (s === k.toLowerCase() || s + '県' === k || s + '府' === k || s + '都' === k || s + '市' === k) return 'z:' + k; }
   return null;
 }
 function normStruct(raw){
@@ -1222,7 +1288,7 @@ function parseParams(search){
 
 var API = {TSUBO:TSUBO, ZONES:ZONES, zoneById:zoneById, roadTable:roadTable, coverage:coverage, KODO:KODO, kodoDef:kodoDef, kodoHof:kodoHof,
   kodoH:kodoH, kodoReq:kodoReq, kodoInv:kodoInv, STRUCTS:STRUCTS, FIRE_RANK:FIRE_RANK, FIRE_NAME:FIRE_NAME, fireRequired:fireRequired, fireCaps:fireCaps,
-  PREFS:PREFS, flagRule:flagRule, NICHIEI_GO:NICHIEI_GO, nichieiTimes:nichieiTimes, nichieiAuto:nichieiAuto, SIDES:SIDES, SIDE_NAME:SIDE_NAME,
+  PREFS:PREFS, flagRule:flagRule, flagZen:flagZen, prefLabel:prefLabel, NICHIEI_GO:NICHIEI_GO, nichieiTimes:nichieiTimes, nichieiAuto:nichieiAuto, SIDES:SIDES, SIDE_NAME:SIDE_NAME,
   setbackOf:setbackOf, makeCtx:makeCtx, effSite:effSite, farLimit:farLimit, deemedW:deemedW, rangeOf:rangeOf, roadLimit:roadLimit,
   heightAt:heightAt, heightCap:heightCap, northApplies:northApplies, sideReq:sideReq, profiles:profiles, maxRect:maxRect, stack:stack,
   volume:volume, analyze:analyze, makePlan:makePlan, takeFloors:takeFloors, fitRoof:fitRoof, roofZ:roofZ, sunPos:sunPos, shadowBoxes:shadowBoxes,
