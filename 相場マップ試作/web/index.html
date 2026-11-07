@@ -144,7 +144,7 @@
       <button id="toggleFilters" class="btn" aria-expanded="false">条件をしぼる ▾</button>
     </div>
     <div class="areapick">
-      <label>都県 <select id="fPref"></select></label>
+      <label>都道府県 <select id="fPref"></select></label>
       <label>市区町村 <select id="fCity"></select></label>
       <label class="inline"><input type="checkbox" id="fKeep"> いま出ている所も残す（並べて比べる）</label>
       <span class="chips" id="cityChips"></span>
@@ -428,7 +428,7 @@ async function applyStation(fit = true) {
   Object.entries(hops).forEach(([id, hop]) => { const h = D.h[id]; pts.push([h[1], h[2]]);
     (keys[C.stationKey(h[0])] ||= []).push({ hop, lat: h[1], lng: h[2] }); });
   const list = Object.values(CITY_INFO).filter(c => c.bbox && pts.some(p => c.bbox[0] - 0.01 <= p[1] && c.bbox[2] + 0.01 >= p[1] && c.bbox[1] - 0.01 <= p[0] && c.bbox[3] + 0.01 >= p[0])).map(c => c.code);
-  if (!list.length) { stnMsg("この駅のまわりは、まだ相場のデータがありません（いまは1都3県の一部）。"); return; }
+  if (!list.length) { stnMsg("この駅のまわりは、まだ相場のデータがありません（国のデータに、この近くの取引が無いか、まだ入っていません）。"); return; }
   if (list.length > MAX_CIRCLE_CITIES) { stnMsg("範囲が広すぎます。駅の数を減らしてください。"); return; }
   STN = { i, n, hops, keys, pts, cache: {} };
   S.center = null; S.kms = []; syncKm(); circleMsg(""); drawCircle();
@@ -466,7 +466,7 @@ function applyCircle(fit = true) {
   if (!circleOn()) { drawCircle(); update(); return; }
   if (STN) clearStation();   // 円と駅数は切りかえ
   const list = citiesInCircle();
-  if (!list.length) { circleMsg("この場所は、まだ相場のデータがありません（いまは1都3県の一部）。"); S.center = null; drawCircle(); update(); return; }
+  if (!list.length) { circleMsg("この場所は、まだ相場のデータがありません（国のデータに、この近くの取引が無いか、まだ入っていません）。"); S.center = null; drawCircle(); update(); return; }
   if (list.length > MAX_CIRCLE_CITIES) { circleMsg("範囲が広すぎます。半径を小さくしてください。"); return; }
   S.cities = S.keep ? [...new Set([...S.cities, ...list])] : list;
   S.sel = null;

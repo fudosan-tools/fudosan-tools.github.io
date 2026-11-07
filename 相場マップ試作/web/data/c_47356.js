@@ -1,0 +1,2 @@
+// 自動生成（scripts/build.py）。手で直さないこと。
+SOUBA.add({"code":"47356","name":"渡名喜村","pref":"沖縄県","towns":[["(大字なし)",0,0]],"geo":[],"rec":{"cols":["k","type","src","station","walk","price","area","floor","plan","year","struct","y","q","shape","front","rtype","rwidth","rdir","jijo","cp","bcr","far","renov"],"dicts":{"type":["宅地(土地と建物)"],"src":["取引"],"station":[""],"plan":[""],"struct":["RC"],"shape":["ほぼ正方形"],"rtype":["村道"],"rdir":["南西"],"jijo":[""],"cp":["都計外"],"renov":[""]},"rows":[[0,0,0,0,null,6200000,240.0,115.0,0,1988,0,2024,1,0,15.0,0,2.3,0,0,0,null,null,0]]}});
