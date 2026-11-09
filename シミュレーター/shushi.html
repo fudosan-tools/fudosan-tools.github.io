@@ -9,8 +9,8 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>収益物件の収支シミュレーター</title>
-<link rel="stylesheet" href="../共通/common.css?v=66fb1f6c">
-<script src="../共通/common.js?v=66fb1f6c"></script>
+<link rel="stylesheet" href="../共通/common.css?v=271d7a31">
+<script src="../共通/common.js?v=271d7a31"></script>
 <style>
 /* このページだけで使う小さな部品（共通にないもの） */
 .top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 24px; align-items: start; }
@@ -110,7 +110,9 @@ tr.big td { font-weight: 600; }
         <option value="big">大規模修繕の年と金額を入れる</option>
         <option value="reserve">毎年、家賃の◯%を修繕のために積み立てる</option>
         <option value="both">両方（積み立てたお金から大規模修繕を払い、足りない分を手残りから）</option>
+        <option value="plan">修繕計画書（家賃と修繕のページ）の金額を使う</option>
       </select></div>
+    <div class="fr rm-plan"><span class="lab">修繕計画書</span><span id="planInfo" class="muted"></span></div>
     <div class="fr rm-big"><label class="lab" for="bigFirst">大規模修繕の最初の年</label><span class="unit-input"><input type="number" id="bigFirst" data-s min="1" max="35" step="1" value="10"><span>年目</span></span></div>
     <div class="fr rm-big"><label class="lab" for="bigCycle">そのあと何年ごと</label><span class="unit-input"><input type="number" id="bigCycle" data-s min="0" max="35" step="1" value="12"><span>年ごと</span></span><span class="hint">0なら1回だけ</span></div>
     <div class="fr rm-big"><label class="lab" for="bigAmt">1回の金額</label><span class="unit-input"><input type="number" id="bigAmt" data-s min="0" step="10" value="200"><span>万円</span></span><span class="hint">今の値段で。経費の上昇率で毎年ふえます</span></div>
@@ -154,7 +156,7 @@ tr.big td { font-weight: 600; }
 </section>
 
 <section class="for-staff print-target" id="staffSec">
-  <h2><span class="no">07</span>担当者向け：収益物件の確認チェックリスト</h2>
+  <h2><span class="no">08</span>担当者向け：収益物件の確認チェックリスト</h2>
   <div class="staff-box">
     <div class="t">チェックリスト（売主・管理会社・役所で確認）</div>
     <p class="muted" style="margin:0">物件名：＿＿＿＿＿＿＿＿＿＿＿＿　確認日：＿＿＿＿年＿＿月＿＿日　担当：＿＿＿＿＿＿</p>
@@ -216,7 +218,7 @@ function annuity(P, r, n) {
   return P * r / (1 - Math.pow(1 + r, -n));
 }
 // p は円・%・年。戻り値は円
-// 修繕の考え方 p.repairMode：'big'＝大規模修繕の年に払う（はじめの値）／'reserve'＝毎年 入った家賃×reservePct% を積み立てる／'both'＝積み立てから大規模修繕を払い、足りない分を手残りから
+// 修繕の考え方 p.repairMode：'big'＝大規模修繕の年に払う（はじめの値）／'reserve'＝毎年 入った家賃×reservePct% を積み立てる／'both'＝積み立てから大規模修繕を払い、足りない分を手残りから／'plan'＝修繕計画書の年ごとの金額（p.plan[年目-1]・工事費の上がり方は計画書の側で入っている）
 function shushi(p) {
   const invest = p.price + p.costs;
   const loan = Math.max(0, invest - p.own);
@@ -225,7 +227,7 @@ function shushi(p) {
   const fullY = p.rentM * 12;
   const horizon = p.horizon || 35;
   const mode = p.repairMode || 'big';
-  const resPct = mode === 'big' ? 0 : (p.reservePct || 0);
+  const resPct = (mode === 'big' || mode === 'plan') ? 0 : (p.reservePct || 0);
   const rows = [];
   let cum = 0, bal = loan, payback = null, firstNeg = null, fund = 0;
   const r = p.rate / 1200;
@@ -237,7 +239,7 @@ function shushi(p) {
     const mgmt = egi * p.mgmt / 100;
     const fixed = (p.repairY + p.taxY + p.insY + p.otherY + p.kumiaiM * 12) * cf;
     const opex = mgmt + fixed;
-    const big = (mode !== 'reserve' && p.bigAmt > 0 && y >= p.bigFirst && (y === p.bigFirst || (p.bigCycle > 0 && (y - p.bigFirst) % p.bigCycle === 0))) ? p.bigAmt * cf : 0;
+    const big = mode === 'plan' ? ((p.plan && p.plan[y - 1]) || 0) : (mode !== 'reserve' && p.bigAmt > 0 && y >= p.bigFirst && (y === p.bigFirst || (p.bigCycle > 0 && (y - p.bigFirst) % p.bigCycle === 0))) ? p.bigAmt * cf : 0;
     const reserve = egi * resPct / 100;
     fund += reserve;
     let fromFund = 0;
@@ -321,26 +323,31 @@ function barChart(el, rows) {
   el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="年ごとの手残りと累計（横軸は年目、縦軸は万円）">' + g + '</svg><div class="muted" style="text-align:right">横：何年目　縦：万円</div>';
 }
 
+// 家賃と修繕のページ（chinryo.html）が作った修繕計画書
+function readPlan() { try { const o = JSON.parse(localStorage.getItem('fudosan_shuzen_plan_v1') || 'null'); return o && Array.isArray(o.rows) && o.rows.length ? o : null; } catch (e) { return null; } }
 let lastRows = null;
 function update() {
   if ($('autoCosts').checked) $('costs').value = Math.round(num('price') * 0.07);
   $('costs').disabled = $('autoCosts').checked;
   const mode = $('repairMode').value;
-  document.querySelectorAll('.rm-big').forEach(e => { e.style.display = mode === 'reserve' ? 'none' : ''; });
-  document.querySelectorAll('.rm-res').forEach(e => { e.style.display = mode === 'big' ? 'none' : ''; });
+  document.querySelectorAll('.rm-big').forEach(e => { e.style.display = (mode === 'reserve' || mode === 'plan') ? 'none' : ''; });
+  document.querySelectorAll('.rm-res').forEach(e => { e.style.display = (mode === 'big' || mode === 'plan') ? 'none' : ''; });
+  document.querySelectorAll('.rm-plan').forEach(e => { e.style.display = mode === 'plan' ? '' : 'none'; });
+  const PL = mode === 'plan' ? readPlan() : null;
+  if (mode === 'plan') $('planInfo').innerHTML = PL ? PL.start + '年からの計画（' + PL.rows.length + '年分・合計 ' + fmtMan(PL.rows.reduce((a, r) => a + r.amount, 0)) + '）を、1年目＝' + PL.start + '年として使います。' + (PL.rows.length < 35 ? (PL.rows.length + 1) + '〜35年目は計画が無いので0円です。' : '') + '<a href="chinryo.html">家賃と修繕のページ</a>で直せます。' : 'まだ修繕計画書がありません。<a href="chinryo.html">家賃と修繕のページ</a>で作って「収支のページで35年の手残りを見る」を押してください。';
   const p = {
     price: num('price') * 1e4, costs: num('costs') * 1e4, own: num('own') * 1e4, rate: num('rate'), years: Math.max(1, Math.round(num('years'))),
     rentM: num('rentM') * 1e4, vac: num('vac'), mgmt: num('mgmt'), repairY: num('repairY') * 1e4, taxY: num('taxY') * 1e4, insY: num('insY') * 1e4,
     otherY: num('otherY') * 1e4, kumiaiM: num('kumiaiM') * 1e4, decline: num('decline'), costUp: num('costUp'), vacUp: num('vacUp'), vacMax: num('vacMax'),
     bigFirst: Math.max(1, Math.round(num('bigFirst'))), bigCycle: Math.round(num('bigCycle')), bigAmt: num('bigAmt') * 1e4, horizon: 35,
-    repairMode: mode, reservePct: num('reservePct')
+    repairMode: mode, reservePct: num('reservePct'), plan: PL ? PL.rows.map(r => r.amount) : []
   };
   const R = shushi(p);
   $('loanOut').textContent = fmtMan(R.loan) + '（毎月の返済 ' + fmtYen(R.monthly) + '）';
   const dl = dscrLevel(R.dscr), rl = repayLevel(R.repayRatio), cl = R.cashY >= 0 ? 'ok' : 'bad';
   const k = [
     ['手残り（1か月）', fmtMan(R.cashM), '税引前', 'main lv-' + cl],
-    ['手残り（1年）', fmtMan(R.cashY), '税引前' + (mode !== 'big' ? '・修繕積立を引いたあと' : ''), 'lv-' + cl],
+    ['手残り（1年）', fmtMan(R.cashY), '税引前' + (mode === 'reserve' || mode === 'both' ? '・修繕積立を引いたあと' : ''), 'lv-' + cl],
     ['表面利回り', R.gross.toFixed(2) + '%', '満室の家賃 ÷ 値段', ''],
     ['実質利回り', R.net.toFixed(2) + '%', 'NOI ÷ (値段＋諸費用)', ''],
     ['NOI（返済前のもうけ）', fmtMan(R.noi), '1年目', ''],
@@ -358,13 +365,13 @@ function update() {
   let al = '';
   if (R.firstNeg) al += '<p class="note alert">' + R.firstNeg + '年目に、手残りの累計がマイナスになります（自分のお金を足す必要があります）。下の表の朱色の行を見てください。</p>';
   else al += '<p class="note ok">35年のあいだ、手残りの累計はマイナスになりません。</p>';
-  al += '<div class="out">自己資金 ' + fmtMan(p.own) + ' を手残りで取りもどせるのは：<b>' + (R.payback ? R.payback + '年目' : '35年以内には取りもどせない') + '</b>' + (p.own <= 0 ? '（自己資金0のため計算しません）' : '') + '<br><span class="muted">35年後の手残りの累計：' + fmtMan(R.rows[R.rows.length - 1].cum) + '（物件を売ったお金はふくみません）' + (mode !== 'big' ? '。35年後の修繕積立の残り：' + fmtMan(R.rows[R.rows.length - 1].fund) : '') + '</span></div>';
+  al += '<div class="out">自己資金 ' + fmtMan(p.own) + ' を手残りで取りもどせるのは：<b>' + (R.payback ? R.payback + '年目' : '35年以内には取りもどせない') + '</b>' + (p.own <= 0 ? '（自己資金0のため計算しません）' : '') + '<br><span class="muted">35年後の手残りの累計：' + fmtMan(R.rows[R.rows.length - 1].cum) + '（物件を売ったお金はふくみません）' + (mode === 'reserve' || mode === 'both' ? '。35年後の修繕積立の残り：' + fmtMan(R.rows[R.rows.length - 1].fund) : '') + '</span></div>';
   if (mode === 'both') {
     const shortYears = R.rows.filter(x => x.short > 0.5).map(x => x.year);
     al += shortYears.length ? '<p class="note caution">修繕積立だけでは大規模修繕に足りない年があります（' + shortYears.join('・') + '年目）。足りない分は手残りから払う計算です。</p>' : '<p class="note ok">大規模修繕は、毎年の修繕積立でまかなえる計算です。</p>';
   }
   $('alerts').innerHTML = al;
-  const showRes = mode !== 'big';
+  const showRes = mode === 'reserve' || mode === 'both';
   let t = '<tr><th>年目</th><th>満室の家賃</th><th>空室率</th><th>入った家賃</th><th>経費</th><th>NOI</th>' + (mode !== 'reserve' ? '<th>大規模修繕</th>' : '') + (showRes ? '<th>修繕積立</th><th>積立の残り</th>' : '') + '<th>ローン返済</th><th>手残り</th><th>手残りの累計</th><th>ローン残高</th></tr>';
   R.rows.forEach(r => {
     t += '<tr class="' + (r.cum < 0 ? 'neg' : '') + (r.big > 0 ? ' big' : '') + '"><td>' + r.year + '</td><td>' + fmtMan(r.rent) + '</td><td>' + r.vac.toFixed(1) + '%</td><td>' + fmtMan(r.egi) + '</td><td>' + fmtMan(r.opex) + '</td><td>' + fmtMan(r.noi) + '</td>' +
@@ -392,6 +399,14 @@ $('clearCheck').addEventListener('click', () => { document.querySelectorAll('#st
 let rt = null;
 window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (lastRows) barChart($('chart'), lastRows); }, 150); });
 load();
+// 家賃と修繕のページから来たとき：家賃・広さ・下がる割合を入れ、修繕計画書を使う
+(function () {
+  const q = new URLSearchParams(location.search);
+  if (!q.has('rentM') && !q.has('plan')) return;
+  ['rentM', 'area', 'decline'].forEach(k => { const v = parseFloat(q.get(k)); if (isFinite(v)) $(k).value = v; });
+  if (q.get('plan') === '1') $('repairMode').value = 'plan';
+  try { history.replaceState(null, '', location.pathname); } catch (e) {}
+})();
 syncTsubo();
 update();
 </script>

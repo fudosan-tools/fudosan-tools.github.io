@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png?v=2">
+<link rel="icon" type="image/png" href="../icon-192.png?v=2">
+<meta name="apple-mobile-web-app-title" content="不動産ツール">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>家賃の目安と修繕計画書</title>
+<link rel="stylesheet" href="../共通/common.css?v=271d7a31">
+<script src="../共通/common.js?v=271d7a31"></script>
+<script src="chinryo_calc.js"></script>
+<style>
+/* このページだけで使う小さな部品（共通にないもの） */
+.top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 24px; align-items: start; }
+.top > .panel > h2:first-child, .stack > .panel > h2:first-child { margin-top: 0; }
+.formrows .fr .unit-input input { max-width: 10em; }
+.formrows .fr select { max-width: 26em; }
+td.l, th.l { text-align: left; }
+td.wrap { white-space: normal; min-width: 10em; text-align: left; }
+.comps input, .ptable input[type=number] { width: 6.5em; }
+.comps td, .ptable td { vertical-align: middle; }
+.parts .fr.part { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.parts .fr.part .check { flex: 1; }
+.parts .fr.part .unit-input input { width: 6em; max-width: 6em; }
+.eqlist { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.figure.lv-ok .v { color: var(--ok); } .figure.lv-warn .v { color: var(--caution); }
+.chart { width: 100%; min-height: 220px; }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin-right: 6px; background: var(--c); }
+.legend span.ring::before { background: none; border: 2px dotted var(--accent); width: 8px; height: 8px; }
+.legend span.line::before { height: 0; border-radius: 0; border-top: 2px solid var(--c); background: none; width: 18px; }
+.tall { max-height: 520px; overflow-y: auto; }
+.tall th { position: sticky; top: 0; z-index: 1; }
+tr.off td { color: var(--muted); }
+tr.yr td { border-top: 1px solid var(--rule-strong); }
+.quote { color: var(--caution); font-size: 12px; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+@media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
+@media print { .tall { max-height: none; overflow: visible; } .ptable input { border: 0; } }
+</style>
+</head>
+<body>
+<nav class="toolnav" data-current="chinryo"></nav>
+
+<main class="page">
+<div class="page-head">
+  <div class="eyebrow">お金の計算</div>
+  <h1>家賃の目安と修繕計画書</h1>
+  <p class="lead">持っている物件の家賃を、近くの似た部屋の家賃と「見なしの築年数」（直した所を新しいものとして数えた築年数）から出します。あわせて、何年目にどこをいくらで直すかの修繕計画書（30年）を作り、収支のページにつなげます。</p>
+</div>
+
+<div class="top">
+  <section class="panel">
+    <h2><span class="no">01</span>物件のこと</h2>
+    <div class="formrows">
+      <div class="fr"><label class="lab" for="kind">物件の種類</label>
+        <select id="kind" data-s>
+          <option value="wood">木造アパート</option>
+          <option value="rc">RC・鉄骨の一棟マンション</option>
+          <option value="kubun">区分マンション（部屋の中だけ）</option>
+          <option value="kodate">戸建て賃貸</option>
+        </select><span class="hint" id="structHint"></span></div>
+      <div class="fr"><label class="lab" for="built">建てた年</label><span class="unit-input"><input type="number" id="built" data-s min="1900" max="2100" step="1" value="1996"><span>年</span></span><span class="hint" id="ageOut"></span></div>
+      <div class="fr"><label class="lab" for="nowYear">今年</label><span class="unit-input"><input type="number" id="nowYear" data-s min="2000" max="2100" step="1"><span>年</span></span></div>
+      <div class="fr"><label class="lab" for="region">地域の型</label>
+        <select id="region" data-s>
+          <option value="toshin">都心型（東京23区・札幌や名古屋の中心の区など、借りたい人が多い所）</option>
+          <option value="chukan" selected>中間（大阪・名古屋・横浜、地方の政令市など）</option>
+          <option value="chiho">地方型（県庁所在地・地方の市町村など）</option>
+          <option value="custom">自分で年率を入れる</option>
+        </select>
+        <span class="hint">都道府県ではなく、近くの家賃の動きで選びます。札幌市中央区や名古屋市中区は、都心と同じくらいの下がり方でした</span></div>
+      <div class="fr rg-custom"><label class="lab" for="customRate">1年あたりの下がり方</label><span class="unit-input"><input type="number" id="customRate" data-s min="0" max="5" step="0.1" value="1.0"><span>%/年</span></span><span class="hint">築3年から下がり始める計算です</span></div>
+      <div class="fr"><label class="lab" for="area">貸す部屋の広さ（1戸）</label><span class="unit-input"><input type="number" id="area" data-s min="0" step="0.5" value="25"><span>㎡</span></span><span class="hint" id="areaT"></span></div>
+      <div class="fr k-bldg k-units"><label class="lab" for="units">戸数</label><span class="unit-input"><input type="number" id="units" data-s min="1" step="1" value="8"><span>戸</span></span><span class="hint">同じ広さの部屋として計算します</span></div>
+      <div class="fr k-bldg"><label class="lab" for="floor">延床面積</label><span class="unit-input"><input type="number" id="floor" data-s min="0" step="1" value="260"><span>㎡</span></span><span class="hint">修繕計画書の外壁・屋根などの数量に使います</span></div>
+      <div class="fr k-bldg"><label class="lab" for="stories">階数</label><span class="unit-input"><input type="number" id="stories" data-s min="1" max="60" step="1" value="2"><span>階</span></span></div>
+    </div>
+  </section>
+
+  <div class="stack">
+    <section class="panel">
+      <h2><span class="no">02</span>結果（新しく募集するときの家賃の目安）</h2>
+      <div class="figures" id="kpis"></div>
+      <div id="alerts"></div>
+      <div id="chart" class="chart"></div>
+      <div class="legend"><span class="line" style="--c:var(--ink-2)">築年数と家賃の線（この地域の型）</span><span style="--c:var(--muted)">実際の築年数だけの家賃</span><span style="--c:var(--accent)">直したところを入れた家賃</span><span class="ring">点線の丸＝見なしの築年数の位置</span></div>
+      <p class="note caution">新しく入居者を募集するときの目安です。<b>今住んでいる人の家賃を上げるときは使えません</b>（借地借家法 第32条：税金・物価・近くの家賃の変化などの理由が要り、同意が無ければ調停・裁判になります）。最後は地元の不動産会社・不動産鑑定士に確かめてください。</p>
+    </section>
+  </div>
+</div>
+
+<section>
+  <h2><span class="no">03</span>近くの似た部屋の家賃（くらべる例）</h2>
+  <p class="muted">ポータルサイトの募集・管理会社の成約・<a href="../相場マップ試作/web/index.html">相場マップ</a>の「自分の記録」から、同じくらいの広さ・駅からの距離の部屋を1〜5件入れます。家賃に共益費（管理費）は入れません。最初に入っている数字は例です。</p>
+  <div class="tablewrap"><table class="comps" id="comps">
+    <tr><th>例</th><th>家賃（1か月）</th><th>広さ</th><th>築年数</th><th class="l">新築ならいくらか（単価）</th></tr>
+  </table></div>
+  <p class="note">それぞれの例を、この地域の型の線で「新築ならいくらか」に直してから平均します。例の築年数がばらばらでも、くらべられるようにするためです。</p>
+</section>
+
+<div class="cols">
+<section class="parts">
+  <h2><span class="no">04</span>直したところ（リノベ・修繕の履歴）</h2>
+  <p class="muted">直した部位に印を入れ、直した年を入れます。直した部位は「直してからの年数」で数え、ほかは実際の築年数で数えます。</p>
+  <div class="formrows" id="partRows"></div>
+  <h3>近くの例に無い設備（ひとつ数%・合計 12% まで）</h3>
+  <div class="eqlist" id="eqRows"></div>
+  <p class="note">設備の%は仮の目安です。那覇市の分析（築年数・広さをそろえて、バス・トイレ別 +6.7%、洗面化粧台 +8.8%、宅配ボックス +7.4%）を、いくつも足して多く出すぎないよう半分ほどにしました。</p>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="cost">リノベの工事費（1戸）</label><span class="unit-input"><input type="number" id="cost" data-s min="0" step="10" value="0"><span>万円</span></span><span class="hint">入れると、上がった家賃で工事費を取りもどす年数を出します</span></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">05</span>計算の中身</h2>
+  <div class="tablewrap"><table id="effTable"></table></div>
+  <div id="calcNote"></div>
+</section>
+</div>
+
+<section>
+  <h2><span class="no">06</span>修繕計画書（30年）</h2>
+  <div class="formrows">
+    <div class="fr"><label class="lab" for="pStart">計画の始めの年</label><span class="unit-input"><input type="number" id="pStart" data-s min="2000" max="2100" step="1"><span>年</span></span></div>
+    <div class="fr"><label class="lab" for="pYears">計画の年数</label><span class="unit-input"><input type="number" id="pYears" data-s min="5" max="40" step="1" value="30"><span>年</span></span></div>
+    <div class="fr"><label class="lab" for="pUnknown">前回の工事が分からないとき</label>
+      <select id="pUnknown" data-s><option value="none">一度も直していないと考える（建てた年から数える・多めに見る）</option><option value="cycle">周期どおりに直してきたと考える</option></select>
+      <span class="hint">「04 直したところ」で印を入れた部位は、その年を前回として使います（水まわり→キッチン・浴室・トイレ・洗面、設備→給湯器・エアコンなど、共用部→外壁・屋根など）</span></div>
+    <div class="fr"><label class="lab" for="pInf">工事費の上がり方</label><span class="unit-input"><input type="number" id="pInf" data-s min="-5" max="10" step="0.5" value="1"><span>%/年</span></span><span class="hint">収支のページの「経費が上がる割合」と同じ考え方。0にすると今の値段のまま</span></div>
+  </div>
+  <p class="muted">「前回」は最後に工事した年です（空なら建てた年）。周期と1回の金額は直せます。金額の欄が空なら、目安（単価×数量）を使います。<b>単価は国の資料の実例を割った目安なので、かならず見積の金額で上書きしてください。</b></p>
+  <div class="tablewrap"><table class="ptable" id="pItems"></table></div>
+  <div class="figures" id="pKpis"></div>
+  <div id="pAlerts"></div>
+  <div id="kubunBox"><h3>建物全体の修繕積立金（管理組合に払う分）</h3><div class="formrows"><div class="fr"><label class="lab" for="ts_m">今の修繕積立金</label><span class="unit-input"><input type="number" id="ts_m" data-s min="0" step="100" value=""><span>円/月</span></span></div><div class="fr"><label class="lab" for="ts_size">建物の大きさ</label><select id="ts_size" data-s><option value="small">20階未満・延床5,000㎡未満</option><option value="mid">20階未満・5,000〜10,000㎡</option><option value="large">20階未満・10,000〜20,000㎡</option><option value="xl">20階未満・20,000㎡以上</option><option value="tower">20階以上</option></select></div></div><div id="ts_out"></div></div>
+  <h3>年ごとの表</h3>
+  <div id="pChart" class="chart"></div>
+  <div class="tablewrap tall"><table id="pTable"></table></div>
+  <div class="btns no-print">
+    <button class="btn" type="button" id="toShushi">収支のページで35年の手残りを見る</button>
+    <button class="btn" type="button" id="printBtn">修繕計画書を印刷する</button>
+  </div>
+  <p class="muted" id="toShushiNote">収支のページに、家賃（満室・1か月）・広さ・家賃が下がる割合と、この修繕計画の金額を渡します。収支のページでは「修繕の考え方」が「修繕計画書の金額を使う」になります。</p>
+</section>
+
+<p class="no-print" style="text-align:right;margin-top:24px"><button class="btn" id="resetBtn" type="button">入力を最初の状態にもどす</button></p>
+
+<div class="disclaimer">
+  <p><b>これは目安です。</b>家賃は、立地・日当たり・眺め・管理の状態・その時期の空室の多さで大きく変わります。新しく募集するときの目安であり、今の入居者の家賃の改定には使えません。広告で「リノベーション済み」「改装済み」と書くときは、工事の内容と時期を書く決まりがあります（不動産の表示に関する公正競争規約 施行規則 第9条）。修繕の金額は、国の資料の実例からの目安で、建物の状態と工事会社の見積で大きく変わります。</p>
+  <p>使ったデータ・考え方の出典</p>
+  <ul>
+    <li>築年数による下がり方：三井住友トラスト基礎研究所（2013年1月・2020年9月、東京23区の成約・募集家賃）、SUUMOの家賃相場（2026年10月、間取りと駅からの距離をそろえた9地域）、東京カンテイ（2026年10月）、総務省「住宅・土地統計調査」2023年（民営借家の1畳あたりの家賃・建てた時期別）、総務省統計局「民営借家の経年変化に関する分析」（2018年3月：全国で非木造 年0.80%・木造 年1.00%）。</li>
+    <li>リノベの効き目：アドバンス・レジデンス投資法人 決算説明資料（2024年7月期・2025年1月期：専有部リノベの部屋は前の家賃より +24.4%、同じ時期の原状回復だけの部屋は +7〜12%）、サムティ・レジデンシャル投資法人、積水ハウス・リート投資法人の開示。地方の割合（7割）は国交省（2019年3月）の資料から。</li>
+    <li>設備の%：おきぎん経済研究所（2023年8月、那覇市の単身向けの家賃の分析）を、仮に半分ほどにした値。</li>
+    <li>修繕の周期：国交省「賃貸住宅の計画的な維持管理及び性能向上の推進について」（平成31年3月）、「長期修繕計画作成ガイドライン」（令和6年6月改訂）、住宅金融支援機構「維持管理の目安」、日本ガス石油機器工業会（給湯器）。</li>
+    <li>修繕の単価：国交省「賃貸住宅管理業者向け 計画修繕ガイドブック」の実例、国交省「令和3年度マンション大規模修繕工事に関する実態調査」。区分マンションの修繕積立金は国交省「マンションの修繕積立金に関するガイドライン」（令和6年）。</li>
+    <li>くわしい調べものは <code>賃料と修繕_調べ/</code> のフォルダにあります。</li>
+  </ul>
+</div>
+</main>
+
+<script>
+const C = window.CHINRYO;
+const KEY = 'sim_chinryo_v1';
+const PLAN_KEY = 'fudosan_shuzen_plan_v1';   // 収支のページが読む修繕計画
+const $ = id => document.getElementById(id);
+const TS = 3.30578;
+const man = (yen, d) => { if (!isFinite(yen)) return '—'; d = d == null ? 1 : d; return (yen / 1e4).toLocaleString('ja-JP', { minimumFractionDigits: d, maximumFractionDigits: d }) + '万円'; };
+const yen = v => isFinite(v) ? Math.round(v).toLocaleString('ja-JP') + '円' : '—';
+const yen100 = v => isFinite(v) ? (Math.round(v / 100) * 100).toLocaleString('ja-JP') + '円' : '—';
+const num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const THIS_YEAR = new Date().getFullYear();
+
+// ---- 入力の欄を作る（くらべる例・直したところ・設備）
+const COMP_DEF = [[78000, 25, 8], [72000, 24, 15], [85000, 26, 3], ['', '', ''], ['', '', '']];
+$('comps').insertAdjacentHTML('beforeend', COMP_DEF.map((d, i) =>
+  '<tr><td>' + (i + 1) + '</td>' +
+  '<td><span class="unit-input"><input type="number" id="c' + i + 'r" data-s min="0" step="1000" value="' + d[0] + '" aria-label="例' + (i + 1) + 'の家賃"><span>円</span></span></td>' +
+  '<td><span class="unit-input"><input type="number" id="c' + i + 'a" data-s min="0" step="0.5" value="' + d[1] + '" aria-label="例' + (i + 1) + 'の広さ"><span>㎡</span></span></td>' +
+  '<td><span class="unit-input"><input type="number" id="c' + i + 'g" data-s min="0" max="80" step="1" value="' + d[2] + '" aria-label="例' + (i + 1) + 'の築年数"><span>年</span></span></td>' +
+  '<td class="l" id="c' + i + 'o">—</td></tr>').join(''));
+$('partRows').innerHTML = C.PARTS.filter(p => !p.fixed).map(p =>
+  '<div class="fr part"><label class="check"><input type="checkbox" id="pd_' + p.id + '" data-s><span>' + esc(p.name) + '</span></label>' +
+  '<span class="unit-input"><input type="number" id="py_' + p.id + '" data-s min="1900" max="2100" step="1" placeholder="今年" aria-label="' + esc(p.name) + 'を直した年"><span>年</span></span></div>').join('');
+$('eqRows').innerHTML = C.EQUIP.map(e => '<label class="check"><input type="checkbox" id="eq_' + e.id + '" data-s><span>' + esc(e.name) + '（+' + e.pct + '%）</span></label>').join('');
+
+// ---- 保存（入力の欄は data-s、修繕計画の工事ごとの直しは pItems）
+const fields = () => Array.from(document.querySelectorAll('[data-s]'));
+$('nowYear').value = THIS_YEAR; $('pStart').value = THIS_YEAR;
+const defaults = {};
+fields().forEach(el => { defaults[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
+let PI = {};   // { kind: { itemId: { on, last, cycle, amount } } }
+function save() {
+  const o = {}; fields().forEach(el => { o[el.id] = el.type === 'checkbox' ? el.checked : el.value; });
+  o.__pi = PI;
+  try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {}
+}
+function load() {
+  let o = null; try { o = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { o = null; }
+  if (!o) return;
+  fields().forEach(el => { if (o[el.id] === undefined) return; if (el.type === 'checkbox') el.checked = !!o[el.id]; else el.value = o[el.id]; });
+  if (o.__pi && typeof o.__pi === 'object') PI = o.__pi;
+}
+
+function params() {
+  const kind = $('kind').value;
+  const struct = (kind === 'wood' || kind === 'kodate') ? 'wood' : 'rc';
+  const nowYear = Math.round(num('nowYear')) || THIS_YEAR;
+  const built = Math.round(num('built'));
+  const done = {};
+  C.PARTS.forEach(p => { if (!p.fixed && $('pd_' + p.id).checked) { const y = Math.round(num('py_' + p.id)); done[p.id] = y > 1900 ? y : nowYear; } });
+  const comps = COMP_DEF.map((_, i) => ({ rent: num('c' + i + 'r'), area: num('c' + i + 'a'), age: num('c' + i + 'g') }));
+  const equip = C.EQUIP.filter(e => $('eq_' + e.id).checked).map(e => e.id);
+  const units = (kind === 'kubun' || kind === 'kodate') ? 1 : Math.max(1, Math.round(num('units')));
+  const floor = kind === 'kubun' ? num('area') : num('floor');
+  return { kind, struct, nowYear, built, age: Math.max(0, nowYear - built), region: $('region').value, custom: num('customRate'), area: num('area'),
+    units, floor, stories: kind === 'kubun' ? 1 : Math.max(1, Math.round(num('stories'))), done, comps, equip, cost: num('cost') * 1e4 };
+}
+
+// ---- 築年数と家賃の線
+function ageChart(el, p, R) {
+  const W = Math.max(300, el.clientWidth || 560), H = 220, pl = 56, pr = 14, pt = 12, pb = 30;
+  const maxA = Math.max(40, Math.ceil((p.age + 5) / 10) * 10);
+  const pts = []; for (let a = 0; a <= maxA; a++) pts.push([a, R.baseNewPerM2 * C.ageFactor(a, p.region, p.struct, p.custom)]);
+  let lo = Math.min(...pts.map(q => q[1]), R.perM2) * 0.9, hi = Math.max(...pts.map(q => q[1]), R.perM2) * 1.05;
+  const x = a => pl + (W - pl - pr) * a / maxA, y = v => pt + (H - pt - pb) * (hi - v) / (hi - lo || 1);
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const v = lo + (hi - lo) * i / 4, yy = y(v);
+    g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yy.toFixed(1) + '" y2="' + yy.toFixed(1) + '" style="stroke:var(--rule)"/><text x="' + (pl - 6) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" style="fill:var(--muted)">' + Math.round(v).toLocaleString('ja-JP') + '</text>'; }
+  for (let a = 0; a <= maxA; a += 10) g += '<text x="' + x(a).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" style="fill:var(--muted)">' + a + '</text>';
+  g += '<path d="' + pts.map((q, i) => (i ? 'L' : 'M') + x(q[0]).toFixed(1) + ',' + y(q[1]).toFixed(1)).join('') + '" fill="none" style="stroke:var(--ink-2)" stroke-width="2"/>';
+  const yPlain = y(R.perM2Plain), yNow = y(R.perM2 / (1 + R.equipPct / 100));
+  g += '<circle cx="' + x(p.age).toFixed(1) + '" cy="' + yPlain.toFixed(1) + '" r="5" style="fill:var(--paper);stroke:var(--muted)" stroke-width="2"><title>実際の築年数 ' + p.age + '年：' + Math.round(R.perM2Plain).toLocaleString('ja-JP') + '円/㎡</title></circle>';
+  if (R.renewedShare > 0) {
+    g += '<line x1="' + x(p.age).toFixed(1) + '" x2="' + x(p.age).toFixed(1) + '" y1="' + (yPlain - 7).toFixed(1) + '" y2="' + (yNow + 7).toFixed(1) + '" style="stroke:var(--accent)" stroke-width="2"/>';
+    g += '<circle cx="' + x(p.age).toFixed(1) + '" cy="' + yNow.toFixed(1) + '" r="5" style="fill:var(--accent);stroke:var(--paper)" stroke-width="2"><title>直したところを入れた家賃：' + Math.round(R.perM2 / (1 + R.equipPct / 100)).toLocaleString('ja-JP') + '円/㎡</title></circle>';
+    g += '<circle cx="' + x(R.effAge).toFixed(1) + '" cy="' + y(R.baseNewPerM2 * R.factorEff).toFixed(1) + '" r="4" style="fill:none;stroke:var(--accent)" stroke-width="2" stroke-dasharray="2 2"><title>見なしの築年数 ' + R.effAge.toFixed(1) + '年の位置</title></circle>';
+  }
+  el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="築年数と家賃の単価の線">' + g + '</svg><div class="muted" style="text-align:right">横：築年数　縦：家賃の単価（円/㎡・1か月）</div>';
+}
+
+// ---- 修繕計画の棒
+function planChart(el, P) {
+  const W = Math.max(300, el.clientWidth || 600), H = 200, pl = 52, pr = 12, pt = 10, pb = 26;
+  const max = Math.max(1, ...P.rows.map(r => r.total));
+  const step = Math.pow(10, Math.floor(Math.log10(max))); const top = Math.ceil(max / step) * step;
+  const n = P.rows.length, bw = (W - pl - pr) / n, y = v => pt + (H - pt - pb) * (1 - v / top);
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const v = top * i / 4, yy = y(v);
+    g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yy.toFixed(1) + '" y2="' + yy.toFixed(1) + '" style="stroke:var(--rule)"/><text x="' + (pl - 6) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" style="fill:var(--muted)">' + Math.round(v / 1e4).toLocaleString('ja-JP') + '</text>'; }
+  P.rows.forEach((r, i) => {
+    const h = y(0) - y(r.total);
+    if (r.total > 0) g += '<rect x="' + (pl + i * bw + bw * 0.15).toFixed(1) + '" y="' + y(r.total).toFixed(1) + '" width="' + (bw * 0.7).toFixed(1) + '" height="' + Math.max(0.5, h).toFixed(1) + '" rx="2" style="fill:var(--accent)"><title>' + r.year + '年 ' + man(r.total) + '（' + r.items.map(t => t.name).join('・') + '）</title></rect>';
+    if (i % 5 === 0) g += '<text x="' + (pl + i * bw + bw / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" style="fill:var(--muted)">' + r.year + '</text>';
+  });
+  el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="年ごとの修繕の金額">' + g + '</svg><div class="muted" style="text-align:right">横：年　縦：万円</div>';
+}
+
+let last = null;
+function update() {
+  const p = params();
+  const isBldg = p.kind !== 'kubun';
+  document.querySelectorAll('.k-bldg').forEach(e => { e.style.display = isBldg ? '' : 'none'; });
+  document.querySelectorAll('.k-units').forEach(e => { e.style.display = (isBldg && p.kind !== 'kodate') ? '' : 'none'; });
+  document.querySelectorAll('.rg-custom').forEach(e => { e.style.display = p.region === 'custom' ? '' : 'none'; });
+  $('structHint').textContent = p.struct === 'wood' ? '築年数の線は「木造」を使います' : '築年数の線は「RC・鉄骨（非木造）」を使います';
+  $('ageOut').textContent = p.built > 0 ? '築' + p.age + '年' : '';
+  $('areaT').textContent = p.area > 0 ? (p.area / TS).toFixed(1) + '坪' : '';
+  C.PARTS.forEach(pt => { if (!pt.fixed) $('py_' + pt.id).disabled = !$('pd_' + pt.id).checked; });
+
+  // ---- 家賃
+  const R = C.estimate(p);
+  let al = '';
+  if (!R.ok) {
+    $('kpis').innerHTML = '<p class="muted" style="grid-column:1/-1;margin:8px 0">' + esc(R.reason) + '。</p>';
+    $('chart').innerHTML = ''; $('effTable').innerHTML = ''; $('calcNote').innerHTML = '';
+  } else {
+    COMP_DEF.forEach((_, i) => { const c = R.comps.find(x => x.rent === p.comps[i].rent && x.area === p.comps[i].area && x.age === p.comps[i].age);
+      $('c' + i + 'o').textContent = c ? Math.round(c.perM2).toLocaleString('ja-JP') + '円/㎡（築' + c.age + '年）→ 新築なら ' + Math.round(c.newPerM2).toLocaleString('ja-JP') + '円/㎡' : '—'; });
+    const k = [
+      ['家賃の目安（1戸・1か月）', yen100(R.rent), '幅 ' + yen100(R.low) + '〜' + yen100(R.high), 'main'],
+      ['単価', Math.round(R.perM2).toLocaleString('ja-JP') + '<small>円/㎡</small>', Math.round(R.perM2 * TS).toLocaleString('ja-JP') + '円/坪', ''],
+      ['見なしの築年数', R.effAge.toFixed(1) + '<small>年</small>', '実際は築' + p.age + '年', ''],
+      ['築年数だけで出した家賃', yen100(R.rentPlain), '直したところを入れない場合', ''],
+      ['直して上がった分', R.upByRenovation > 0 ? '+' + yen100(R.upByRenovation) : '0円', R.renewedShare > 0 ? '+' + (R.gain * 100).toFixed(1) + '%（設備の加点は別）' : '直したところの印なし', R.upByRenovation > 0 ? 'lv-ok' : ''],
+      ['工事費を取りもどす年数', R.payback ? R.payback.toFixed(1) + '<small>年</small>' : '—', p.cost > 0 ? 'REITの実例は約9.5年' : '工事費を入れると出ます', R.payback ? (R.payback <= 12 ? 'lv-ok' : 'lv-warn') : ''],
+      ['同じ場所の新築なら', yen100(R.baseNewPerM2 * p.area), '近くの例を新築に直した平均', ''],
+      ['これから10年の下がり方', R.decline10.toFixed(2) + '<small>%/年</small>', '収支のページに渡す値', '']
+    ];
+    if (isBldg && p.units > 1) k.splice(1, 0, ['満室のときの家賃（' + p.units + '戸）', man(R.rent * p.units), '1か月', '']);
+    $('kpis').innerHTML = k.map(a => '<div class="figure ' + a[3] + '"><div class="k">' + a[0] + '</div><div class="v">' + a[1] + '</div><div class="s">' + a[2] + '</div></div>').join('');
+    if (R.capped) al += '<p class="note">直したところを入れると新築の95%をこえるので、95%で止めました（骨組み・共用部・立地は古いままのため）。</p>';
+    if (R.region === 'chiho' && R.renewedShare > 0) al += '<p class="note caution">地方型は、リノベで上がった実例が少ないので、上がり幅を東京23区の実績の7割にしています。家賃の金額が小さいと工事費を取りもどしにくいので、幅の下側も見てください。</p>';
+    if (p.age <= 2) al += '<p class="note">築2年までの新しい部屋は、近くの新築の募集と直接くらべてください（新築だけの上乗せ 5〜7% があるため）。</p>';
+    if (R.comps.length < 3) al += '<p class="note caution">くらべる例が' + R.comps.length + '件です。3件以上あると、ぶれが小さくなります。</p>';
+    $('alerts').innerHTML = al;
+    ageChart($('chart'), p, R);
+    let t = '<tr><th class="l">部位</th><th>重み</th><th>数える年数</th><th class="l">数え方</th></tr>';
+    R.effDetail.forEach(d => { t += '<tr><td class="l">' + esc(d.name) + '</td><td>' + d.w.toFixed(2) + '</td><td>' + d.age.toFixed(0) + '年</td><td class="l">' + (d.renewed ? '直してからの年数' : '実際の築年数') + '</td></tr>'; });
+    t += '<tr><td class="l"><b>見なしの築年数（重みをかけて合計）</b></td><td>1.00</td><td><b>' + R.effAge.toFixed(1) + '年</b></td><td></td></tr>';
+    $('effTable').innerHTML = t;
+    $('calcNote').innerHTML = '<p class="muted">家賃の単価 ＝ 新築ならいくらか（' + Math.round(R.baseNewPerM2).toLocaleString('ja-JP') + '円/㎡）× 築年数の補正（' + R.factorUse.toFixed(3) + '）× 設備の加点（' + (1 + R.equipPct / 100).toFixed(2) + '）。<br>築年数の補正：実際の築年数で ' + R.factorAge.toFixed(3) + '、見なしの築年数で ' + R.factorEff.toFixed(3) + '。上がった分 ' + (R.gainRaw * 100).toFixed(1) + '% に地域の割合 ' + C.GAIN_DAMP[R.region] + ' をかけて ' + (R.gain * 100).toFixed(1) + '%。<br>重みは、東京23区の住宅REITのリノベの実績（原状回復だけの部屋より +12〜19%）と合うように決めました。部屋の中を全部直すと、都心型の築30年で約 +13%、共用部も直すと約 +17% になります。</p>';
+  }
+  last = { p, R };
+
+  // ---- 修繕計画
+  const kind = p.kind;
+  PI[kind] = PI[kind] || {};
+  const b = { kind, built: p.built, start: Math.round(num('pStart')) || p.nowYear, years: Math.round(num('pYears')) || 30, floor: p.floor, units: p.units, stories: p.stories, inflation: num('pInf'), items: PI[kind], done: p.done, unknown: $('pUnknown').value };
+  const P = C.plan(b);
+  renderItems(P);
+  const qFloor = kind === 'kubun' ? '専有面積' : '延床面積';
+  $('pKpis').innerHTML = [
+    [P.start + '〜' + P.end + '年の合計', man(P.total, 0), (P.rows.length) + '年分・工事費の上がり方込み', 'main'],
+    ['1年あたり', man(P.perYear), '積み立てるならこの額', ''],
+    ['1か月あたり', yen100(P.perMonth), isBldg && p.units > 1 ? '1戸あたり ' + yen100(P.perMonth / p.units) : '', ''],
+    [qFloor + '1㎡・1か月あたり', P.perM2Month ? Math.round(P.perM2Month).toLocaleString('ja-JP') + '<small>円</small>' : '—', '', ''],
+    ['家賃にしめる割合', R.ok ? (P.perMonth / (R.rent * p.units) * 100).toFixed(1) + '<small>%</small>' : '—', '満室の家賃に対して（よく使う目安は5%）', R.ok && P.perMonth / (R.rent * p.units) > 0.1 ? 'lv-warn' : '']
+  ].map(a => '<div class="figure ' + a[3] + '"><div class="k">' + a[0] + '</div><div class="v">' + a[1] + '</div><div class="s">' + a[2] + '</div></div>').join('');
+  let pa = '';
+  if (P.overdue.length) pa += '<p class="note caution">前回の工事から周期を過ぎている工事を、' + P.start + '年に入れました：' + esc(P.overdue.join('・')) + '。実際の傷みぐあいを見て、年を決めてください。</p>';
+  if (P.needQuote.length) pa += '<p class="note">単価が国の資料に無いので、金額が0になっている工事があります（表で「要見積」）：' + esc(P.needQuote.join('・')) + '。見積の金額を入れると合計に入ります。</p>';
+  $('pAlerts').innerHTML = pa;
+  // 区分：修繕積立金
+  if (kind === 'kubun') {
+    $('kubunBox').style.display = '';
+    const T = C.tsumitateCheck(num('ts_m'), p.area, $('ts_size').value);
+    $('ts_out').innerHTML = T ? '<p class="note ' + (T.level === 'low' ? 'caution' : 'ok') + '">いまは専有面積1㎡あたり ' + Math.round(T.perM2) + '円/月。国のガイドラインの目安は ' + T.low + '〜' + T.high + '円（平均 ' + T.avg + '円）です。' + (T.level === 'low' ? '目安より低いので、これから値上げされる可能性があります（平均まで上がると +' + yen100(T.toAvg) + '/月）。管理組合の長期修繕計画を確かめてください。' : '目安の範囲か、それより高い水準です。') + '</p>' : '<p class="muted">今の修繕積立金を入れると、国のガイドラインの目安とくらべます。共用部（外壁・屋上・エレベーターなど）は管理組合の工事なので、上の表には入れていません。</p>';
+  } else $('kubunBox').style.display = 'none';
+  // 年ごとの表
+  let pt = '<tr><th>年</th><th>築年数</th><th class="l">工事</th><th>その年の金額</th><th>累計</th></tr>';
+  P.rows.forEach(r => {
+    if (!r.items.length) return;
+    pt += '<tr class="yr"><td>' + r.year + '</td><td>' + (r.year - p.built) + '年</td><td class="wrap">' + r.items.map(t => esc(t.name) + (t.needQuote ? '<span class="quote">（要見積）</span>' : '（' + man(t.amount) + '）')).join('<br>') + '</td><td>' + man(r.total) + '</td><td>' + man(r.cum) + '</td></tr>';
+  });
+  $('pTable').innerHTML = pt;
+  planChart($('pChart'), P);
+  last.P = P;
+  save();
+}
+
+function renderItems(P) {
+  const st = PI[P.kind];
+  let h = '<tr><th>入れる</th><th class="l">工事</th><th>周期</th><th>前回</th><th>1回の金額</th><th class="l">目安の出どころ</th></tr>';
+  P.items.forEach(it => {
+    const o = st[it.id] || {};
+    h += '<tr class="' + (it.on ? '' : 'off') + '">' +
+      '<td><input type="checkbox" data-pi="' + it.id + '" data-f="on"' + (it.on ? ' checked' : '') + ' aria-label="' + esc(it.name) + 'を入れる"></td>' +
+      '<td class="wrap">' + esc(it.name) + (it.due.length ? '<br><span class="muted">次は ' + it.due[0] + '年' + (it.overdue ? '（周期を過ぎている）' : '') + '</span>' : '') + '</td>' +
+      '<td><span class="unit-input"><input type="number" min="1" max="60" step="1" data-pi="' + it.id + '" data-f="cycle" value="' + (o.cycle > 0 ? o.cycle : '') + '" placeholder="' + it.cycle + '" aria-label="周期"><span>年</span></span><br><span class="muted">資料 ' + esc(it.range) + '年</span></td>' +
+      '<td><span class="unit-input"><input type="number" min="1900" max="2100" step="1" data-pi="' + it.id + '" data-f="last" value="' + (o.last > 0 ? o.last : '') + '" placeholder="' + it.last + '" aria-label="前回の工事の年"><span>年</span></span>' + (it.lastSrc === 'part' ? '<br><span class="muted">直したところから</span>' : it.lastSrc === 'cycle' ? '<br><span class="muted">周期どおりと仮定</span>' : '') + '</td>' +
+      '<td><span class="unit-input"><input type="number" min="0" step="1" data-pi="' + it.id + '" data-f="amount" value="' + (o.amount != null && o.amount >= 0 ? Math.round(o.amount / 1e4 * 10) / 10 : '') + '" placeholder="' + (it.estimate > 0 ? Math.round(it.estimate / 1e4 * 10) / 10 : '要見積') + '" aria-label="1回の金額"><span>万円</span></span></td>' +
+      '<td class="wrap"><span class="muted">' + esc(it.src) + (it.unit > 0 ? '／数量 ' + (Math.round(it.qty * 10) / 10).toLocaleString('ja-JP') + (it.q === 'unit' ? '戸' : it.q === 'one' ? '式' : '㎡') : '') + '</span></td></tr>';
+  });
+  // 入力中の欄を作りなおさない（打っている途中で消えないように）
+  const tb = $('pItems'); const act = document.activeElement;
+  if (act && tb.contains(act)) return;
+  tb.innerHTML = h;
+}
+$('pItems').addEventListener('input', e => {
+  const t = e.target; if (!t.dataset.pi) return;
+  const kind = $('kind').value; PI[kind] = PI[kind] || {}; const o = PI[kind][t.dataset.pi] = PI[kind][t.dataset.pi] || {};
+  const f = t.dataset.f;
+  if (f === 'on') o.on = t.checked;
+  else if (t.value === '') delete o[f];
+  else { const v = parseFloat(t.value); if (isFinite(v)) o[f] = f === 'amount' ? v * 1e4 : Math.round(v); }
+  update();
+});
+$('pItems').addEventListener('change', e => { if (e.target.dataset.pi) { e.target.blur(); update(); } });
+
+document.addEventListener('input', e => { if (e.target.matches('[data-s]')) update(); });
+document.addEventListener('change', e => { if (e.target.matches('[data-s]')) update(); });
+$('resetBtn').addEventListener('click', () => {
+  fields().forEach(el => { if (defaults[el.id] === undefined) return; if (el.type === 'checkbox') el.checked = defaults[el.id]; else el.value = defaults[el.id]; });
+  PI = {};
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  update();
+});
+$('printBtn').addEventListener('click', () => window.print());
+$('toShushi').addEventListener('click', () => {
+  if (!last || !last.R.ok || !last.P) return;
+  const { p, R, P } = last;
+  try { localStorage.setItem(PLAN_KEY, JSON.stringify({ made: new Date().toISOString(), kind: p.kind, start: P.start, rows: P.rows.map(r => ({ year: r.year, amount: Math.round(r.total) })) })); } catch (e) {}
+  const q = new URLSearchParams({ rentM: (Math.round(R.rent * p.units / 1000) / 10).toString(), area: (Math.round(p.area * p.units * 10) / 10).toString(), decline: R.decline10.toFixed(1), plan: '1' });
+  location.href = 'shushi.html?' + q.toString();
+});
+let rt = null;
+window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(update, 150); });
+load();
+update();
+</script>
+</body>
+</html>

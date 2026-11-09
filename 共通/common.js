@@ -1,4 +1,5 @@
-/* 不動産ツール 共通の上の段（ホームへ戻る）と「お客様向け／担当者向け」の切りかえ。
+/* 不動産ツール 共通の上の段（ホームへ戻る）。
+   2026-11-08：「お客様向け／担当者向け」の切りかえは外した（SHUさん「使い分けできていないのでなしでいい」）。どの中身もいつも出す。
    使い方：<nav class="toolnav" data-current="loan"></nav> を置いて、このファイルを読みこむ。 */
 (function () {
   "use strict";
@@ -10,6 +11,7 @@
     ["chintai", "賃貸の初期費用", "シミュレーター/chintai.html"],
     ["shushi", "収支", "シミュレーター/shushi.html"],
     ["shuzen", "修繕・リフォーム", "シミュレーター/shuzen.html"],
+    ["chinryo", "家賃と修繕計画", "シミュレーター/chinryo.html"],
     ["kenchiku", "建築・ボリューム", "シミュレーター/kenchiku.html"],
     ["tochi", "土地活用", "シミュレーター/tochi.html"],
     ["sekisan", "積算の目安", "シミュレーター/sekisan.html"],
@@ -22,9 +24,6 @@
   var me = document.currentScript && document.currentScript.src;
   var base = me ? me.replace(/共通\/common\.js.*$/, "").replace(/%E5%85%B1%E9%80%9A\/common\.js.*$/i, "") : "../";
 
-  var mode = "client";
-  try { mode = localStorage.getItem("fudosanMode") || "client"; } catch (e) {}
-  document.documentElement.setAttribute("data-mode", mode);
 
   // 見出しの帯は黒いので、帯に入るのは小見出し・題名・説明だけにして、注意書きなどは帯の下へ出す
   function tidyHead() {
@@ -43,20 +42,8 @@
     var name = "";
     TOOLS.forEach(function (t) { if (t[0] === cur) name = t[1]; });
     var html = '<div class="in"><a class="brand" href="' + base + 'index.html"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M20 6L10 16l10 10"/></svg>ホーム</a>' +
-      '<span class="here">' + name + "</span>";
-    html += '<div class="mode seg" role="group" aria-label="表示の切りかえ">' +
-      '<button type="button" data-m="client">お客様向け</button><button type="button" data-m="staff">担当者向け</button></div></div>';
+      '<span class="here">' + name + "</span></div>";
     nav.innerHTML = html;
-    nav.querySelectorAll(".mode button").forEach(function (b) {
-      b.classList.toggle("on", b.getAttribute("data-m") === mode);
-      b.addEventListener("click", function () {
-        mode = b.getAttribute("data-m");
-        document.documentElement.setAttribute("data-mode", mode);
-        try { localStorage.setItem("fudosanMode", mode); } catch (e) {}
-        nav.querySelectorAll(".mode button").forEach(function (x) { x.classList.toggle("on", x === b); });
-        document.dispatchEvent(new CustomEvent("modechange", { detail: mode }));
-      });
-    });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", render); else render();
 
@@ -72,6 +59,6 @@
     // 例：unitPrice(1100000) → "110.0万円/㎡（363.6万円/坪）"
     unitPrice: function (yenPerM2) { if (yenPerM2 == null || isNaN(yenPerM2)) return "—";
       return (yenPerM2 / 1e4).toFixed(1) + "万円/㎡（" + (yenPerM2 * TSUBO / 1e4).toFixed(1) + "万円/坪）"; },
-    getMode: function () { return mode; }
+    getMode: function () { return "all"; }   // 切りかえは外した（いつも全部出す）
   };
 })();
