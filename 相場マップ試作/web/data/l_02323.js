@@ -1,0 +1,2 @@
+// 自動で作ったファイル（scripts/build_liq_rank.js）。手で直さない
+SOUBA_LIQ.add({"code":"02323","n":[null,1,null,1],"t":{"大字深浦":[null,[1.74,1,197,21490],null,[1.74,1,20,1276]]}});

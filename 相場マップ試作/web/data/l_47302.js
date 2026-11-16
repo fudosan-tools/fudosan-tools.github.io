@@ -1,0 +1,2 @@
+// 自動で作ったファイル（scripts/build_liq_rank.js）。手で直さない
+SOUBA_LIQ.add({"code":"47302","n":[null,null,1],"t":{"字津波":[null,null,[6.94,1,41,2103]]}});

@@ -1,0 +1,2 @@
+// 自動で作ったファイル（scripts/build_liq_rank.js）。手で直さない
+SOUBA_LIQ.add({"code":"43424","n":[null,null,1,1],"t":{"大字宮原":[null,null,[0.71,1,377,22389],[0.71,1,100,5215]]}});

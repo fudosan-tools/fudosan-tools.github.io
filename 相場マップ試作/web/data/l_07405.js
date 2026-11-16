@@ -1,0 +1,2 @@
+// 自動で作ったファイル（scripts/build_liq_rank.js）。手で直さない
+SOUBA_LIQ.add({"code":"07405","n":[null,null,1,1],"t":{"野沢":[null,null,[1.9,1,254,13892],[1.19,1,41,2543]]}});

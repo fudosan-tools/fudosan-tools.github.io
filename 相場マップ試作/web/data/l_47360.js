@@ -1,0 +1,2 @@
+// 自動で作ったファイル（scripts/build_liq_rank.js）。手で直さない
+SOUBA_LIQ.add({"code":"47360","n":[null,null,2],"t":{"字勢理客":[null,null,[11.61,1,23,910]],"字伊是名":[null,null,[10.5,2,25,1062]]}});

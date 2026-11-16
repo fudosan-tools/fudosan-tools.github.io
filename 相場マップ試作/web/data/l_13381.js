@@ -1,0 +1,2 @@
+// 自動で作ったファイル（scripts/build_liq_rank.js）。手で直さない
+SOUBA_LIQ.add({"code":"13381","n":[null,1,1],"t":{"神着":[null,[3.55,1,302,11178]],"坪田":[null,null,[2.78,1,29,9051]]}});

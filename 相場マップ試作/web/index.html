@@ -150,6 +150,9 @@
   .lhcard .s { font-size: 11px; color: var(--ink-2); }
   @media (max-width: 380px) { .lhcards { grid-template-columns: minmax(0, 1fr); } }
   table.kv td:last-child { text-align: right; }
+  table.kv.zoning td:first-child { width: 7.5em; color: var(--ink-2); }
+  table.kv.zoning td:last-child { text-align: left; }
+  table.kv.rank td:first-child { white-space: normal; }
   #panel thead th { white-space: normal; }   /* 見出しが長くても横にはみ出さないように折り返す */
   #panel table.kv td:first-child { white-space: normal; }
   table.rent td, table.rent th { padding-right: 8px !important; }
@@ -361,6 +364,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="data/index.js"></script>
 <script src="data/rent_city.js"></script>
+<script src="data/liq_meta.js"></script>
 <script src="../../共通/hosei_data.js"></script>
 <script src="souba_calc.js"></script>
 <script src="../../共通/common.js?v=271d7a31"></script>
@@ -438,9 +442,17 @@ const wardOf = k => cityName(k.split("|")[0]);
 
 // ---------- 市区町村のデータを読みこむ（file:// でも動くよう <script> を足す） ----------
 const CITY = {}, PENDING = {};
+// 流動性の順位（scripts/build_liq_rank.js で前もって数えたもの）。市区町村のデータといっしょに読む
+const LIQR = {};
+window.SOUBA_LIQ = { add(o) { LIQR[o.code] = o; if (S.sel && S.sel.startsWith(o.code + "|") && S.tab === "market") renderPanel(); } };
+function loadLiq(code) {
+  if (LIQR[code] || document.querySelector(`script[data-liq="${code}"]`)) return;
+  const s = document.createElement("script"); s.src = "data/l_" + code + ".js"; s.dataset.liq = code; s.onerror = () => {}; document.head.appendChild(s);
+}
 window.SOUBA = { add(o) { const c = C.decodeCity(o); CITY[c.code] = c; if (PENDING[c.code]) { PENDING[c.code](c); delete PENDING[c.code]; } } };
 function loadCity(code) {
   if (CITY[code]) return Promise.resolve(CITY[code]);
+  loadLiq(code);
   return new Promise((resolve, reject) => {
     PENDING[code] = resolve;
     const s = document.createElement("script");
@@ -565,7 +577,59 @@ function syncKm() {
   document.querySelectorAll("#fKms input").forEach(i => { i.checked = S.kms.includes(i.value); });
 }
 const ringList = km => S.kms && S.kms.length > 1 ? S.kms.map(Number) : [0.5, 1, 1.5, 2, 3, 5, 10].filter(d => d <= km);
-function setCenter(lat, lng) { S.center = [lat, lng]; if (!S.km) { S.kms = ["1"]; syncKm(); } applyCircle(); }
+function setCenter(lat, lng) { S.center = [lat, lng]; if (!S.km) { S.kms = ["1"]; syncKm(); } surveyPoint(lat, lng, "地図で選んだ場所"); applyCircle(); }
+// 物件調査のデータ（../../物件調査/）を、住所を入れたときだけ読む
+const SV_BASE = "../../物件調査/";
+let PT = null;   // { lat, lng, label, state: "loading" | "ok" | "fail", res }
+const svScript = src => new Promise((ok, ng) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ng; document.head.appendChild(s); });
+const SV_TILES = {};
+async function surveyPoint(lat, lng, label) {
+  PT = { lat, lng, label, state: "loading" }; const me = PT;
+  try {
+    if (!window.SURVEY) await svScript(SV_BASE + "survey_core.js");
+    if (!window.SURVEY_INDEX) await svScript(SV_BASE + "data/tiles/index.js");
+    const SV = window.SURVEY, IX = window.SURVEY_INDEX, key = SV.tileKey(IX.meta.grid, lat, lng);
+    if (!SV_TILES[key]) {
+      if (!SV.hasTile(IX, key)) { me.state = "ok"; me.res = { inData: false }; if (PT === me) renderPanel(); return; }
+      if (!(window.SURVEY_TILES && window.SURVEY_TILES[key])) await svScript(SV_BASE + "data/tiles/" + key + ".js");
+      SV_TILES[key] = SV.prepareTile(IX, key, window.SURVEY_TILES[key]);
+    }
+    me.res = SV.lookup(SV_TILES[key], lat, lng); me.state = "ok";
+  } catch (e) { me.state = "fail"; }
+  if (PT === me) renderPanel();
+}
+function zoningHtml() {
+  if (!PT || !S.center) return "";
+  let h = `<h3>この地点の都市計画（${esc(PT.label)}）</h3>`;
+  const box = x => `<section class="blk">${x}</section>`;
+  if (PT.state === "loading") return box(h + `<p class="muted">調べています…</p>`);
+  if (PT.state === "fail") return box(h + `<p class="warnline">都市計画のデータを読みこめませんでした。物件調査のページで調べてください。</p>`);
+  const r = PT.res, SV = window.SURVEY, IX = window.SURVEY_INDEX;
+  if (!r || !r.inData || !r.youto && !r.kuiki) return box(h + `<p class="muted">この地点の都市計画のデータがありません（都市計画区域の外か、データが無い所です）。役所で確かめてください。</p>`);
+  const y = r.youto, pct = v => v > 0 ? v + "%" : "データなし";
+  const rows = [];
+  rows.push(["用途地域", y ? esc(y.name) + (r.youtoMixed ? "（この近くで2つ以上の用途地域にまたがっています）" : "") : "指定なし"]);
+  if (y) {
+    rows.push(["建ぺい率", `<b>${pct(y.kenpei)}</b>${y.fill2019 ? "（2019年のデータで補ったもの）" : ""}`]);
+    rows.push(["容積率", `<b>${pct(y.youseki)}</b>${y.youseki > 0 ? `<span class="alt">前の道の幅が12m未満なら「道の幅×${y.kind === "res" ? "40" : "60"}%」と小さい方になります（例：幅4mなら${4 * (y.kind === "res" ? 40 : 60)}%${4 * (y.kind === "res" ? 40 : 60) < y.youseki ? `に下がります` : `なので、${y.youseki}%のまま`}）</span>` : ""}`]);
+  }
+  rows.push(["防火の指定", esc(r.bouka ? r.bouka.name : "—")]);
+  rows.push(["高度地区", r.koudo ? esc(r.koudo.name) + (r.koudo.max > 0 ? `（最高 ${r.koudo.max}m）` : "") : r.koudoState === "nodata" ? "データなし（役所で確認）" : "指定なし"]);
+  if (y && y.takasa > 0) rows.push(["高さの限度", y.takasa + "m"]);
+  if (y && y.minArea > 0) rows.push(["敷地の最低面積", y.minArea + "㎡"]);
+  if (y && y.gaiheki > 0) rows.push(["外壁の後退", y.gaiheki + "m"]);
+  rows.push(["区域", esc(r.kuiki ? r.kuiki.name : (r.toshiKeikaku ? "都市計画区域（線引きなし）" : "—"))]);
+  rows.push(["地区計画", r.chiku && r.chiku.length ? r.chiku.map(c => esc(c.name)).join("、") + "（建物のきまりが足されていることがあります）" : r.chikuState === "nodata" ? "データなし（役所で確認）" : "なし"]);
+  if (r.fuchi && r.fuchi.length) rows.push(["風致地区", r.fuchi.map(f => esc(f.name)).join("、")]);
+  if (/の真ん中（番地までは分かりません）$/.test(PT.label)) h += `<p class="warnline">住所検索につながらなかったので、町の真ん中の値です。住所の地点とはちがうことがあります。「地図を押して決める」で場所を選び直すと、その地点の値になります。</p>`;
+  h += `<table class="kv zoning"><tbody>${rows.map(([a, b]) => `<tr><td>${a}</td><td class="wrap">${b}</td></tr>`).join("")}</tbody></table>`;
+  if (r.edgeM != null && r.edgeM < 30) h += `<p class="note caution">用途地域の境目まで約${Math.round(r.edgeM)}mです。境目の近くは、敷地がどちらに入るかで数字が変わるので、役所の都市計画図で確かめてください。</p>`;
+  const bonus = SV.kenpeiBonus(y, r.bouka);
+  if (y && bonus.length) h += `<p class="muted small">建ぺい率がふえる場合：${bonus.map(esc).join("／")}。</p>`;
+  const m = r.muni || {};
+  h += `<p class="muted small">検索で出た点（${PT.lat.toFixed(5)}, ${PT.lng.toFixed(5)}）の値です。番地の中のどこかで変わることがあるので、取引の前に役所で確かめてください。出どころ：${r.src === "T" ? esc(IX.sources && IX.sources.T ? IX.sources.T.name : "東京都") : "国土数値情報「都市計画決定情報」（国土交通省）" + (m.name ? `・${esc(m.name)}のデータの時点 ${esc(m.asOf || "記載なし")}` : "")}。高さの制限・道路の斜線・日影は <a href="${SV_BASE}index.html?lat=${PT.lat.toFixed(6)}&lon=${PT.lng.toFixed(6)}" target="_blank" rel="noopener">物件調査</a> で見られます。</p>`;
+  return `<section class="blk">${h}</section>`;   // 下の相場の数字とまざらないように、ここだけで1つのかたまりにする
+}
 
 // ---------- 地図 ----------
 const map = L.map("map", { zoomControl: true, zoomSnap: 0.25, preferCanvas: true }).setView([35.645, 139.66], 12);
@@ -703,9 +767,10 @@ if (window.innerWidth < 760) document.getElementById("legend").classList.add("sm
 // 地図をA4の幅の大きさにしてから、地図の絵（タイル）が読みこまれるのを待って印刷する
 function fillPrintHead() {
   const now = new Date(), d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const where = S.sel ? `${wardOf(S.sel)} ${townName(S.sel)}` : S.cities.map(cityName).join("・");
+  const kmL = +S.km < 1 ? +S.km * 1000 + "m" : S.km + "km";
+  const where = S.sel ? `${wardOf(S.sel)} ${townName(S.sel)}` : STN ? `${S.stn}から${S.stnN}駅先まで` : circleOn() ? `${PT && PT.label ? PT.label : "選んだ場所"}から半径${kmL}` : S.cities.map(cityName).join("・");
   const per = document.getElementById("subTitle").textContent.split("／").pop();
-  const tab = S.tab === "calc" ? "目安の計算" : S.tab === "mine" ? "成約例の登録" : S.sel ? "町の相場" : "町の一覧";
+  const tab = S.tab === "calc" ? "目安の計算" : S.tab === "mine" ? "成約例の登録" : S.sel ? "町の相場" : (STN || circleOn()) ? "範囲の相場" : "町の一覧";
   document.getElementById("printHead").innerHTML =
     `<h1>相場マップ　${esc(where)}（${esc(tab)}）</h1>` +
     typeBadge() + `<p>条件：${esc(condText())}</p>` +
@@ -901,6 +966,7 @@ function detailHtml() {
     <div class="figure"><div class="k">前年比（${fy}）</div>` +
     (y ? `<div class="v ${y.p >= 0 ? "up" : "down"}">${pct(y.p)}</div><div class="s">件数 ${pct(y.c)}（${y.n1}→${y.n2}件）</div>`
        : `<div class="v">—</div><div class="s">どちらかの年が${MIN_N}件未満</div>`) + `</div></div>`;
+  h += liqRankHtml(k);
   if (isLandHouse()) h += landHouseHtml(ALL.filter(r => r.k === k), "この町");
   const rows = t.rows;
   if (isTotalType()) {
@@ -1031,13 +1097,14 @@ function circleRentHtml(km) {
 function circleHtml(list) {
   const rows = list.flatMap(([, t]) => t.rows);
   const km = +S.km, label = km < 1 ? km * 1000 + "m" : km + "km";
-  let h = `<h2>${STN ? `${esc(S.stn)}から${S.stnN}駅先まで` : `半径${label}`}の相場</h2><div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div>`;
+  let h = `<h2>${STN ? `${esc(S.stn)}から${S.stnN}駅先まで` : `半径${label}`}の相場</h2>` + typeBadge() + `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div>` + (STN ? "" : zoningHtml());
   if (!rows.length) return h + `<p class="warnline">この範囲と条件では売買の取引がありません。半径を広げるか、条件をゆるめてください。</p>` + circleRentHtml(km);
   if (rows.length < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満なので「参考値」です。数字が大きくぶれることがあります。</p>`;
   const vals = rows.map(mainVal), yrs = C.yearsInRange(S.year, QUARTERS);
   h += `<div class="figures"><div class="figure main"><div class="k">${mainName()}</div><div class="v">${fmtMain(median(vals))}</div>
     <div class="s">${rangeLabel()}：${isTotalType() ? fmtMan(quant(vals, .25)) + "〜" + fmtMan(quant(vals, .75)) : man(conv(quant(vals, .25))).toFixed(0) + "〜" + man(conv(quant(vals, .75))).toFixed(0) + "万円/" + unitLabel()}</div></div>
     <div class="figure"><div class="k">件数</div><div class="v">${rows.length.toLocaleString()}<small>件</small></div><div class="s">1年あたり ${(rows.length / yrs).toFixed(1)}件・${list.length}町</div></div></div>`;
+  if (isLandHouse()) h += landHouseHtml(scopeRows(), STN ? `${S.stn}から${S.stnN}駅先まで` : `半径${label}`);
   const rings = STN ? [] : ringList(km);
   if (STN) {
     const hopLabel = {}, hopOrder = []; for (let d = 0; d <= +S.stnN; d++) { hopOrder.push(String(d)); hopLabel[d] = d ? `${d}駅先` : "この駅"; }
@@ -1162,6 +1229,19 @@ function rentCityHtml(codes) {
       `</tbody></table></div>`;
     h += `<p class="muted small">大きい数字が家賃の中央値、小さい数字が「半分の世帯がこの間」に入る範囲です（1か月・共益費なし）。※は数えた戸数が${RENT_FEW}戸より少なく、ぶれやすい数字です。長屋建とその他の家は「すべて」にだけ入っています。<br>出典：${esc(RC.meta.src)} 第130表（${esc(RC.meta.when)}時点）。国の統計は家賃の階級ごとの戸数なので、中央値と範囲は、階級の中に同じように散らばっているとして計算しています。</p>`;
   });
+  return h;
+}
+function liqRankHtml(k) {
+  const M = window.SOUBA_LIQ_META; if (!M) return "";
+  const code = k.split("|")[0], ti = M.types.indexOf(S.type), o = LIQR[code];
+  let h = `<h3>流動性の順位（${esc(C.TYPES[S.type].short)}）</h3>`;
+  if (!o) return h + `<p class="muted small">順位を読みこんでいます…</p>`;
+  const v = o.t[townName(k)] && o.t[townName(k)][ti];
+  if (!v) return h + `<p class="muted">この町は、そろえた条件での取引が${MIN_N}件未満なので、順位をつけていません。</p>`;
+  const pref = CITY[code] ? CITY[code].pref : "", prefN = (M.pref[pref] || [])[ti], natN = M.nat[ti], cityN = o.n[ti];
+  const row = (lab, r, n) => `<tr><td>${esc(lab)}</td><td class="num"><b>${r.toLocaleString()}位</b>／${n.toLocaleString()}町</td><td class="num">上位 ${Math.max(1, Math.round(r / n * 100))}%</td></tr>`;
+  h += `<table class="kv rank"><tbody>${row(cityName(code) + "の中", v[1], cityN)}${prefN ? row(pref + "の中", v[2], prefN) : ""}${row("全国", v[3], natN)}</tbody></table>`;
+  h += `<p class="muted small">1000世帯あたりの1年の取引件数：${v[0].toFixed(1)}件。順位は、どこでも同じ条件（${esc(C.TYPES[S.type].short)}・全期間 ${esc(M.year.replace("-", "〜"))}年・データの種類は両方・市街化調整区域を除く・ほかの絞りこみなし）で、取引が${MIN_N}件以上の町だけを、件数の多い順に並べたものです。上の★（いまの条件で、表示中の町どうしをくらべたもの）とは、くらべる相手と条件がちがいます。</p>`;
   return h;
 }
 function liqExplain() {
@@ -1603,18 +1683,34 @@ document.getElementById("fStnName").addEventListener("change", stnChange);
 document.getElementById("fStnN").addEventListener("change", stnChange);
 document.getElementById("fKms").onchange = () => { S.kms = [...document.querySelectorAll("#fKms input:checked")].map(i => i.value); syncKm(); if (S.km && !S.center) { circleMsg("中心の住所を入れるか、「地図を押して決める」を押してください。"); return; } applyCircle(); };
 document.getElementById("fPick").onclick = e => { PICKING = !PICKING; document.getElementById("map").classList.toggle("picking", PICKING); e.target.classList.toggle("on", PICKING); circleMsg(PICKING ? "地図の中心にしたい場所を押してください。" : ""); };
+// 予備：国土地理院の住所検索につながらないとき、いま読みこんである町の名前が住所に入っていれば、その町の真ん中を使う
+function townFromText(q) {
+  const t = q.normalize("NFKC").replace(/\s/g, "");
+  let best = null;
+  Object.keys(TOWN_CENTER).forEach(k => { const n = k.split("|")[1]; if (n && t.includes(n) && (!best || n.length > best.n.length)) best = { k, n }; });
+  return best;
+}
 async function searchAddr() {
   const q = document.getElementById("fAddr").value.trim(); if (!q) return;
   circleMsg("探しています…");
   try {
     const res = await fetch("https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(q)), list = await res.json();
-    if (!list || !list.length) { circleMsg("見つかりませんでした。市区町村の名前から入れてみてください。"); return; }
+    if (!list || !list.length) { if (useTownFallback(q)) return; circleMsg("見つかりませんでした。市区町村の名前から入れてみてください。"); return; }
     const [lng, lat] = list[0].geometry.coordinates;
     circleMsg(list[0].properties.title + " を中心にしました。");
     S.center = [lat, lng]; if (!S.km) { S.kms = ["1"]; syncKm(); }
+    surveyPoint(lat, lng, q);
     const m = document.getElementById("circleMsg").textContent;
     applyCircle(); if (S.center) circleMsg(m);
-  } catch (err) { circleMsg("住所を探せませんでした（国土地理院の住所検索につながりません）。地図を押して決めてください。"); }
+  } catch (err) { if (useTownFallback(q)) return; circleMsg("住所を探せませんでした（国土地理院の住所検索につながりません）。地図を押して決めてください。"); }
+}
+function useTownFallback(q) {
+  const b = townFromText(q); if (!b) return false;
+  const [lat, lng] = TOWN_CENTER[b.k];
+  S.center = [lat, lng]; if (!S.km) { S.kms = ["1"]; syncKm(); }
+  surveyPoint(lat, lng, townName(b.k) + "の真ん中（番地までは分かりません）");
+  applyCircle(); circleMsg(`住所検索につながらないので、${wardOf(b.k)} ${townName(b.k)} の真ん中を中心にしました。番地の場所は「地図を押して決める」で直せます。`);
+  return true;
 }
 document.getElementById("fAddrGo").onclick = searchAddr;
 document.getElementById("fAddr").addEventListener("keydown", e => { if (e.key === "Enter") searchAddr(); });
