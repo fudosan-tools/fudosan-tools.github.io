@@ -447,6 +447,7 @@
 <script src="data/liq_meta.js"></script>
 <script src="../../共通/hosei_data.js"></script>
 <script src="souba_calc.js?v=20261117b"></script>
+<script src="walkroute.js?v=20261117e"></script>
 <script src="../../共通/common.js?v=271d7a31"></script>
 <script src="../../共通/katachi.js"></script>
 <script src="../../共通/katachi_ui.js"></script>
@@ -600,18 +601,36 @@ function stnLinesHtml() {
   const D = STATIONS;
   return `<section class="blk"><h3>対象の駅</h3><table class="kv stnlines"><tbody>` + STN.perLine.map(([L, st]) => `<tr><td>${esc(lineName(L))}</td><td class="wrap">${st.length ? st.map(([k, d]) => `${esc(D.h[k][0])}<span class="muted">（${d}）</span>`).join("・") : "—"}</td></tr>`).join("") + `</tbody></table><p class="muted small">（ ）内は起点駅からの駅数。各路線の上だけを数え、乗換駅から別の路線へは進みません。</p></section>`;
 }
-// 住所の地点から近い駅（直線距離）。徒歩分数は分速80m・1分未満切上げ（不動産の表示に関する公正競争規約施行規則の換算）
+// 住所の地点から近い駅。まず直線距離で近い駅を候補にし、道路距離（walkroute.js）が出たら道路距離の短い順に並べなおす。
+// 徒歩分数は、道路距離80mにつき1分・1分未満切上げ（不動産の表示に関する公正競争規約施行規則）
+const walkMin = m => Math.max(1, Math.ceil(m / 80));
 function nearStations(lat, lng, n = 3) {
   if (!STATIONS) return [];
-  return STATIONS.h.map((h, i) => ({ i, name: h[0], lines: linesOf(h), m: C.distKm([lat, lng], [h[1], h[2]]) * 1000 }))
-    .sort((a, b) => a.m - b.m).slice(0, n).map(x => ({ ...x, min: Math.max(1, Math.ceil(x.m / 80)) }));
+  return STATIONS.h.map((h, i) => ({ i, name: h[0], lines: linesOf(h), lat: h[1], lng: h[2], m: C.distKm([lat, lng], [h[1], h[2]]) * 1000 }))
+    .sort((a, b) => a.m - b.m).slice(0, n);
+}
+async function walkStations(me) {
+  if (!window.WALK || !me.cand.length) { me.walkState = "none"; return; }
+  me.walkState = "loading";
+  try {
+    const r = await WALK.route(me.lat, me.lng, me.cand.map(x => ({ key: x.i, lat: x.lat, lng: x.lng })));
+    me.cand.forEach(x => { const w = r[x.i]; if (w) { x.road = w.m; x.path = w.path; } });
+    me.walkState = me.cand.some(x => x.road != null) ? "ok" : "none";
+  } catch (e) { me.walkState = "fail"; }
+  me.near = [...me.cand].sort((a, b) => (a.road ?? a.m * 10) - (b.road ?? b.m * 10)).slice(0, 3);
 }
 const stnInputName = i => Object.keys(STN_LABEL).find(k => STN_LABEL[k] === i) || STATIONS.h[i][0];
 function nearHtml() {
   if (!PT || !S.center || !PT.near || !PT.near.length) return "";
-  return `<section class="blk"><h3>この地点の最寄駅</h3><table class="kv near"><thead><tr><th>駅（路線）</th><th class="num">直線距離</th><th class="num">徒歩</th></tr></thead><tbody>` +
-    PT.near.map(x => `<tr><td>${esc(x.name)}駅<span class="alt">${esc(x.lines.map(lineName).join("・"))}</span></td><td class="num">${Math.round(x.m).toLocaleString()}m</td><td class="num"><b>${x.min}分</b></td></tr>`).join("") +
-    `</tbody></table><p class="muted small">徒歩分数は、直線距離を分速80m（1分未満切上げ）で換算した目安です。不動産広告では、不動産の表示に関する公正競争規約施行規則により道路距離80mにつき1分で表示するため、実際の道路距離で計測してください（直線距離より長くなります）。</p></section>`;
+  const ws = PT.walkState, road = ws === "ok";
+  const minCell = x => x.road != null ? `<b>${walkMin(x.road)}分</b>` : ws === "loading" ? `<span class="muted">算出中</span>` : `${walkMin(x.m)}分<span class="alt">直線距離で換算</span>`;
+  let h = `<section class="blk"><h3>この地点の最寄駅</h3><table class="kv near"><thead><tr><th>駅（路線）</th><th class="num">${road ? "道路距離" : "直線距離"}</th><th class="num">徒歩</th></tr></thead><tbody>` +
+    PT.near.map(x => `<tr><td>${esc(x.name)}駅<span class="alt">${esc(x.lines.map(lineName).join("・"))}</span></td><td class="num">${road ? (x.road != null ? Math.round(x.road).toLocaleString() + "m" : "—") : Math.round(x.m).toLocaleString() + "m"}</td><td class="num">${minCell(x)}</td></tr>`).join("") + `</tbody></table>`;
+  if (ws === "ok") h += `<p class="muted small">道路距離は道路データによる最短経路の概算です（地図の赤い点線）。80mにつき1分で換算。</p><p class="muted small">徒歩分数は、道路距離80mにつき1分（1分未満切上げ）で換算しています（不動産の表示に関する公正競争規約施行規則の基準）。道路距離は、国土地理院の道路中心線データ（地理院地図Vector）による最短経路の距離です。起点は検索した地点に最も近い道路上の点、終点は駅のホームに最も近い道路上の点とし、地点・ホームとの間の直線距離を加算しています。地図上の赤い線が経路です。駅の出入口の位置、歩道橋・地下道・私道・敷地内の通路、踏切や信号の待ち時間は反映していません。高速道路・有料道路は経路から除外しています。広告に表示する場合は、区画の駅に最も近い地点から駅の出入口までの道路距離を実測してください。「—」は直線距離${WALK.MAX_KM}km超のため道路距離を算出していない駅です（徒歩分数は直線距離による参考値）。</p>`;
+  else if (ws === "loading") h += `<p class="muted small">道路距離を算出しています（国土地理院の道路中心線データを読み込み中）。</p>`;
+  else if (ws === "none") h += `<p class="muted small">駅まで直線距離${window.WALK ? WALK.MAX_KM : 2.5}km超、または周辺に道路データがないため、道路距離は算出していません。徒歩分数は直線距離を分速80m（1分未満切上げ）で換算した参考値です。</p>`;
+  else h += `<p class="warnline">道路データを読み込めなかったため、直線距離を分速80m（1分未満切上げ）で換算した参考値です。不動産広告では道路距離80mにつき1分で表示するため、実際の道路距離で計測してください（直線距離より長くなります）。</p>`;
+  return h + `</section>`;
 }
 function rowHop(r) {
   const key = r.station + "|" + r.k, c = STN.cache;
@@ -704,9 +723,10 @@ const svScript = src => new Promise((ok, ng) => { const s = document.createEleme
 const SV_TILES = {};
 async function surveyPoint(lat, lng, label) {
   PT = { lat, lng, label, state: "loading" }; const me = PT;
-  loadStations().then(() => { if (PT !== me) return; me.near = nearStations(lat, lng);
-    if (me.near.length) { const nm = stnInputName(me.near[0].i); document.getElementById("fStnName").value = nm; S.stnAuto = nm; }
-    renderPanel(); }).catch(() => {});
+  const setStn = () => { if (me.near.length) { const nm = stnInputName(me.near[0].i); document.getElementById("fStnName").value = nm; S.stnAuto = nm; } };
+  loadStations().then(async () => { if (PT !== me) return; me.cand = nearStations(lat, lng, 6); me.near = me.cand.slice(0, 3);
+    setStn(); renderPanel(); drawWalk();
+    await walkStations(me); if (PT !== me) return; setStn(); renderPanel(); drawWalk(); }).catch(() => {});
   try {
     if (!window.SURVEY) await svScript(SV_BASE + "survey_core.js?v=20261117b");
     if (!window.SURVEY_INDEX) await svScript(SV_BASE + "data/tiles/index.js");
@@ -798,10 +818,11 @@ function fitCities() {
     const bb = L.latLngBounds([i.bbox[1], i.bbox[0]], [i.bbox[3], i.bbox[2]]); b = b ? b.extend(bb) : bb; });
   if (b) map.fitBounds(b, { padding: [10, 10] });
 }
-let circleLayer = null, centerMark = null, PICKING = false;
+let circleLayer = null, centerMark = null, PICKING = false, walkLayer = null;
 function drawCircle() {
   if (circleLayer) { map.removeLayer(circleLayer); circleLayer = null; }
   if (centerMark) { map.removeLayer(centerMark); centerMark = null; }
+  drawWalk();
   if (!circleOn()) return;
   centerMark = L.circleMarker(S.center, { radius: 5, color: "#a3402a", weight: 2, fillColor: "#fff", fillOpacity: 1, interactive: false, pane: "circlePane" }).addTo(map);
   if (S.lyCircle === false) return;
@@ -810,6 +831,12 @@ function drawCircle() {
     return [L.circle(S.center, { radius: km * 1000, color: "#a3402a", weight: 2, fill: false, interactive: false, pane: "circlePane" }),
       L.marker(top, { interactive: false, pane: "circlePane", icon: L.divIcon({ className: "", iconSize: null, html: `<span class="ringlabel">${km < 1 ? km * 1000 + "m" : km + "km"}</span>` }) })];
   })).addTo(map);
+}
+// 最寄駅までの経路（道路距離がいちばん短い駅）
+function drawWalk() {
+  if (walkLayer) { map.removeLayer(walkLayer); walkLayer = null; }
+  if (!circleOn() || !PT || !PT.near || !PT.near[0] || !PT.near[0].path) return;
+  walkLayer = L.polyline(PT.near[0].path, { color: "#c0392b", weight: 4, opacity: 0.85, dashArray: "1 6", lineCap: "round", interactive: false, pane: "circlePane" }).addTo(map);
 }
 let stationLayer = null;
 function drawStation() {
