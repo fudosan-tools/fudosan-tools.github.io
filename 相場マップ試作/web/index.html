@@ -1413,7 +1413,7 @@ function cityRankHtml(code) {
   const v = o.city && o.city[ti];
   if (!v) return h + `<p class="muted">取引件数が少ないため、順位の対象外です。</p>`;
   const pref = CITY[code] ? CITY[code].pref : "", prefN = (M.cityPref[pref] || [])[ti];
-  h += `<table class="kv rank"><tbody>${prefN ? rankRow(pref + "内", v[1], prefN, "市区町村") : ""}${rankRow("全国", v[2], M.cityNat[ti], "市区町村")}</tbody></table>`;
+  h += `<table class="kv rank"><tbody>${v[3] ? rankRow(o.grp + "内", v[3], v[4], "区") : ""}${prefN ? rankRow(pref + "内", v[1], prefN, "市区町村") : ""}${rankRow("全国", v[2], M.cityNat[ti], "市区町村")}</tbody></table>`;
   return h + `<p class="muted small">1000世帯あたり年${v[0].toFixed(1)}件（市区町村全体）。町ごとの順位は、地図または下の一覧で町を選択すると表示します。</p>`;
 }
 function liqExplain() {
