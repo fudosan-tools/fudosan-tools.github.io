@@ -8,7 +8,7 @@
   // ブラウザでは index.html が先に読みこんだ window.HOSEI、node では require で読む
   const HOSEI = (typeof module !== "undefined" && module.exports && typeof require === "function")
     ? require(require("path").join(__dirname, "../../共通/hosei_data.js")) : root.HOSEI;
-  if (!HOSEI) throw new Error("共通/hosei_data.js が読みこめていません（souba_calc.js より先に読みこんでください）");
+  if (!HOSEI) throw new Error("共通/hosei_data.js が読み込まれていません（souba_calc.js より先に読み込んでください）");
   const loHi = id => { const f = HOSEI.byId(id); return [f.lo, f.hi]; };
 
   // ---------------------------------------------------------------- 市区町村ファイルを読みやすい形に
@@ -72,12 +72,33 @@
     lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi] - s[lo]) * (i - lo); }
   const range = s => s ? s.split("-").map(Number) : null;
 
+  // 外れ値を除いた集計（2026-11-17）。
+  // 極端に高い取引（隣地の買い増し・開発用地のまとめ買いなど）と、極端に安い取引（擁壁・再建築不可・訳ありなど）を除いてから、
+  // 中央値・四分位・最小値・最大値を出す。
+  // 判定：価格の対数（＝倍率）で四分位（下から25%・75%）を求め、その外側に「四分位の幅 × K」より離れた取引を外れ値とする（テューキーの方法）。
+  //   件数が少ないと四分位そのものがぶれるので、K を件数で変える：4件以下は除かない／5〜9件は K=3（ごく極端なものだけ）／10件以上は K=1.5。
+  //   値がそろいすぎて四分位の幅がほぼ0のときに、少しの差で除かないよう、幅は最低でも1.25倍分とする。
+  const OUT_MIN_N = 5, OUT_K_SMALL = 3, OUT_K = 1.5, OUT_SMALL_N = 10, OUT_MIN_IQR = Math.log(1.25);
+  function stats(vals) {
+    const a = vals.filter(v => v != null && v > 0), n = a.length;
+    if (!n) return { n: 0, nAll: 0, med: null, q1: null, q3: null, min: null, max: null, nLo: 0, nHi: 0, lo: null, hi: null };
+    let kept = a, lo = null, hi = null;
+    if (n >= OUT_MIN_N) {
+      const L = a.map(Math.log), l1 = quant(L, .25), l3 = quant(L, .75), w = Math.max(l3 - l1, OUT_MIN_IQR), K = n < OUT_SMALL_N ? OUT_K_SMALL : OUT_K;
+      lo = Math.exp(l1 - K * w); hi = Math.exp(l3 + K * w);
+      kept = a.filter(v => v >= lo && v <= hi);
+    }
+    return { n: kept.length, nAll: n, med: median(kept), q1: quant(kept, .25), q3: quant(kept, .75), min: Math.min(...kept), max: Math.max(...kept),
+      nLo: lo == null ? 0 : a.filter(v => v < lo).length, nHi: hi == null ? 0 : a.filter(v => v > hi).length, lo, hi };
+  }
+  const tmed = vals => stats(vals).med;
+
   // ---------------------------------------------------------------- 種類と条件の分け方
   const TYPES = {
     "中古マンション等": { label: "中古マンション", short: "マンション", total: false },
     "宅地(土地と建物)": { label: "戸建（土地と建物）", short: "戸建", total: true },
     "宅地(土地)": { label: "土地", short: "土地", total: false },
-    "宅地(土地と建物・戸建以外)": { label: "アパート・店舗など（土地と建物・戸建以外）", short: "アパート・店舗等", total: true },
+    "宅地(土地と建物・戸建以外)": { label: "アパート・店舗等（土地と建物・戸建以外）", short: "アパート・店舗等", total: true },
   };
   const isTotal = type => !!(TYPES[type] && TYPES[type].total);   // 総額で比べる種類（戸建・アパート等）
   const isLandish = type => type !== "中古マンション等";          // 土地の条件（形・道路・間口）で絞れる種類
@@ -178,9 +199,9 @@
     const yrs = yearsInRange(S.year, quarters);
     const liqList = [];
     for (const k in TOWN) {
-      const rs = TOWN[k], vals = rs.map(r => mainVal(r, S.type));
+      const rs = TOWN[k], vals = rs.map(r => mainVal(r, S.type)), st = stats(vals);
       const hh = hhOf(k) || 0;
-      const t = TOWN[k] = { rows: rs, n: rs.length, med: median(vals), q1: quant(vals, .25), q3: quant(vals, .75),
+      const t = TOWN[k] = { rows: rs, n: rs.length, med: st.med, q1: st.q1, q3: st.q3, st,
         perYear: rs.length / yrs, liq: hh > 0 ? rs.length / yrs / hh * 1000 : null, hh };
       if (t.liq != null && t.n >= MIN_N) liqList.push(t.liq);
     }
@@ -201,7 +222,7 @@
     const by = { [y1]: [], [y2]: [] };
     for (const r of rows) if (r.k === k && (r.y === y1 || r.y === y2) && pass(r, S, { year: true })) by[r.y].push(mainVal(r, S.type));
     if (by[y1].length < MIN_N || by[y2].length < MIN_N) return null;
-    return { p: median(by[y2]) / median(by[y1]) - 1, c: by[y2].length / by[y1].length - 1, n1: by[y1].length, n2: by[y2].length, y1, y2 };
+    return { p: tmed(by[y2]) / tmed(by[y1]) - 1, c: by[y2].length / by[y1].length - 1, n1: by[y1].length, n2: by[y2].length, y1, y2 };
   }
 
   // ---------------------------------------------------------------- 古家付きと解体費
@@ -286,11 +307,11 @@
     const steps = [];
     const base = p.unitM2 * p.areaM2;
     let lo = base, hi = base;
-    steps.push({ key: "base", label: "更地（ふつうの土地）の相場", how: `単価 × 面積`, lo, hi });
+    steps.push({ key: "base", label: "更地の相場", how: `単価 × 面積`, lo, hi });
     if (p.shape && (p.shape !== "seikei" || maguchiRate(p.district, p.frontM) < 1)) {
       const s = shapeRate(p.shape, p.district, p.areaM2, p.kagePct, p.frontM);
       lo *= s.rate; hi *= s.rate;
-      steps.push({ key: "shape", label: "形（国税庁の補正率）", how: `× ${s.rate.toFixed(3)}（不整形 ${s.fusei.toFixed(2)} × 間口狭小 ${s.maguchi.toFixed(2)}${p.shape !== "seikei" ? "・最小0.60" : ""}）`, lo, hi, rate: s });
+      steps.push({ key: "shape", label: "土地の形状（国税庁の補正率）", how: `× ${s.rate.toFixed(3)}（不整形 ${s.fusei.toFixed(2)} × 間口狭小 ${s.maguchi.toFixed(2)}${p.shape !== "seikei" ? "・最小0.60" : ""}）`, lo, hi, rate: s });
     }
     if (p.slope && p.slope !== "none") {
       lo *= p.slopeLo; hi *= p.slopeHi;
@@ -390,7 +411,7 @@
       unitLow: units.length ? quant(units, .25) : null, unitHigh: units.length ? quant(units, .75) : null };
   }
 
-  const API = { TSUBO, MIN_N, TYPES, isTotal, isLandish, decodeCity, decodeRing, distKm, centroid, inRing, median, quant, range, planGroup, structGroup,
+  const API = { TSUBO, MIN_N, TYPES, isTotal, isLandish, decodeCity, decodeRing, distKm, centroid, inRing, median, quant, stats, tmed, range, planGroup, structGroup,
     shapeGroup, roadGroup, widthBin, frontBin, isSpecial, hasPrivateRoad, isOldHouse, OLD_HOUSE_AGE, pass, yearsInRange,
     fullYears, mainVal, aggregate, yoy, DEMOLISH, demolishKey, oldHouseStats, DISTRICTS, CHISEKI, chisekiKubun, fuseiRate,
     maguchiRate, shapeRate, gakeRate, LEASE, DEFAULTS, slopeDefault, HOSEI, FUSEI, MAGUCHI, GAKE, adjust, cpGroup, stationKey, stationsWithin, MY_COLS, MY_KINDS, isRentKind, rentTotal, rentUnit, rentSummary, toCSV, fromCSV, parseCSVText, myUnit, fromKatachi };

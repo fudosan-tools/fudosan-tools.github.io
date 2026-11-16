@@ -183,7 +183,9 @@
   table.rent.apart .rbar i { background: #d9a86a; }
   table.rent.mansion .rbar i { background: #a9a59c; }
   table.rent tr.few .rbar i { opacity: .45; }
-  @media (max-width: 640px) { table.rent { font-size: 12px !important; } table.rent td, table.rent th { padding-right: 4px !important; } table.rent .alt { font-size: 10px; } table.rent th { font-size: 10.5px; } table.rent td.rng { font-size: 11px; } }
+  /* スマホで入力欄を押したとき、文字が16pxより小さいと画面が勝手に拡大されるので、指で操作する端末では16pxにする */
+  @media (pointer: coarse), (max-width: 760px) { input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea { font-size: 16px !important; } }
+  @media (max-width: 640px) { table.rent { font-size: 12px !important; } table.rent td, table.rent th { padding-right: 4px !important; } table.rent .alt { font-size: 10px; } table.rent th { font-size: 10.5px; } table.rent td.rng { font-size: 11px; white-space: normal; } }
   .explain h3 { margin-top: 18px !important; }
   /* PDF（印刷）：地図をA4の幅にそろえる。画面でも同じ大きさにしてから印刷するので、地図の絵がずれない */
   body.printing #mapWrap { width: 190mm; height: 120mm; }
@@ -226,7 +228,7 @@
     #panel { border-left: 0; border-top: 1px solid var(--rule-strong); padding: 14px 16px 30px; }
     .legend { bottom: 8px; left: 8px; font-size: 10px; padding: 6px 8px; max-width: 180px; }
     .legend.small .row { display: none; }
-    .legend.small::after { content: "（押すと色の説明）"; display: block; color: var(--muted); }
+    .legend.small::after { content: "（クリックで凡例を表示）"; display: block; color: var(--muted); }
   }
 </style>
 </head>
@@ -237,28 +239,28 @@
     <div class="title">
       <h1>相場マップ（売買・賃貸）</h1>
       <span class="sub" id="subTitle"></span>
-      <button id="printBtn" class="btn primary" type="button" title="いまの地図と右の相場を、A4の紙の形でPDFに保存します">PDFで保存</button>
-      <button id="toggleFilters" class="btn" aria-expanded="false">条件をしぼる ▾</button>
+      <button id="printBtn" class="btn primary" type="button" title="表示中の地図と相場情報を、A4サイズのPDFとして保存します">PDFで保存</button>
+      <button id="toggleFilters" class="btn" aria-expanded="false">条件を絞り込む ▾</button>
     </div>
     <div class="areapick">
       <label>都道府県 <select id="fPref"></select></label>
       <label>市区町村 <select id="fCity"></select></label>
-      <label class="inline"><input type="checkbox" id="fKeep"> いま出ている所も残す（並べて比べる）</label>
+      <label class="inline"><input type="checkbox" id="fKeep"> 表示中の地域を残して追加（比較用）</label>
       <span class="chips" id="cityChips"></span>
     </div>
     <div class="circlepick">
-      <div class="kmgroup">半径で見る（いくつでも選べます）
+      <div class="kmgroup">半径で表示（複数選択可）
         <span class="kmchips" id="fKms"><label><input type="checkbox" value="0.5">500m</label><label><input type="checkbox" value="1">1km</label><label><input type="checkbox" value="1.5">1.5km</label><label><input type="checkbox" value="2">2km</label><label><input type="checkbox" value="3">3km</label><label><input type="checkbox" value="5">5km</label><label><input type="checkbox" value="10">10km</label></span>
       </div>
-      <label>中心の住所<input type="search" id="fAddr" placeholder="例：渋谷区神南1丁目" autocomplete="off"></label>
-      <button class="btn" id="fAddrGo" type="button">探す</button>
-      <button class="btn" id="fPick" type="button">地図を押して決める</button>
+      <label>中心地点の住所<input type="search" id="fAddr" placeholder="例：渋谷区神南1丁目" autocomplete="off"></label>
+      <button class="btn" id="fAddrGo" type="button">検索</button>
+      <button class="btn" id="fPick" type="button">地図上で指定</button>
       <span id="circleMsg"></span>
     </div>
     <div class="circlepick">
-      <label>駅の数で見る（駅名）<input type="search" id="fStnName" list="fStnList" placeholder="例：渋谷" autocomplete="off"><datalist id="fStnList"></datalist></label>
+      <label>駅数で表示（起点駅）<input type="search" id="fStnName" list="fStnList" placeholder="例：渋谷" autocomplete="off"><datalist id="fStnList"></datalist></label>
       <label>範囲
-        <select id="fStnN"><option value="">使わない</option><option value="1">1駅先まで</option><option value="2">2駅先まで</option><option value="3">3駅先まで</option><option value="5">5駅先まで</option><option value="10">10駅先まで</option></select>
+        <select id="fStnN"><option value="">指定しない</option><option value="1">1駅先まで</option><option value="2">2駅先まで</option><option value="3">3駅先まで</option><option value="5">5駅先まで</option><option value="10">10駅先まで</option></select>
       </label>
       <span id="stnMsg" class="muted small"></span>
     </div>
@@ -268,7 +270,7 @@
           <button data-v="中古マンション等" class="on">マンション</button><button data-v="宅地(土地と建物)">戸建</button><button data-v="宅地(土地)">土地</button><button data-v="宅地(土地と建物・戸建以外)">アパート・店舗等</button>
         </span>
       </label>
-      <label>大きく出す単位
+      <label>主表示の単位
         <span class="seg" id="segUnit"><button data-v="m2" class="on">㎡</button><button data-v="tsubo">坪</button></span>
       </label>
       <label>地図の色
@@ -282,7 +284,7 @@
         <select id="fSrc">
           <option value="all">両方</option>
           <option value="成約">成約価格（レインズ由来）</option>
-          <option value="取引">取引価格（アンケート）</option>
+          <option value="取引">取引価格（アンケート調査）</option>
         </select>
       </label>
       <label>期間 <select id="fYear"></select></label>
@@ -293,7 +295,7 @@
           <option value="11-15">11〜15分</option><option value="16-999">16分以上</option>
         </select>
       </label>
-      <label>広さ <select id="fArea"></select></label>
+      <label>面積 <select id="fArea"></select></label>
       <label data-for="mansion">間取り
         <select id="fPlan">
           <option value="">すべて</option><option value="1R1K">1R・1K・1DK</option><option value="1LDK">1LDK・2K・2DK</option>
@@ -314,75 +316,74 @@
       </label>
       <label data-for="house">建物
         <select id="fHouse">
-          <option value="">すべて</option><option value="old">古家付きの可能性（木造・築35年以上）</option><option value="notold">古家以外</option>
+          <option value="">すべて</option><option value="old">古家付きの可能性（木造・築35年以上）</option><option value="notold">古家付きを除く</option>
         </select>
       </label>
       <span class="grp" data-for="house land other">土地の条件</span>
       <label data-for="house land other">土地の形
         <select id="fShape">
-          <option value="">すべて</option><option value="seikei">整形（長方形・正方形など）</option>
-          <option value="fusei">不整形・台形</option><option value="fukuro">袋地等（旗竿をふくむ）</option>
+          <option value="">すべて</option><option value="seikei">整形（長方形・正方形等）</option>
+          <option value="fusei">不整形・台形</option><option value="fukuro">袋地等（旗竿地を含む）</option>
         </select>
       </label>
       <label data-for="house land other">前面道路
         <select id="fRoad">
-          <option value="">すべて</option><option value="public">公道（区道・市道・都道など）</option><option value="private">私道</option>
-          <option value="none">道路に接していない</option>
+          <option value="">すべて</option><option value="public">公道（区道・市道・都道等）</option><option value="private">私道</option>
+          <option value="none">接道なし</option>
         </select>
       </label>
-      <label data-for="house land other">道路の幅
+      <label data-for="house land other">前面道路の幅員
         <select id="fWidth">
           <option value="">すべて</option><option value="lt4">4m未満</option><option value="4to6">4〜6m</option><option value="ge6">6m以上</option>
         </select>
       </label>
-      <label data-for="house land other">間口（道路に接する長さ）
+      <label data-for="house land other">間口（接道部分の長さ）
         <select id="fFront">
-          <option value="">すべて</option><option value="lt2">2m未満（旗竿のおそれ）</option><option value="2to4">2〜4m</option><option value="ge4">4m以上</option>
+          <option value="">すべて</option><option value="lt2">2m未満（旗竿地の可能性）</option><option value="2to4">2〜4m</option><option value="ge4">4m以上</option>
         </select>
       </label>
       <label>都市計画
         <select id="fCp">
           <option value="noChosei">市街化調整区域を除く</option>
           <option value="">すべて</option>
-          <option value="chosei">市街化調整区域だけ</option>
+          <option value="chosei">市街化調整区域のみ</option>
           <option value="low">低層住居</option>
           <option value="mid">中高層住居</option>
           <option value="res">住居</option>
           <option value="com">商業</option>
           <option value="ind">工業</option>
-          <option value="other">非線引き・都市計画区域外など</option>
+          <option value="other">非線引き区域・都市計画区域外等</option>
         </select>
       </label>
       <label>取引の事情
         <select id="fJijo">
           <option value="">すべて</option>
-          <option value="nospecial">競売・関係者間・隣地などを除く</option>
-          <option value="clean">上に加えて私道ふくみも除く</option>
-          <option value="private">私道を含む取引だけ</option>
+          <option value="nospecial">競売・関係者間・隣地取引等を除く</option>
+          <option value="clean">上記に加え、私道を含む取引も除く</option>
+          <option value="private">私道を含む取引のみ</option>
         </select>
       </label>
-      <label class="inline"><input type="checkbox" id="fMine"> 登録した成約例を地図に出す</label>
     </div>
   </header>
   <div id="printHead"></div>
   <main class="mapmain">
     <div id="mapWrap">
       <div id="map" role="application" aria-label="町ごとの相場の地図"></div>
-      <div class="legend" id="legend" title="押すと小さくなります"></div>
+      <div class="legend" id="legend" title="クリックで折りたたみ"></div>
       <div class="layerbox" id="layerBox">
-        <button type="button" class="ttl" id="layerTtl">地図に重ねる ▾</button>
+        <button type="button" class="ttl" id="layerTtl">重ね合わせ表示 ▾</button>
         <div class="body">
-          <label><input type="checkbox" id="lyTown"> 町の相場の色</label>
+          <label><input type="checkbox" id="lyTown"> 町ごとの相場（色分け）</label>
           <label><input type="checkbox" id="lyCircle"> 半径の円</label>
-          <label><input type="checkbox" id="lyStn"> 駅（駅数で見るとき）</label>
+          <label><input type="checkbox" id="lyStn"> 駅（駅数で表示時）</label>
           <label><input type="checkbox" id="lyZone"> 用途地域</label>
           <label><input type="checkbox" id="lyChosei"> 市街化調整区域</label>
-          <label style="display:block">濃さ<input type="range" id="lyAlpha" min="0.15" max="0.8" step="0.05"></label>
+          <label style="display:block">不透明度<input type="range" id="lyAlpha" min="0.15" max="0.8" step="0.05"></label>
           <div class="keys" id="layerKeys"></div>
           <div class="muted small" id="layerMsg"></div>
         </div>
       </div>
-      <div class="loading" id="loading" hidden>読みこみ中…</div>
+      <div class="loading" id="loading" hidden>読込中…</div>
     </div>
     <aside id="panel"></aside>
   </main>
@@ -392,11 +393,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="data/index.js"></script>
 <script src="data/rent_city.js"></script>
-<script src="data/rent_factor.js"></script>
-<script src="data/rent_coef.js"></script>
+<script src="data/rent_factor.js?v=20261117"></script>
+<script src="data/rent_coef.js?v=20261117"></script>
 <script src="data/liq_meta.js"></script>
 <script src="../../共通/hosei_data.js"></script>
-<script src="souba_calc.js"></script>
+<script src="souba_calc.js?v=20261117"></script>
 <script src="../../共通/common.js?v=271d7a31"></script>
 <script src="../../共通/katachi.js"></script>
 <script src="../../共通/katachi_ui.js"></script>
@@ -436,6 +437,7 @@ try {
   if (h.get("rk")) { S.kms = h.get("rk").split(","); S.km = String(Math.max(...S.kms.map(Number))); S.stn = ""; S.stnN = ""; }
   if (h.get("st")) { S.stn = h.get("st"); S.stnN = h.get("sn") || "1"; S.center = null; S.kms = []; S.km = ""; }
 } catch (e) {}
+S.tab = "market"; S.mine = false;   // タブと成約例の表示は外した
 S.cities = S.cities.filter(c => CITY_INFO[c]);
 if (!S.cities.length) S.cities = DEFAULT_CITIES.length ? DEFAULT_CITIES : [Object.keys(CITY_INFO)[0]];
 if (!C.TYPES[S.type]) S.type = "中古マンション等";
@@ -460,12 +462,12 @@ const perUnit = () => "1" + unitLabel() + "あたり";
 const mainName = () => isTotalType() ? "取引価格（土地と建物の合計）の中央値" : (S.type === "宅地(土地)" ? `土地の単価（土地${perUnit()}・中央値）` : `単価（専有面積${perUnit()}・中央値）`);
 const colName = (total = isTotalType()) => total ? "取引価格（土地＋建物の合計）" : "単価（" + (S.type === "中古マンション等" ? "専有面積" : "土地") + perUnit() + "）";
 // 「主な価格帯」＝安い方から25%〜75%（取引の半分がこの間に入る）
-const rangeLabel = () => "主な価格帯（取引の半分がこの間）";
+const rangeLabel = () => "主な価格帯（四分位範囲：中央の50%）";
 // 数字の単位の説明（画面の一覧とPDFの頭に出す）
 const unitText = () => isTotalType()
-  ? "金額は、1件ごとの取引価格（土地と建物を合わせた値段・万円）です。広さは土地の面積です。"
-  : `単価は、${S.type === "宅地(土地)" ? "土地" : "専有面積"}1${unitLabel()}あたりの金額（万円/${unitLabel()}）です。小さい字は1${otherLabel()}あたり。1坪＝約3.31㎡。`;
-const median = C.median, quant = C.quant;
+  ? "金額は1件ごとの取引価格（土地・建物の合計、万円）です。面積は土地面積です。"
+  : `単価は${S.type === "宅地(土地)" ? "土地" : "専有面積"}1${unitLabel()}あたりの金額（万円/${unitLabel()}）です。小さい文字は1${otherLabel()}あたりの金額です（1坪＝約3.31㎡）。`;
+const median = C.median, quant = C.quant, stats = C.stats, tmed = C.tmed;
 const townName = k => k.split("|")[1];
 const cityName = code => CITY_INFO[code] ? CITY_INFO[code].name : code;
 const wardOf = k => cityName(k.split("|")[0]);
@@ -474,7 +476,7 @@ const wardOf = k => cityName(k.split("|")[0]);
 const CITY = {}, PENDING = {};
 // 流動性の順位（scripts/build_liq_rank.js で前もって数えたもの）。市区町村のデータといっしょに読む
 const LIQR = {};
-window.SOUBA_LIQ = { add(o) { LIQR[o.code] = o; if (S.sel && S.sel.startsWith(o.code + "|") && S.tab === "market") renderPanel(); } };
+window.SOUBA_LIQ = { add(o) { LIQR[o.code] = o; if ((S.sel && S.sel.startsWith(o.code + "|")) || (INSIDE && S.cities.includes(o.code))) renderPanel(); } };
 function loadLiq(code) {
   if (LIQR[code] || document.querySelector(`script[data-liq="${code}"]`)) return;
   const s = document.createElement("script"); s.src = "data/l_" + code + ".js"; s.dataset.liq = code; s.onerror = () => {}; document.head.appendChild(s);
@@ -542,17 +544,17 @@ async function applyStation(fit = true) {
   const D = await loadStations();
   let i = STN_LABEL[S.stn];
   if (i == null) i = D.h.findIndex(h => C.stationKey(h[0]) === C.stationKey(S.stn));
-  if (i < 0 || i == null) { stnMsg("その駅が見つかりません。候補から選んでください。"); return; }
+  if (i < 0 || i == null) { stnMsg("該当する駅が見つかりません。候補から選択してください。"); return; }
   const n = +S.stnN, hops = C.stationsWithin(D.a, i, n), keys = {}, pts = [];
   Object.entries(hops).forEach(([id, hop]) => { const h = D.h[id]; pts.push([h[1], h[2]]);
     (keys[C.stationKey(h[0])] ||= []).push({ hop, lat: h[1], lng: h[2] }); });
   const list = Object.values(CITY_INFO).filter(c => c.bbox && pts.some(p => c.bbox[0] - 0.01 <= p[1] && c.bbox[2] + 0.01 >= p[1] && c.bbox[1] - 0.01 <= p[0] && c.bbox[3] + 0.01 >= p[0])).map(c => c.code);
-  if (!list.length) { stnMsg("この駅のまわりは、まだ相場のデータがありません（国のデータに、この近くの取引が無いか、まだ入っていません）。"); return; }
-  if (list.length > MAX_CIRCLE_CITIES) { stnMsg("範囲が広すぎます。駅の数を減らしてください。"); return; }
+  if (!list.length) { stnMsg("この駅の周辺には相場データがありません（国の取引データに周辺の取引がないか、未収録です）。"); return; }
+  if (list.length > MAX_CIRCLE_CITIES) { stnMsg("対象範囲が広すぎます。駅数を減らしてください。"); return; }
   STN = { i, n, hops, keys, pts, cache: {} };
   S.center = null; S.kms = []; syncKm(); circleMsg(""); drawCircle();
   S.cities = S.keep ? [...new Set([...S.cities, ...list])] : list;
-  S.sel = null; stnMsg(`${Object.keys(hops).length}駅が範囲に入ります。`);
+  S.sel = null; stnMsg(`${Object.keys(hops).length}駅が対象範囲に含まれます。`);
   drawStation();
   await applyCities(false);
   if (fit) fitTo(L.latLngBounds(pts).pad(0.12));
@@ -585,8 +587,8 @@ function applyCircle(fit = true) {
   if (!circleOn()) { drawCircle(); update(); return; }
   if (STN) clearStation();   // 円と駅数は切りかえ
   const list = citiesInCircle();
-  if (!list.length) { circleMsg("この場所は、まだ相場のデータがありません（国のデータに、この近くの取引が無いか、まだ入っていません）。"); S.center = null; drawCircle(); update(); return; }
-  if (list.length > MAX_CIRCLE_CITIES) { circleMsg("範囲が広すぎます。半径を小さくしてください。"); return; }
+  if (!list.length) { circleMsg("この地点の周辺には相場データがありません（国の取引データに周辺の取引がないか、未収録です）。"); S.center = null; drawCircle(); update(); return; }
+  if (list.length > MAX_CIRCLE_CITIES) { circleMsg("対象範囲が広すぎます。半径を小さくしてください。"); return; }
   S.cities = S.keep ? [...new Set([...S.cities, ...list])] : list;
   S.sel = null;
   circleMsg("");
@@ -607,7 +609,7 @@ function syncKm() {
   document.querySelectorAll("#fKms input").forEach(i => { i.checked = S.kms.includes(i.value); });
 }
 const ringList = km => S.kms && S.kms.length > 1 ? S.kms.map(Number) : [0.5, 1, 1.5, 2, 3, 5, 10].filter(d => d <= km);
-function setCenter(lat, lng) { S.center = [lat, lng]; if (!S.km) { S.kms = ["1"]; syncKm(); } surveyPoint(lat, lng, "地図で選んだ場所"); applyCircle(); }
+function setCenter(lat, lng) { S.center = [lat, lng]; if (!S.km) { S.kms = ["1"]; syncKm(); } surveyPoint(lat, lng, "地図上で指定した地点"); applyCircle(); }
 // 物件調査のデータ（../../物件調査/）を、住所を入れたときだけ読む
 const SV_BASE = "../../物件調査/";
 let PT = null;   // { lat, lng, label, state: "loading" | "ok" | "fail", res }
@@ -616,7 +618,7 @@ const SV_TILES = {};
 async function surveyPoint(lat, lng, label) {
   PT = { lat, lng, label, state: "loading" }; const me = PT;
   try {
-    if (!window.SURVEY) await svScript(SV_BASE + "survey_core.js");
+    if (!window.SURVEY) await svScript(SV_BASE + "survey_core.js?v=20261117");
     if (!window.SURVEY_INDEX) await svScript(SV_BASE + "data/tiles/index.js");
     const SV = window.SURVEY, IX = window.SURVEY_INDEX, key = SV.tileKey(IX.meta.grid, lat, lng);
     if (!SV_TILES[key]) {
@@ -632,32 +634,32 @@ function zoningHtml() {
   if (!PT || !S.center) return "";
   let h = `<h3>この地点の都市計画（${esc(PT.label)}）</h3>`;
   const box = x => `<section class="blk">${x}</section>`;
-  if (PT.state === "loading") return box(h + `<p class="muted">調べています…</p>`);
-  if (PT.state === "fail") return box(h + `<p class="warnline">都市計画のデータを読みこめませんでした。物件調査のページで調べてください。</p>`);
+  if (PT.state === "loading") return box(h + `<p class="muted">取得中…</p>`);
+  if (PT.state === "fail") return box(h + `<p class="warnline">都市計画データを読み込めませんでした。物件調査のページで確認してください。</p>`);
   const r = PT.res, SV = window.SURVEY, IX = window.SURVEY_INDEX;
-  if (!r || !r.inData || !r.youto && !r.kuiki) return box(h + `<p class="muted">この地点の都市計画のデータがありません（都市計画区域の外か、データが無い所です）。役所で確かめてください。</p>`);
+  if (!r || !r.inData || !r.youto && !r.kuiki) return box(h + `<p class="muted">この地点の都市計画データがありません（都市計画区域外、またはデータ未整備の地域です）。役所で確認してください。</p>`);
   const y = r.youto, pct = v => v > 0 ? v + "%" : "データなし";
   const rows = [];
-  rows.push(["用途地域", y ? esc(y.name) + (r.youtoMixed ? "（この近くで2つ以上の用途地域にまたがっています）" : "") : "指定なし"]);
+  rows.push(["用途地域", y ? esc(y.name) + (r.youtoMixed ? "（付近で複数の用途地域にまたがっています）" : "") : "指定なし"]);
   if (y) {
-    rows.push(["建ぺい率", `<b>${pct(y.kenpei)}</b>${y.fill2019 ? "（2019年のデータで補ったもの）" : ""}`]);
-    rows.push(["容積率", `<b>${pct(y.youseki)}</b>${y.youseki > 0 ? `<span class="alt">前の道の幅が12m未満なら「道の幅×${y.kind === "res" ? "40" : "60"}%」と小さい方になります（例：幅4mなら${4 * (y.kind === "res" ? 40 : 60)}%${4 * (y.kind === "res" ? 40 : 60) < y.youseki ? `に下がります` : `なので、${y.youseki}%のまま`}）</span>` : ""}`]);
+    rows.push(["建ぺい率", `<b>${pct(y.kenpei)}</b>${y.fill2019 ? "（2019年のデータで補完）" : ""}`]);
+    rows.push(["容積率", `<b>${pct(y.youseki)}</b>${y.youseki > 0 ? `<span class="alt">前面道路の幅員が12m未満の場合は「前面道路幅員×${y.kind === "res" ? "4/10" : "6/10"}」と比較して小さい方が上限（例：幅員4mの場合は${4 * (y.kind === "res" ? 40 : 60)}%${4 * (y.kind === "res" ? 40 : 60) < y.youseki ? `に制限` : `のため、指定容積率${y.youseki}%のまま`}）</span>` : ""}`]);
   }
-  rows.push(["防火の指定", esc(r.bouka ? r.bouka.name : "—")]);
-  rows.push(["高度地区", r.koudo ? esc(r.koudo.name) + (r.koudo.max > 0 ? `（最高 ${r.koudo.max}m）` : "") : r.koudoState === "nodata" ? "データなし（役所で確認）" : "指定なし"]);
-  if (y && y.takasa > 0) rows.push(["高さの限度", y.takasa + "m"]);
-  if (y && y.minArea > 0) rows.push(["敷地の最低面積", y.minArea + "㎡"]);
-  if (y && y.gaiheki > 0) rows.push(["外壁の後退", y.gaiheki + "m"]);
-  rows.push(["区域", esc(r.kuiki ? r.kuiki.name : (r.toshiKeikaku ? "都市計画区域（線引きなし）" : "—"))]);
-  rows.push(["地区計画", r.chiku && r.chiku.length ? r.chiku.map(c => esc(c.name)).join("、") + "（建物のきまりが足されていることがあります）" : r.chikuState === "nodata" ? "データなし（役所で確認）" : "なし"]);
+  rows.push(["防火・準防火地域", esc(r.bouka ? r.bouka.name : "—")]);
+  rows.push(["高度地区", r.koudo ? esc(r.koudo.name) + (r.koudo.max > 0 ? `（最高高さ ${r.koudo.max}m）` : "") : r.koudoState === "nodata" ? "データなし（役所で確認）" : "指定なし"]);
+  if (y && y.takasa > 0) rows.push(["絶対高さの制限", y.takasa + "m"]);
+  if (y && y.minArea > 0) rows.push(["敷地面積の最低限度", y.minArea + "㎡"]);
+  if (y && y.gaiheki > 0) rows.push(["外壁の後退距離", y.gaiheki + "m"]);
+  rows.push(["区域", esc(r.kuiki ? r.kuiki.name : (r.toshiKeikaku ? "都市計画区域（非線引き）" : "—"))]);
+  rows.push(["地区計画", r.chiku && r.chiku.length ? r.chiku.map(c => esc(c.name)).join("、") + "（建築物の制限が追加されている場合があります）" : r.chikuState === "nodata" ? "データなし（役所で確認）" : "なし"]);
   if (r.fuchi && r.fuchi.length) rows.push(["風致地区", r.fuchi.map(f => esc(f.name)).join("、")]);
-  if (/の真ん中（番地までは分かりません）$/.test(PT.label)) h += `<p class="warnline">住所検索につながらなかったので、町の真ん中の値です。住所の地点とはちがうことがあります。「地図を押して決める」で場所を選び直すと、その地点の値になります。</p>`;
+  if (/の中心（番地は特定できません）$/.test(PT.label)) h += `<p class="warnline">住所検索に接続できなかったため、町の中心地点の値です。指定した住所の地点とは異なる場合があります。「地図上で指定」で地点を選び直すと、その地点の値を表示します。</p>`;
   h += `<table class="kv zoning"><tbody>${rows.map(([a, b]) => `<tr><td>${a}</td><td class="wrap">${b}</td></tr>`).join("")}</tbody></table>`;
-  if (r.edgeM != null && r.edgeM < 30) h += `<p class="note caution">用途地域の境目まで約${Math.round(r.edgeM)}mです。境目の近くは、敷地がどちらに入るかで数字が変わるので、役所の都市計画図で確かめてください。</p>`;
+  if (r.edgeM != null && r.edgeM < 30) h += `<p class="note caution">用途地域の境界まで約${Math.round(r.edgeM)}mです。境界付近では敷地が属する用途地域により数値が異なるため、役所の都市計画図で確認してください。</p>`;
   const bonus = SV.kenpeiBonus(y, r.bouka);
-  if (y && bonus.length) h += `<p class="muted small">建ぺい率がふえる場合：${bonus.map(esc).join("／")}。</p>`;
+  if (y && bonus.length) h += `<p class="muted small">建ぺい率の緩和：${bonus.map(esc).join("／")}。</p>`;
   const m = r.muni || {};
-  h += `<p class="muted small">検索で出た点（${PT.lat.toFixed(5)}, ${PT.lng.toFixed(5)}）の値です。番地の中のどこかで変わることがあるので、取引の前に役所で確かめてください。出どころ：${r.src === "T" ? esc(IX.sources && IX.sources.T ? IX.sources.T.name : "東京都") : "国土数値情報「都市計画決定情報」（国土交通省）" + (m.name ? `・${esc(m.name)}のデータの時点 ${esc(m.asOf || "記載なし")}` : "")}。高さの制限・道路の斜線・日影は <a href="${SV_BASE}index.html?lat=${PT.lat.toFixed(6)}&lon=${PT.lng.toFixed(6)}" target="_blank" rel="noopener">物件調査</a> で見られます。</p>`;
+  h += `<p class="muted small">検索結果の地点（${PT.lat.toFixed(5)}, ${PT.lng.toFixed(5)}）の値です。同一番地内でも異なる場合があるため、取引前に役所で確認してください。出典：${r.src === "T" ? esc(IX.sources && IX.sources.T ? IX.sources.T.name : "東京都") : "国土数値情報「都市計画決定情報」（国土交通省）" + (m.name ? `・${esc(m.name)}のデータ時点 ${esc(m.asOf || "記載なし")}` : "")}。高さ制限・道路斜線制限・日影規制は <a href="${SV_BASE}index.html?lat=${PT.lat.toFixed(6)}&lon=${PT.lng.toFixed(6)}" target="_blank" rel="noopener">物件調査</a> で確認できます。</p>`;
   return `<section class="blk">${h}</section>`;   // 下の相場の数字とまざらないように、ここだけで1つのかたまりにする
 }
 
@@ -684,8 +686,8 @@ function cityLayer(c) {
     l.on("click", e => { if (PICKING) { L.DomEvent.stop(e); endPick(); setCenter(e.latlng.lat, e.latlng.lng); return; } if (INSIDE && INSIDE[key] == null) return; select(key); });
     l.bindTooltip(() => {
       const t = TOWN[key], nm = `${esc(sname)}<span class="muted">（${esc(c.name)}）</span>`;
-      if (INSIDE && INSIDE[key] == null) return `${nm}<br>円の外`;
-      if (!t) return `${nm}<br>この条件の取引なし`;
+      if (INSIDE && INSIDE[key] == null) return `${nm}<br>範囲外`;
+      if (!t) return `${nm}<br>該当する取引なし`;
       return `${nm}<br>${mainName()}：${fmtMain(t.med)}<br>${t.n}件${t.n < MIN_N ? "（参考値）" : ""}`;
     }, { sticky: true });
     g.addLayer(l);
@@ -742,7 +744,7 @@ const zoneGroup = z => z.low ? "low" : z.mid ? "mid" : z.kind;
 const zoneRenderer = L.canvas({ pane: "zoning" });
 const ZTILES = {}; let zoneLayer = null, zoneSeq = 0, surveyReady = null;
 const loadScript = src => new Promise((ok, ng) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ng; document.head.appendChild(s); });
-const ensureSurvey = () => surveyReady ||= loadScript("../../物件調査/survey_core.js").then(() => loadScript("../../物件調査/data/tiles/index.js"));
+const ensureSurvey = () => surveyReady ||= loadScript("../../物件調査/survey_core.js?v=20261117").then(() => loadScript("../../物件調査/data/tiles/index.js"));
 async function zoneTile(key) {
   if (ZTILES[key]) return ZTILES[key];
   await loadScript(`../../物件調査/data/tiles/${key}.js`);
@@ -775,8 +777,8 @@ async function drawZoning() {
     await ensureSurvey();
     const idx = window.SURVEY_INDEX, b = map.getBounds();
     const keys = SURVEY.tilesForBounds(idx.meta.grid, b.getWest(), b.getSouth(), b.getEast(), b.getNorth(), 160);
-    if (!keys) { clear(); msg("地図を拡大すると出ます。"); return; }
-    msg("読みこみ中…");
+    if (!keys) { clear(); msg("地図を拡大すると表示されます。"); return; }
+    msg("読込中…");
     const use = keys.filter(k => SURVEY.hasTile(idx, k)), dbs = await Promise.all(use.map(zoneTile));
     if (seq !== zoneSeq) return;
     const group = [], style = { renderer: zoneRenderer, stroke: false, fillOpacity: +S.lyAlpha, interactive: false };
@@ -786,8 +788,8 @@ async function drawZoning() {
       if (S.lyChosei) (db.senbiki || []).forEach(f => { if (f.p[0] === 23) add(f, CHOSEI_COLOR, db.meta.clip); });
     });
     clear(); zoneLayer = L.layerGroup(group).addTo(map);
-    msg("形の目安です。正確には役所へ。");
-  } catch (e) { clear(); msg("用途地域のデータを読めませんでした。"); }
+    msg("区域の形状は目安です。正確な範囲は役所で確認してください。");
+  } catch (e) { clear(); msg("用途地域のデータを読み込めませんでした。"); }
 }
 map.on("moveend", drawZoning);
 document.getElementById("legend").onclick = e => e.currentTarget.classList.toggle("small");
@@ -798,7 +800,7 @@ if (window.innerWidth < 760) document.getElementById("legend").classList.add("sm
 function fillPrintHead() {
   const now = new Date(), d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const kmL = +S.km < 1 ? +S.km * 1000 + "m" : S.km + "km";
-  const where = S.sel ? `${wardOf(S.sel)} ${townName(S.sel)}` : STN ? `${S.stn}から${S.stnN}駅先まで` : circleOn() ? `${PT && PT.label ? PT.label : "選んだ場所"}から半径${kmL}` : S.cities.map(cityName).join("・");
+  const where = S.sel ? `${wardOf(S.sel)} ${townName(S.sel)}` : STN ? `${S.stn}から${S.stnN}駅先まで` : circleOn() ? `${PT && PT.label ? PT.label : "指定地点"}から半径${kmL}` : S.cities.map(cityName).join("・");
   const per = document.getElementById("subTitle").textContent.split("／").pop();
   const tab = S.tab === "calc" ? "目安の計算" : S.tab === "mine" ? "成約例の登録" : S.sel ? "町の相場" : (STN || circleOn()) ? "範囲の相場" : "町の一覧";
   document.getElementById("printHead").innerHTML =
@@ -806,7 +808,7 @@ function fillPrintHead() {
     typeBadge() + `<p>条件：${esc(condText())}</p>` +
     `<p>${esc(unitText())}</p>`;
   document.getElementById("printFoot").innerHTML =
-    `<p>データの期間：${esc(per)}（売買）／家賃は${esc(RC.meta.when || "")}時点　作成日：${d}<br>出典：国土交通省「不動産情報ライブラリ」、${esc(RC.meta.src || "")}をもとに加工。相場の目安で、鑑定評価ではありません。</p>`;
+    `<p>データの期間：${esc(per)}（売買）／家賃は${esc(RC.meta.when || "")}時点　作成日：${d}<br>出典：国土交通省「不動産情報ライブラリ」、${esc(RC.meta.src || "")}をもとに加工。相場の目安であり、鑑定評価ではありません。</p>`;
   return { where, d };
 }
 window.addEventListener("beforeprint", fillPrintHead);   // ブラウザのメニューから印刷したときも、条件と単位を頭に入れる
@@ -861,7 +863,7 @@ function paint() {
   selLayers.forEach(l => l.bringToFront());
   const fmtB = v => S.color === "price" ? (isTotalType() ? fmtMan(v) : man(conv(v)).toFixed(0) + "万円") : v < 1 ? v.toFixed(2) : v.toFixed(1);
   const title = S.color === "price" ? mainName()
-    : S.color === "liq" ? "流動性（1000世帯あたりの年間件数）" : "1年あたりの件数";
+    : S.color === "liq" ? "流動性（1000世帯あたりの年間件数）" : "年間件数";
   let h = `<b>${title}</b>`;
   if (S.color === "price") h += `<div class="unitline">単位：${isTotalType() ? "万円（土地＋建物の合計）" : "万円/" + unitLabel()}</div>`;
   if (breaks.length && breaks[0] != null) {
@@ -882,7 +884,7 @@ function paint() {
 // ---------- 登録した成約例（国のデータに無い借地・底地・再建築不可などの成約を自分で入れる） ----------
 let MINE = [];
 try { MINE = JSON.parse(localStorage.getItem("soubaMine") || "[]"); } catch (e) { MINE = []; }
-const saveMine = () => { try { localStorage.setItem("soubaMine", JSON.stringify(MINE)); } catch (e) { alert("この端末に保存できませんでした。CSVに書き出して控えてください。"); } };
+const saveMine = () => { try { localStorage.setItem("soubaMine", JSON.stringify(MINE)); } catch (e) { alert("この端末に保存できませんでした。CSVに書き出して保存してください。"); } };
 const mineKey = r => r.city + "|" + r.town;
 const fmtRent = v => v == null ? "—" : Math.round(v).toLocaleString() + "円";
 function mineByTown() { const g = {}; MINE.forEach(r => { (g[mineKey(r)] ||= []).push(r); }); return g; }
@@ -907,12 +909,12 @@ function paintMine() {
 function breakdown(rows, keyFn, order, labels, valFn = mainVal, total = isTotalType()) {
   const g = {};
   for (const r of rows) { const k = keyFn(r); if (k == null || k === "") continue; (g[k] ||= []).push(valFn(r)); }
-  const list = order.filter(k => g[k]).map(k => ({ k, label: labels ? labels[k] : k, n: g[k].length, med: median(g[k]) }));
+  const list = order.filter(k => g[k]).map(k => { const st = stats(g[k]); return { k, label: labels ? labels[k] : k, n: g[k].length, med: st.med, st }; });
   if (!list.length) return `<p class="muted">データなし</p>`;
   const max = Math.max(...list.map(x => x.med));
   const f = v => total ? fmtMan(v) : fmtUnitHtml(v);
-  return `<table><thead><tr><th></th><th>件数</th><th>${colName(total)}の中央値</th><th></th></tr></thead><tbody>` +
-    list.map(x => `<tr class="${x.n < MIN_N ? "few" : ""}"><td>${x.label}</td><td>${x.n}</td><td>${f(x.med)}</td>` +
+  return `<table><thead><tr><th></th><th>件数</th><th>${colName(total)}の中央値<span class="alt">最小〜最大</span></th><th></th></tr></thead><tbody>` +
+    list.map(x => `<tr class="${x.n < MIN_N ? "few" : ""}"><td>${x.label}</td><td>${x.n}</td><td>${f(x.med)}<span class="alt mm">${fmtRng(x.st.min, x.st.max)}</span></td>` +
       `<td class="bar"><div class="barw"><span style="width:${(x.med / max * 100).toFixed(0)}%"></span></div></td></tr>`).join("") +
     `</tbody></table>`;
 }
@@ -925,10 +927,10 @@ function areaBin(r) {
 }
 const PLAN_LABEL = { "1R1K": "1R・1K・1DK", "1LDK": "1LDK・2DK", "2LDK": "2LDK", "3LDK": "3LDK", "4LDK": "4LDK〜" };
 const STRUCT_LABEL = { RC: "RC", SRC: "SRC", S: "鉄骨", "木造": "木造" };
-const SHAPE_LABEL = { seikei: "整形（長方形・正方形など）", fusei: "不整形・台形", fukuro: "袋地等（旗竿をふくむ）" };
-const ROAD_LABEL = { public: "公道", private: "私道", none: "道路に接していない" };
+const SHAPE_LABEL = { seikei: "整形（長方形・正方形等）", fusei: "不整形・台形", fukuro: "袋地等（旗竿地を含む）" };
+const ROAD_LABEL = { public: "公道", private: "私道", none: "接道なし" };
 const WIDTH_LABEL = { lt4: "4m未満", "4to6": "4〜6m", ge6: "6m以上" };
-const FRONT_LABEL = { lt2: "2m未満（旗竿のおそれ）", "2to4": "2〜4m", ge4: "4m以上" };
+const FRONT_LABEL = { lt2: "2m未満（旗竿地の可能性）", "2to4": "2〜4m", ge4: "4m以上" };
 const pct = v => (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + "%";
 
 // 更地（ふつうの土地）の相場：この町の「土地」の取引から。整形・特別な事情なしで5件あれば、それを使う
@@ -936,14 +938,14 @@ function baseLand(k) {
   const code = k ? k.split("|")[0] : S.cities[0];
   const rows = (CITY[code] ? CITY[code].rows : []).filter(r => r.type === "宅地(土地)" && (() => { const [a, b] = C.range(S.year); return r.y >= a && r.y <= b; })());
   const tries = [
-    [r => r.k === k && C.shapeGroup(r.shape) === "seikei" && !C.isSpecial(r), "この町の土地（整形・特別な事情なし）"],
-    [r => r.k === k && !C.isSpecial(r), "この町の土地（形を問わず・特別な事情なし）"],
-    [r => C.shapeGroup(r.shape) === "seikei" && !C.isSpecial(r), cityName(code) + "全体の土地（整形・特別な事情なし）"],
+    [r => r.k === k && C.shapeGroup(r.shape) === "seikei" && !C.isSpecial(r), "この町の土地（整形・特殊事情なし）"],
+    [r => r.k === k && !C.isSpecial(r), "この町の土地（形状問わず・特殊事情なし）"],
+    [r => C.shapeGroup(r.shape) === "seikei" && !C.isSpecial(r), cityName(code) + "全体の土地（整形・特殊事情なし）"],
   ];
   for (const [f, label] of tries) {
     if (!k && label.startsWith("この町")) continue;
     const rs = rows.filter(f);
-    if (rs.length >= MIN_N) return { unit: median(rs.map(r => r.unit)), n: rs.length, label, area: median(rs.map(r => r.area)) };
+    if (rs.length >= MIN_N) return { unit: tmed(rs.map(r => r.unit)), n: rs.length, label, area: median(rs.map(r => r.area)) };
   }
   return null;
 }
@@ -952,63 +954,66 @@ function groupBlocks(P) {
   const stop = n => n.nodeType === 1 && (/^(H2|H3|FOOTER|SECTION)$/.test(n.tagName) || n.classList.contains("explain"));
   [...P.querySelectorAll(":scope > h3")].forEach(h => {
     const box = document.createElement("section"); box.className = "blk";
-    if (h.textContent.includes("のくらべ（")) box.classList.add("split");   // 長いので、中の部品ごとに切れないようにする
+    if (h.textContent.includes("の比較（")) box.classList.add("split");   // 長いので、中の部品ごとに切れないようにする
     h.before(box); box.append(h);
     while (box.nextSibling && !stop(box.nextSibling)) box.append(box.nextSibling);
   });
 }
 function renderPanel() {
   const P = document.getElementById("panel");
-  const tabs = `<div class="tabs segscroll"><span class="seg" id="segTab">` +
-    [["market", "町の相場"], ["calc", "目安の計算"], ["mine", "成約例の登録" + (MINE.length ? `（${MINE.length}）` : "")]].map(([v, t]) => `<button data-v="${v}" class="${S.tab === v ? "on" : ""}">${t}</button>`).join("") + `</span></div>`;
-  let body;
-  if (S.tab === "calc") body = calcHtml();
-  else if (S.tab === "mine") body = mineHtml();
-  else body = S.sel ? detailHtml() : listHtml();
-  P.innerHTML = tabs + body + sources();
+  // 目安の計算・成約例の登録のタブは外した（2026-11-17）。相場の画面だけを出す
+  P.innerHTML = (S.sel ? detailHtml() : listHtml()) + sources();
   groupBlocks(P);
-  P.querySelectorAll("#segTab button").forEach(b => b.onclick = () => { S.tab = b.dataset.v; save(); renderPanel(); P.scrollTop = 0; });
-  if (S.tab === "calc") bindCalc(P);
-  else if (S.tab === "mine") bindMine(P);
-  else bindMarket(P);
+  bindMarket(P);
 }
 function bindMarket(P) {
   const b = document.getElementById("back"); if (b) b.onclick = () => select(null);
   P.querySelectorAll("#townList tbody tr").forEach(tr => tr.onclick = () => select(tr.dataset.k, true));
-  const g = document.getElementById("goCalc"); if (g) g.onclick = () => { S.tab = "calc"; CS.unitAuto = true; saveCalc(); renderPanel(); };
-  const m = document.getElementById("goMine"); if (m) m.onclick = () => { S.tab = "mine"; renderPanel(); };
+}
+// 見出しの数字：外れ値を除いた中央値・主な価格帯・最小〜最大と、除いた件数
+const fmtRng = (a, b) => a == null ? "—" : isTotalType() ? `${fmtMan(a)}〜${fmtMan(b)}` : `${fmtNum(a)}〜${fmtNum(b)}万円/${unitLabel()}`;
+const fmtNum = v => { const x = man(conv(v)); return x.toFixed(x < 10 ? 1 : 0); };
+const fmtShort = v => v == null ? "—" : isTotalType() ? fmtMan(v) : man(conv(v)).toFixed(man(conv(v)) < 10 ? 1 : 0) + "万円/" + unitLabel();
+function mainFigure(st) {
+  if (!st || st.med == null) return `<div class="figure main"><div class="k">${mainName()}</div><div class="v">—</div></div>`;
+  const out = st.nLo + st.nHi;
+  return `<div class="figure main"><div class="k">${mainName()}</div><div class="v">${fmtMain(st.med)}</div>
+    <div class="s">${rangeLabel()}：${fmtRng(st.q1, st.q3)}</div>
+    <div class="s">最小〜最大：${fmtRng(st.min, st.max)}</div>
+    <div class="s">外れ値として除外：${out ? `${st.nHi ? `高値側 ${st.nHi}件` : ""}${st.nHi && st.nLo ? "・" : ""}${st.nLo ? `安値側 ${st.nLo}件` : ""}（全${st.nAll}件中）` : st.nAll < 5 ? `なし（${st.nAll}件のため判定対象外）` : "なし"}</div></div>`;
+}
+function outlierNote() {
+  return `<p class="muted small">中央値・主な価格帯・最小〜最大は、外れ値を除外して算出しています。外れ値は、隣地の買い増しや開発用地の取りまとめ等の特殊事情による極端な高値、擁壁・再建築不可・訳あり物件等の事情による極端な安値を想定しています。判定方法：価格比率の四分位（下位25%・上位25%の境界）を求め、その外側に四分位範囲の1.5倍（取引が5〜9件の場合は3倍）以上離れた取引を除外します。取引が4件以下の場合は除外しません。</p>`;
 }
 function detailHtml() {
   const k = S.sel, t = TOWN[k];
   let h = `<button id="back" class="btn link">← 町の一覧へ</button><h2>${esc(wardOf(k))} ${esc(townName(k))}</h2>`;
   h += typeBadge() + `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div><p class="unitnote">${unitText()}</p>`;
-  if (!t) return h + `<p class="warnline">この条件では取引がありません。条件をゆるめてください。</p>` + (isLandHouse() ? landHouseHtml(ALL.filter(r => r.k === k), "この町") : "") + cpCompareHtml(ALL.filter(r => r.k === k)) + mineInTown(k);
-  if (t.n < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満なので「参考値」です。数字が大きくぶれることがあります。</p>`;
+  if (!t) return h + `<p class="warnline">この条件に該当する取引はありません。条件を緩和してください。</p>` + (isLandHouse() ? landHouseHtml(ALL.filter(r => r.k === k), "この町") : "") + cpCompareHtml(ALL.filter(r => r.k === k));
+  if (t.n < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満のため参考値です。数値が大きく変動する可能性があります。</p>`;
   const y = C.yoy(ALL, k, S, QUARTERS);
   const liqText = t.liq == null ? "世帯数のデータなし"
-    : (t.stars ? `${LIQ.n}町中 ${t.rank}位／1000世帯あたり 年${t.liq.toFixed(1)}件` : `1000世帯あたり 年${t.liq.toFixed(1)}件（件数が少なく★なし）`);
+    : (t.stars ? `${LIQ.n}町中 ${t.rank}位／1000世帯あたり 年${t.liq.toFixed(1)}件` : `1000世帯あたり 年${t.liq.toFixed(1)}件（件数不足のため★なし）`);
   const fy = FULL.length >= 2 ? `${FULL[FULL.length - 1]}年÷${FULL[FULL.length - 1] - 1}年` : "";
   h += `<div class="figures">
-    <div class="figure main"><div class="k">${mainName()}</div><div class="v">${fmtMain(t.med)}</div>
-      <div class="s">${rangeLabel()}：${isTotalType() ? fmtMan(t.q1) + "〜" + fmtMan(t.q3) : man(conv(t.q1)).toFixed(0) + "〜" + man(conv(t.q3)).toFixed(0) + "万円/" + unitLabel()}</div></div>
-    <div class="figure"><div class="k">件数</div><div class="v">${t.n}<small>件</small></div><div class="s">1年あたり ${t.perYear.toFixed(1)}件</div></div>
+    ${mainFigure(t.st)}
+    <div class="figure"><div class="k">件数</div><div class="v">${t.n}<small>件</small></div><div class="s">年間 ${t.perYear.toFixed(1)}件</div></div>
     <div class="figure"><div class="k">流動性</div><div class="v stars">${t.stars ? "★".repeat(t.stars) + "☆".repeat(3 - t.stars) : "—"}</div>
       <div class="s">${liqText}</div></div>
     <div class="figure"><div class="k">前年比（${fy}）</div>` +
     (y ? `<div class="v ${y.p >= 0 ? "up" : "down"}">${pct(y.p)}</div><div class="s">件数 ${pct(y.c)}（${y.n1}→${y.n2}件）</div>`
-       : `<div class="v">—</div><div class="s">どちらかの年が${MIN_N}件未満</div>`) + `</div></div>`;
-  h += liqRankHtml(k);
+       : `<div class="v">—</div><div class="s">いずれかの年が${MIN_N}件未満のため算出不可</div>`) + `</div></div>`;
+  h += outlierNote() + liqRankHtml(k);
   if (isLandHouse()) h += landHouseHtml(ALL.filter(r => r.k === k), "この町");
   const rows = t.rows;
   if (isTotalType()) {
-    h += `<table class="kv"><tbody><tr><td class="wrap">土地＋建物の値段を、土地の広さで割った単価（中央値）</td><td>${fmtUnitHtml(median(rows.map(r => r.unit)))}</td></tr>
-      <tr><td>土地の広さ（中央値）</td><td>${fmtArea(median(rows.map(r => r.area)))}</td></tr>
-      <tr><td>建物の延べ床面積（中央値）</td><td>${fmtArea(median(rows.filter(r => r.floor).map(r => r.floor)))}</td></tr></tbody></table>`;
+    h += `<table class="kv"><tbody><tr><td class="wrap">取引価格（土地＋建物）÷土地面積の単価（中央値）</td><td>${fmtUnitHtml(tmed(rows.map(r => r.unit)))}</td></tr>
+      <tr><td>土地面積（中央値）</td><td>${fmtArea(median(rows.map(r => r.area)))}</td></tr>
+      <tr><td>延床面積（中央値）</td><td>${fmtArea(median(rows.filter(r => r.floor).map(r => r.floor)))}</td></tr></tbody></table>`;
   } else {
-    h += `<table class="kv"><tbody><tr><td>1件の取引価格（中央値）</td><td>${fmtMan(median(rows.map(r => r.price)))}</td></tr>
-      <tr><td>${S.type === "宅地(土地)" ? "土地の広さ" : "部屋の広さ（専有面積）"}（中央値）</td><td>${fmtArea(median(rows.map(r => r.area)))}</td></tr></tbody></table>`;
+    h += `<table class="kv"><tbody><tr><td>取引価格（1件あたり・中央値）</td><td>${fmtMan(tmed(rows.map(r => r.price)))}</td></tr>
+      <tr><td>${S.type === "宅地(土地)" ? "土地面積" : "専有面積"}（中央値）</td><td>${fmtArea(median(rows.map(r => r.area)))}</td></tr></tbody></table>`;
   }
-  if (C.isLandish(S.type)) h += `<div class="btnrow"><button class="btn" id="goCalc">この町の相場で「目安の計算」をする</button></div>`;
   if (S.type === "宅地(土地と建物)" || S.type === "宅地(土地と建物・戸建以外)") h += oldHouseHtml(k, rows);
   if (S.type !== "宅地(土地)") {
     if (S.type === "中古マンション等") h += `<h3>間取り別</h3>` + breakdown(rows, r => C.planGroup(r.plan), Object.keys(PLAN_LABEL), PLAN_LABEL);
@@ -1016,69 +1021,69 @@ function detailHtml() {
     h += `<h3>構造別</h3>` + breakdown(rows, r => C.structGroup(r.struct), Object.keys(STRUCT_LABEL), STRUCT_LABEL);
   }
   if (C.isLandish(S.type)) h += landDiffHtml(k, rows);
-  h += `<h3>駅からの距離別（徒歩）</h3>` + breakdown(rows, walkBin, ["〜5分", "6〜10分", "11〜15分", "16分〜"]);
-  h += `<h3>広さ別</h3>` + breakdown(rows, areaBin, S.type === "中古マンション等" ? ["40㎡未満", "40〜60㎡", "60〜80㎡", "80㎡〜"] : ["100㎡未満", "100〜150㎡", "150〜200㎡", "200㎡〜"]);
+  h += `<h3>駅徒歩分数別</h3>` + breakdown(rows, walkBin, ["〜5分", "6〜10分", "11〜15分", "16分〜"]);
+  h += `<h3>面積別</h3>` + breakdown(rows, areaBin, S.type === "中古マンション等" ? ["40㎡未満", "40〜60㎡", "60〜80㎡", "80㎡〜"] : ["100㎡未満", "100〜150㎡", "150〜200㎡", "200㎡〜"]);
   const yrs = []; for (let yy = Y0; yy <= Y1; yy++) yrs.push(String(yy));
   const yl = {}; yrs.forEach(yy => { yl[yy] = yy + "年" + (+yy === Y1 && Q1 < 4 ? `（1〜${Q1 * 3}月）` : ""); });
-  h += `<h3>年ごと</h3>` + breakdown(rows, r => String(r.y), yrs, yl);
+  h += `<h3>年別</h3>` + breakdown(rows, r => String(r.y), yrs, yl);
   const st = {}; rows.forEach(r => { if (r.station) st[r.station] = (st[r.station] || 0) + 1; });
-  h += `<h3>よく出てくる最寄駅</h3><p>` + Object.entries(st).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s, n]) => `${esc(s)}（${n}件）`).join("、") + `</p>`;
-  return h + cpCompareHtml(ALL.filter(r => r.k === k)) + liqExplain() + rentCityHtml([k.split("|")[0]], { rows: ALL.filter(r => r.k === k), label: townName(k) }) + mineInTown(k);
+  h += `<h3>主な最寄駅（取引件数順）</h3><p>` + Object.entries(st).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s, n]) => `${esc(s)}（${n}件）`).join("、") + `</p>`;
+  return h + cpCompareHtml(ALL.filter(r => r.k === k)) + liqExplain() + rentCityHtml([k.split("|")[0]], { rows: ALL.filter(r => r.k === k), label: townName(k) });
 }
 // 都市計画ごとの比較。いまの「都市計画」の切りかえに関係なく、ほかの条件で比べる
-const CP_LABEL = { low: "低層住居", mid: "中高層住居", res: "住居", com: "商業", ind: "工業", chosei: "市街化調整区域", other: "非線引き・都市計画区域外など", none: "記載なし" };
+const CP_LABEL = { low: "低層住居", mid: "中高層住居", res: "住居", com: "商業", ind: "工業", chosei: "市街化調整区域", other: "非線引き区域・都市計画区域外等", none: "記載なし" };
 function cpCompareHtml(base) {
   const s2 = { ...S, cp: "" }, rows = base.filter(r => C.pass(r, s2));
   if (!rows.length) return "";
-  return `<h3>都市計画ごとの相場</h3>` + breakdown(rows, r => C.cpGroup(r.cp), Object.keys(CP_LABEL), CP_LABEL);
+  return `<h3>都市計画区分別の相場</h3>` + breakdown(rows, r => C.cpGroup(r.cp), Object.keys(CP_LABEL), CP_LABEL);
 }
 // 調整区域を除いているときは、何件除いたかを見せる（黙って数字を変えない）
 function choseiNote() {
   if (S.cp !== "noChosei") return "";
   const s2 = { ...S, cp: "" }, rows = scopeRows().filter(r => r.cp === "調整区域" && C.pass(r, s2));
   if (!rows.length) return "";
-  const v = median(rows.map(mainVal));
-  return `<p class="muted small">市街化調整区域の取引 ${rows.length.toLocaleString()}件（中央値 ${isTotalType() ? fmtMan(v) : man(conv(v)).toFixed(1) + "万円/" + unitLabel()}）は除いています。入れるときは「都市計画」を切りかえてください。</p>`;
+  const v = tmed(rows.map(mainVal));
+  return `<p class="muted small">市街化調整区域の取引 ${rows.length.toLocaleString()}件（中央値 ${isTotalType() ? fmtMan(v) : man(conv(v)).toFixed(1) + "万円/" + unitLabel()}）は除外しています。含める場合は「都市計画」の条件を変更してください。</p>`;
 }
 // 古家付きの可能性がある取引と、解体費を足した「更地にしたら」の単価
 function oldHouseHtml(k, rows) {
   const o = C.oldHouseStats(rows);
   let h = `<h3>古家付きの可能性がある取引（木造・築${C.OLD_HOUSE_AGE}年以上）</h3>`;
-  if (!o.n) return h + `<p class="muted">いまの条件では見つかりません。</p>`;
+  if (!o.n) return h + `<p class="muted">現在の条件では該当がありません。</p>`;
   const bl = baseLand(k);
   h += `<table><tbody>
     <tr><td>件数</td><td>${o.n}件${o.n < MIN_N ? "（参考値）" : ""}</td></tr>
     <tr><td class="wrap">取引価格（土地＋建物の合計・中央値）</td><td>${fmtMan(o.price)}</td></tr>
-    <tr><td class="wrap">土地＋建物の値段を、土地の広さで割った単価</td><td>${fmtUnitHtml(o.asIs)}</td></tr>
-    <tr><td class="wrap">解体費を足した「更地にしたら」</td><td>${o.sarachiLo ? fmtUnitHtml(o.sarachiLo) + "〜" + fmtUnitHtml(o.sarachiHi) : "延床の記録なし"}</td></tr>
-    <tr><td class="wrap">くらべる：この辺りの土地の相場</td><td>${bl ? fmtUnitHtml(bl.unit) + `<span class="alt">${esc(bl.label)}・${bl.n}件</span>` : "土地の取引が少なく出せません"}</td></tr>
+    <tr><td class="wrap">取引価格÷土地面積の単価</td><td>${fmtUnitHtml(o.asIs)}</td></tr>
+    <tr><td class="wrap">解体費加算後の更地換算単価</td><td>${o.sarachiLo ? fmtUnitHtml(o.sarachiLo) + "〜" + fmtUnitHtml(o.sarachiHi) : "延床面積の記載なし"}</td></tr>
+    <tr><td class="wrap">比較：周辺の土地相場</td><td>${bl ? fmtUnitHtml(bl.unit) + `<span class="alt">${esc(bl.label)}・${bl.n}件</span>` : "土地の取引件数が不足のため算出不可"}</td></tr>
   </tbody></table>
-  <p class="note">古家付きの土地は、買う人が解体費（木造 ${DEMO_TXT("木造")}・鉄骨 ${DEMO_TXT("S")}・RC ${DEMO_TXT("RC")}、延床1坪あたりの一般的な目安）を見こんで値段を決めることが多いため、解体費を足すと更地の相場に近づくことがあります。国のデータに「古家付き」の印は無いので、木造で築${C.OLD_HOUSE_AGE}年以上の取引を「可能性あり」として分けています。解体費を足しても土地の相場と大きく離れるときは、借地・再建築不可・形・道路など、ほかの理由がまざっているかもしれません。</p>`;
+  <p class="note">古家付きの土地は、買主が解体費（木造 ${DEMO_TXT("木造")}・鉄骨造 ${DEMO_TXT("S")}・RC造 ${DEMO_TXT("RC")}、延床1坪あたりの一般的な目安）を見込んで価格を決めることが多いため、解体費を加算すると更地の相場に近づく傾向があります。国のデータには「古家付き」の区分がないため、木造・築${C.OLD_HOUSE_AGE}年以上の取引を「可能性あり」として分類しています。解体費を加算しても土地相場と大きく乖離する場合は、借地・再建築不可・土地の形状・接道など、他の要因が混在している可能性があります。</p>`;
   return h;
 }
 const DEMO_TXT = s => C.DEMOLISH[s].map(v => v / 1e4).join("〜") + "万円";
 // 土地の条件（形・道路・間口）で、相場がどれくらい変わるか
 function landDiffHtml(k, rows) {
   // 広さのちがう土地を総額でくらべても意味が薄いので、ここはいつも土地㎡あたりの単価でくらべる
-  const u = r => r.unit, sub = isTotalType() ? `<p class="muted small">ここは、土地＋建物の値段を土地の広さで割った単価（土地1㎡あたり）でくらべています。</p>` : "";
-  let h = `<h3>土地の形別</h3>` + sub + breakdown(rows, r => C.shapeGroup(r.shape), Object.keys(SHAPE_LABEL), SHAPE_LABEL, u, false);
+  const u = r => r.unit, sub = isTotalType() ? `<p class="muted small">この項目は、取引価格（土地＋建物）を土地面積で割った単価（土地1㎡あたり）で比較しています。</p>` : "";
+  let h = `<h3>土地の形状別</h3>` + sub + breakdown(rows, r => C.shapeGroup(r.shape), Object.keys(SHAPE_LABEL), SHAPE_LABEL, u, false);
   h += `<h3>前面道路別</h3>` + breakdown(rows, C.roadGroup, Object.keys(ROAD_LABEL), ROAD_LABEL, u, false);
-  h += `<h3>道路の幅別</h3>` + breakdown(rows, r => C.widthBin(r.rwidth), Object.keys(WIDTH_LABEL), WIDTH_LABEL, u, false);
+  h += `<h3>前面道路の幅員別</h3>` + breakdown(rows, r => C.widthBin(r.rwidth), Object.keys(WIDTH_LABEL), WIDTH_LABEL, u, false);
   h += `<h3>間口別</h3>` + breakdown(rows, r => C.frontBin(r.front), Object.keys(FRONT_LABEL), FRONT_LABEL, u, false);
   // 町だけだと件数が少ないので、市区町村全体でもくらべる（整形・公道・4m以上などを100とした割合）
   const code = k.split("|")[0];
   const cr = (CITY[code] ? CITY[code].rows : []).filter(r => C.pass(r, S, { land: true }));
   const ratio = (keyFn, base, labels) => {
     const g = {}; cr.forEach(r => { const x = keyFn(r); if (x) (g[x] ||= []).push(r.unit); });
-    const b = g[base] ? median(g[base]) : null;
+    const b = g[base] ? tmed(g[base]) : null;
     if (!b || g[base].length < MIN_N) return "";
-    return Object.keys(labels).filter(x => g[x]).map(x => `<tr class="${g[x].length < MIN_N ? "few" : ""}"><td class="wrap">${labels[x]}</td><td>${g[x].length}</td><td>${x === base ? "100" : Math.round(median(g[x]) / b * 100)}</td></tr>`).join("");
+    return Object.keys(labels).filter(x => g[x]).map(x => `<tr class="${g[x].length < MIN_N ? "few" : ""}"><td class="wrap">${labels[x]}</td><td>${g[x].length}</td><td>${x === base ? "100" : Math.round(tmed(g[x]) / b * 100)}</td></tr>`).join("");
   };
   const body = ratio(r => C.shapeGroup(r.shape), "seikei", SHAPE_LABEL) + ratio(C.roadGroup, "public", ROAD_LABEL) +
     ratio(r => C.widthBin(r.rwidth), "ge6", WIDTH_LABEL) + ratio(r => C.frontBin(r.front), "ge4", FRONT_LABEL);
-  if (body) h += `<h3>${esc(cityName(code))}全体で見た差（土地㎡あたりの単価・基準＝100）</h3>
-    <table><thead><tr><th>条件</th><th>件数</th><th>単価の割合</th></tr></thead><tbody>${body}</tbody></table>
-    <p class="muted small">基準：整形／公道／幅6m以上／間口4m以上をそれぞれ100とした中央値の割合です。立地のちがいもまざるので、傾向を見る目安にしてください。土地の形と間口は「取引価格」の情報にだけあります（成約価格には無い）。</p>`;
+  if (body) h += `<h3>${esc(cityName(code))}全体の価格差（土地1㎡あたりの単価・基準＝100）</h3>
+    <table><thead><tr><th>条件</th><th>件数</th><th>単価の指数</th></tr></thead><tbody>${body}</tbody></table>
+    <p class="muted small">基準：整形／公道／幅員6m以上／間口4m以上をそれぞれ100とした中央値の指数です。立地の差も含まれるため、傾向を把握する目安としてご利用ください。土地の形状と間口は取引価格の情報にのみ含まれます（成約価格には含まれません）。</p>`;
   return h;
 }
 function mineInTown(k) {
@@ -1114,56 +1119,52 @@ function circleRentHtml(km) {
   const SR = scopeRows(), cnt = {}; SR.forEach(r => { const c = r.k.split("|")[0]; cnt[c] = (cnt[c] || 0) + 1; });
   const codes = [...new Set(Object.keys(INSIDE || {}).map(k => k.split("|")[0]))].filter(c => S.cities.includes(c)).sort((x, y) => (cnt[y] || 0) - (cnt[x] || 0));
   let h = rentCityHtml(codes.length ? codes : S.cities, { rows: SR, label: STN ? `${S.stn}から${S.stnN}駅先まで` : "この範囲" });
-  const all = MINE.filter(r => C.isRentKind(r.kind));
-  const inn = all.filter(r => INSIDE[mineKey(r)] != null), out = all.length - inn.length;
-  if (!inn.length) return h;
-  h += `<h3>登録した賃貸の成約例（範囲の中）</h3>`;
-  const rs = C.rentSummary(inn);
-  if (rs.n < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満なので「参考値」です。</p>`;
-  h += `<div class="figures"><div class="figure main"><div class="k">賃料＋共益費（中央値）</div><div class="v">${fmtRent(rs.total)}<small>/月</small></div><div class="s">広さで割ると ${rs.unit ? Math.round(rs.unit).toLocaleString() + "円/㎡" : "—"}${rs.unitLow ? `（半分がこの間：${Math.round(rs.unitLow).toLocaleString()}〜${Math.round(rs.unitHigh).toLocaleString()}円/㎡）` : ""}</div></div>
-    <div class="figure"><div class="k">件数</div><div class="v">${rs.n}<small>件</small></div><div class="s">範囲の外 ${out}件</div></div></div>`;
-  const rg = STN ? [] : ringList(km);
-  if (rg.length > 1) h += `<table><thead><tr><th>中心から</th><th>件数</th><th>賃料＋共益費（中央値）</th><th>㎡あたり（中央値）</th></tr></thead><tbody>` +
-    rg.map(d => { const c = C.rentSummary(inn.filter(r => INSIDE[mineKey(r)] <= d)); return `<tr class="${c.n < MIN_N ? "few" : ""}"><td>${d < 1 ? d * 1000 + "m" : d + "km"}以内</td><td>${c.n}</td><td>${c.n ? fmtRent(c.total) : "—"}</td><td>${c.unit ? Math.round(c.unit).toLocaleString() + "円" : "—"}</td></tr>`; }).join("") + `</tbody></table>`;
-  return h + `<p class="muted small">登録した成約例だけの集計です。広さや築年がそろっていないと、数字はぶれます。</p>`;
+  return h;
+}
+// 半径・駅の画面の「中心の町」：中心からいちばん近い町（同じなら取引の多い町）
+function centerTown(list) {
+  if (!INSIDE || !list.length) return null;
+  return [...list].sort((a, b) => INSIDE[a[0]] - INSIDE[b[0]] || b[1].n - a[1].n)[0][0];
 }
 function circleHtml(list) {
   const rows = list.flatMap(([, t]) => t.rows);
   const km = +S.km, label = km < 1 ? km * 1000 + "m" : km + "km";
   let h = `<h2>${STN ? `${esc(S.stn)}から${S.stnN}駅先まで` : `半径${label}`}の相場</h2>` + typeBadge() + `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div>` + (STN ? "" : zoningHtml());
-  if (!rows.length) return h + `<p class="warnline">この範囲と条件では売買の取引がありません。半径を広げるか、条件をゆるめてください。</p>` + circleRentHtml(km);
-  if (rows.length < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満なので「参考値」です。数字が大きくぶれることがあります。</p>`;
-  const vals = rows.map(mainVal), yrs = C.yearsInRange(S.year, QUARTERS);
-  h += `<div class="figures"><div class="figure main"><div class="k">${mainName()}</div><div class="v">${fmtMain(median(vals))}</div>
-    <div class="s">${rangeLabel()}：${isTotalType() ? fmtMan(quant(vals, .25)) + "〜" + fmtMan(quant(vals, .75)) : man(conv(quant(vals, .25))).toFixed(0) + "〜" + man(conv(quant(vals, .75))).toFixed(0) + "万円/" + unitLabel()}</div></div>
-    <div class="figure"><div class="k">件数</div><div class="v">${rows.length.toLocaleString()}<small>件</small></div><div class="s">1年あたり ${(rows.length / yrs).toFixed(1)}件・${list.length}町</div></div></div>`;
+  if (!rows.length) return h + `<p class="warnline">この範囲・条件に該当する売買取引はありません。半径を広げるか、条件を緩和してください。</p>` + circleRentHtml(km);
+  if (rows.length < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満のため参考値です。数値が大きく変動する可能性があります。</p>`;
+  const vals = rows.map(mainVal), yrs = C.yearsInRange(S.year, QUARTERS), cst = stats(vals);
+  h += `<div class="figures">${mainFigure(cst)}
+    <div class="figure"><div class="k">件数</div><div class="v">${rows.length.toLocaleString()}<small>件</small></div><div class="s">年間 ${(rows.length / yrs).toFixed(1)}件・${list.length}町</div></div></div>`;
+  h += outlierNote();
+  const ck = centerTown(list);
+  if (ck) h += liqRankHtml(ck, `中心の町：${wardOf(ck)} ${townName(ck)}`);
   if (isLandHouse()) h += landHouseHtml(scopeRows(), STN ? `${S.stn}から${S.stnN}駅先まで` : `半径${label}`);
   const rings = STN ? [] : ringList(km);
   if (STN) {
-    const hopLabel = {}, hopOrder = []; for (let d = 0; d <= +S.stnN; d++) { hopOrder.push(String(d)); hopLabel[d] = d ? `${d}駅先` : "この駅"; }
-    h += `<h3>駅の数ごとの比較</h3>` + breakdown(rows, r => String(rowHop(r)), hopOrder, hopLabel);
+    const hopLabel = {}, hopOrder = []; for (let d = 0; d <= +S.stnN; d++) { hopOrder.push(String(d)); hopLabel[d] = d ? `${d}駅先` : "起点駅"; }
+    h += `<h3>駅数別の比較</h3>` + breakdown(rows, r => String(rowHop(r)), hopOrder, hopLabel);
     const byStation = {}; rows.forEach(r => { (byStation[r.station] ||= []).push(r); });
     const names = Object.keys(byStation).sort((a, b) => rowHop(byStation[a][0]) - rowHop(byStation[b][0]) || byStation[b].length - byStation[a].length).slice(0, 30);
-    h += `<h3>駅ごとの相場</h3>` + breakdown(rows, r => r.station, names);
+    h += `<h3>駅別の相場</h3>` + breakdown(rows, r => r.station, names);
   }
   if (rings.length > 1) {
     const f = v => isTotalType() ? fmtMan(v) : fmtUnitHtml(v);
-    h += `<h3>距離ごとの比較</h3><table><thead><tr><th>中心から</th><th>件数</th><th>${colName()}の中央値</th></tr></thead><tbody>` +
+    h += `<h3>距離別の比較</h3><table><thead><tr><th>中心から</th><th>件数</th><th>${colName()}の中央値</th></tr></thead><tbody>` +
       rings.map(d => { const r = rows.filter(x => INSIDE[x.k] <= d), v = r.map(mainVal);
-        return `<tr class="${r.length < MIN_N ? "few" : ""}"><td>${d < 1 ? d * 1000 + "m" : d + "km"}以内</td><td>${r.length}</td><td>${r.length ? f(median(v)) : "—"}</td></tr>`; }).join("") + `</tbody></table>`;
+        return `<tr class="${r.length < MIN_N ? "few" : ""}"><td>${d < 1 ? d * 1000 + "m" : d + "km"}以内</td><td>${r.length}</td><td>${r.length ? f(tmed(v)) : "—"}</td></tr>`; }).join("") + `</tbody></table>`;
   }
   if (S.type === "中古マンション等") h += `<h3>間取り別</h3>` + breakdown(rows, r => C.planGroup(r.plan), Object.keys(PLAN_LABEL), PLAN_LABEL);
   if (S.type !== "宅地(土地)") h += `<h3>築年数別</h3>` + breakdown(rows, ageBin, ["〜10年", "11〜20年", "21〜30年", "31〜40年", "41年〜"]);
-  h += `<h3>駅からの距離別（徒歩）</h3>` + breakdown(rows, walkBin, ["〜5分", "6〜10分", "11〜15分", "16分〜"]);
+  h += `<h3>駅徒歩分数別</h3>` + breakdown(rows, walkBin, ["〜5分", "6〜10分", "11〜15分", "16分〜"]);
   const yl = {}, yy = []; for (let y = Y0; y <= Y1; y++) { yy.push(String(y)); yl[y] = y + "年" + (y === Y1 && Q1 < 4 ? `（1〜${Q1 * 3}月）` : ""); }
-  h += `<h3>年ごと</h3>` + breakdown(rows, r => String(r.y), yy, yl);
+  h += `<h3>年別</h3>` + breakdown(rows, r => String(r.y), yy, yl);
   const st = {}; rows.forEach(r => { if (r.station) st[r.station] = (st[r.station] || 0) + 1; });
   const top = Object.entries(st).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  if (top.length) h += `<h3>よく出てくる最寄駅</h3><p>` + top.map(([s, n]) => `${esc(s)}（${n}件）`).join("、") + `</p>`;
+  if (top.length) h += `<h3>主な最寄駅（取引件数順）</h3><p>` + top.map(([s, n]) => `${esc(s)}（${n}件）`).join("、") + `</p>`;
   h += cpCompareHtml(scopeRows());
   h += circleRentHtml(km);
-  if (STN) return h + `<p class="muted small">取引データの「最寄駅」で数えています。線路の上の駅の数で、電車の所要時間や急行の停車駅とは関係ありません。乗りかえは同じ駅として数えます。駅のつながりは「国土数値情報（鉄道データ）」（国土交通省）をもとに作成した目安で、新幹線とケーブルカーは入れていません。相場感をつかむための目安です。</p>`;
-  h += `<p class="muted small">国のデータは町ごとで、物件の点の場所がありません。ここでは、町の代表点が円の中にある町と、中心が入っている町の取引を数えています。実際の距離とはずれます。相場感をつかむための目安です。</p>`;
+  if (STN) return h + `<p class="muted small">取引データの「最寄駅」をもとに集計しています。駅数は路線上の駅の数で、所要時間や急行等の停車駅は考慮していません。乗換駅は同一駅として数えます。駅の接続は「国土数値情報（鉄道データ）」（国土交通省）をもとに作成した目安で、新幹線とケーブルカーは含みません。相場把握のための目安です。</p>`;
+  h += `<p class="muted small">国のデータは町単位で、物件ごとの位置情報はありません。ここでは、代表点が円内にある町と、中心地点を含む町の取引を集計しています。実際の距離とは誤差があります。相場把握のための目安です。</p>`;
   return h;
 }
 function listHtml() {
@@ -1172,17 +1173,17 @@ function listHtml() {
   const mt = mineByTown();
   if (INSIDE) list.sort((a, b) => INSIDE[a[0]] - INSIDE[b[0]]);
   let h = (INSIDE ? circleHtml(list) : "") + choseiNote();
-  h += `<h2>町の一覧</h2>` + typeBadge() + `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}<br>地図の町をタップ（クリック）すると、くわしい相場が出ます。</div><p class="unitnote">${unitText()}</p>`;
+  h += `<h2>町の一覧</h2>` + typeBadge() + `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}<br>地図上の町を選択すると、詳細な相場を表示します。</div><p class="unitnote">${unitText()}</p>`;
   const total = list.reduce((s, [, t]) => s + t.n, 0);
-  h += `<p class="muted">この条件の取引：${total.toLocaleString()}件・${list.length}町（${esc(S.cities.map(cityName).join("・"))}）</p>`;
+  h += `<p class="muted">該当する取引：${total.toLocaleString()}件・${list.length}町（${esc(S.cities.map(cityName).join("・"))}）</p>`;
   if (isLandHouse() && !INSIDE) h += landHouseHtml(scopeRows(), S.cities.map(cityName).join("・") + "全体");
   const noData = S.cities.filter(c => CITY_INFO[c] && !CITY_INFO[c].n);
-  if (noData.length) h += `<p class="note caution">${esc(noData.map(cityName).join("・"))}は、まだ価格のデータを入れていません（町の形だけ出ています）。データは準備中です。</p>`;
+  if (noData.length) h += `<p class="note caution">${esc(noData.map(cityName).join("・"))}は価格データが未登録です（町の区域のみ表示）。データは準備中です。</p>`;
   const noType = S.cities.filter(c => CITY_INFO[c] && CITY_INFO[c].n && !CITY_INFO[c].byType[S.type]);
-  if (noType.length) h += `<p class="note caution">${esc(noType.map(cityName).join("・"))}は、「${C.TYPES[S.type].short}」の価格データがまだ入っていません（ほかの種類だけ入っています）。国のサイトで種類「${S.type === "中古マンション等" ? "中古マンション等" : "すべて"}」を選んでCSVを取り、置きなおしてください。</p>`;
-  if (!list.length) return h + `<p class="warnline">この条件では売買の取引がありません。</p>` + (INSIDE ? "" : rentCityHtml(S.cities));
+  if (noType.length) h += `<p class="note caution">${esc(noType.map(cityName).join("・"))}は「${C.TYPES[S.type].short}」の価格データが未登録です（他の種類のみ登録済み）。国のサイトで種類「${S.type === "中古マンション等" ? "中古マンション等" : "すべて"}」を選択してCSVを取得し、再配置してください。</p>`;
+  if (!list.length) return h + `<p class="warnline">この条件に該当する売買取引はありません。</p>` + (INSIDE ? "" : rentCityHtml(S.cities));
   h += `<div class="tablewrap"><table id="townList"><thead><tr><th>町</th><th>件数</th><th>${colName()}</th><th>流動性</th></tr></thead><tbody>` +
-    list.map(([k, t]) => `<tr data-k="${esc(k)}" class="${t.n < MIN_N ? "few" : ""}"><td>${esc(townName(k))}<span class="muted">（${esc(wardOf(k))}${INSIDE ? "・約" + INSIDE[k].toFixed(1) + "km" : ""}）</span>${mt[k] ? `<span class="minemark">記録${mt[k].length}</span>` : ""}</td><td>${t.n}</td><td>${fmtMain(t.med)}</td><td class="stars">${t.n < MIN_N ? '<span class="muted">参考値</span>' : t.stars ? "★".repeat(t.stars) : '<span class="muted" title="世帯数のデータが無い町">—</span>'}</td></tr>`).join("") +
+    list.map(([k, t]) => `<tr data-k="${esc(k)}" class="${t.n < MIN_N ? "few" : ""}"><td>${esc(townName(k))}<span class="muted">（${esc(wardOf(k))}${INSIDE ? "・約" + INSIDE[k].toFixed(1) + "km" : ""}）</span></td><td>${t.n}</td><td>${fmtMain(t.med)}</td><td class="stars">${t.n < MIN_N ? '<span class="muted">参考値</span>' : t.stars ? "★".repeat(t.stars) : '<span class="muted" title="世帯数データなし">—</span>'}</td></tr>`).join("") +
     `</tbody></table></div>` + liqExplain();
   if (!INSIDE) h += rentCityHtml(S.cities);
   return h;
@@ -1190,10 +1191,10 @@ function listHtml() {
 // ---------- 「土地だけ」と「中古戸建（土地＋建物）」のくらべ ----------
 const isLandHouse = () => S.type === "宅地(土地)" || S.type === "宅地(土地と建物)" || S.type === "中古マンション等";   // くらべの図を出す種類
 const TYPE_BADGE = {
-  "宅地(土地)": ["land", "土地だけの相場", "建物のない土地の売買です"],
-  "宅地(土地と建物)": ["house", "戸建の相場（土地＋建物）", "土地と建物をいっしょに売った値段です（中古と新築の建売をふくむ）"],
-  "中古マンション等": ["mansion", "中古マンション（区分）の相場", "部屋（専有部分）1つずつの売買です。土地の値段ではありません"],
-  "宅地(土地と建物・戸建以外)": ["apart", "アパート・店舗などの相場（土地＋建物）", "土地と建物をいっしょに売った値段です"],
+  "宅地(土地)": ["land", "土地のみの相場", "建物を含まない土地の売買です"],
+  "宅地(土地と建物)": ["house", "戸建の相場（土地＋建物）", "土地・建物一括の売買価格です（中古・新築建売を含む）"],
+  "中古マンション等": ["mansion", "中古マンション（区分）の相場", "区分所有（専有部分）ごとの売買です。土地の価格ではありません"],
+  "宅地(土地と建物・戸建以外)": ["apart", "アパート・店舗等の相場（土地＋建物）", "土地・建物一括の売買価格です"],
 };
 const typeBadge = () => { const [c, t, d] = TYPE_BADGE[S.type] || ["", "", ""]; return `<div class="typebadge ${c}"><b>${t}</b><span>${d}</span></div>`; };
 function landHouseHtml(pool, where) {
@@ -1205,49 +1206,52 @@ function landHouseHtml(pool, where) {
   const NEW_AGE = 2;   // 築2年までを「新築・築浅」とする（国のデータの戸建には新築の建売もたくさん入っている）
   const old = house.filter(C.isOldHouse), brandNew = house.filter(r => !C.isOldHouse(r) && r.age != null && r.age <= NEW_AGE),
     used = house.filter(r => !C.isOldHouse(r) && !(r.age != null && r.age <= NEW_AGE));
-  const sum = rs => rs.length ? { n: rs.length, unit: median(rs.map(r => r.unit)), price: median(rs.map(r => r.price)), area: median(rs.map(r => r.area)),
+  const sum = rs => rs.length ? { n: rs.length, unit: tmed(rs.map(r => r.unit)), price: tmed(rs.map(r => r.price)), area: median(rs.map(r => r.area)),
     floor: median(rs.filter(r => r.floor).map(r => r.floor)), age: median(rs.filter(r => r.age != null).map(r => r.age)) } : null;
   const L = sum(land), O = sum(old), U = sum(used), N = sum(brandNew), M = sum(mansion);
   const oh = old.length ? C.oldHouseStats(old) : null;
-  const bars = [["land", "土地だけ（建物なし）", L], ["old", `古家付きの可能性（木造・築${C.OLD_HOUSE_AGE}年以上の戸建）`, O],
-    ["used", `中古戸建（築${NEW_AGE + 1}年以上・古家を除く）`, U], ["new", `新築・築浅の戸建（築${NEW_AGE}年まで）`, N]].filter(b => b[2]);
+  const bars = [["land", "土地のみ（建物なし）", L], ["old", `古家付きの可能性（木造・築${C.OLD_HOUSE_AGE}年以上の戸建）`, O],
+    ["used", `中古戸建（築${NEW_AGE + 1}年以上・古家付きを除く）`, U], ["new", `新築・築浅の戸建（築${NEW_AGE}年以内）`, N]].filter(b => b[2]);
   if (!bars.length && !M) return "";
   const max = bars.length ? Math.max(...bars.map(b => b[2].unit)) : 1;
   const few = x => x.n < MIN_N ? "（参考値）" : "";
-  let h = `<h3>土地・戸建・マンション（区分）のくらべ（${esc(where)}）</h3>`;
+  let h = `<h3>土地・戸建・マンション（区分）の比較（${esc(where)}）</h3>`;
   // ① 1件の値段：どの種類もそのままくらべられる
-  const all5 = [["land", "土地だけ", L], ["old", "古家付きの可能性", O], ["used", "中古戸建", U], ["new", "新築・築浅の戸建", N], ["mansion", "中古マンション（区分）", M]].filter(b => b[2]);
+  const all5 = [["land", "土地のみ", L], ["old", "古家付きの可能性", O], ["used", "中古戸建", U], ["new", "新築・築浅の戸建", N], ["mansion", "中古マンション（区分）", M]].filter(b => b[2]);
   const pmax = Math.max(...all5.map(b => b[2].price));
-  h += `<div class="lhpart"><p class="lhhead">① 1件の値段でくらべる（中央値）</p>`;
+  h += `<div class="lhpart"><p class="lhhead">① 1件あたりの価格で比較（中央値）</p>`;
   h += `<div class="lhbars">` + all5.map(([c, t, x]) => `<div class="lhrow ${c}${x.n < MIN_N ? " few" : ""}">
       <div class="lhlab">${t}<span>${x.n}件${few(x)}</span></div>
       <div class="lhbar"><i style="width:${Math.max(3, x.price / pmax * 68).toFixed(0)}%"></i><b>${fmtMan(x.price)}</b></div></div>`).join("") + `</div></div>`;
-  if (bars.length) h += `<div class="lhpart"><p class="lhhead">② 土地1${unitLabel()}あたりでくらべる（土地・戸建だけ）</p><p class="muted small">「売った値段 ÷ 土地の広さ」です。戸建は建物の分も入るので、ふつうは土地だけより高く出ます。古い家ほど建物の値打ちが小さくなり、土地だけの値段に近づきます。マンション（区分）は土地の広さが分からないので、ここには入れていません。</p>`;
+  if (bars.length) h += `<div class="lhpart"><p class="lhhead">② 土地1${unitLabel()}あたりの単価で比較（土地・戸建のみ）</p><p class="muted small">「取引価格 ÷ 土地面積」です。戸建は建物価格を含むため、通常は土地のみより高くなります。築年数が古いほど建物の価値が下がり、土地のみの単価に近づきます。マンション（区分）は土地面積が不明のため除いています。</p>`;
   if (bars.length) h += `<div class="lhbars">` + bars.map(([c, t, x]) => `<div class="lhrow ${c}${x.n < MIN_N ? " few" : ""}">
       <div class="lhlab">${t}<span>${x.n}件${few(x)}</span></div>
       <div class="lhbar"><i style="width:${Math.max(3, x.unit / max * 68).toFixed(0)}%"></i><b>${man(conv(x.unit)).toFixed(1)}万円/${unitLabel()}</b></div></div>`).join("") + `</div></div>`;
-  const card = (c, t, x, extra) => !x ? `<div class="lhcard ${c} none"><div class="t">${t}</div><p class="muted">この条件の取引はありません</p></div>` :
+  const card = (c, t, x, extra) => !x ? `<div class="lhcard ${c} none"><div class="t">${t}</div><p class="muted">該当する取引なし</p></div>` :
     `<div class="lhcard ${c}"><div class="t">${t}</div>
-      <div class="v">${fmtMan(x.price)}<small>（1件の値段・中央値）</small></div>
-      <div class="s">土地 ${fmtArea(x.area)}${x.floor ? `／建物 延べ床 ${fmtArea(x.floor)}` : ""}${x.age != null && c !== "land" ? `／築${Math.round(x.age)}年` : ""}</div>${extra || ""}</div>`;
-  const oldExtra = oh && oh.sarachiLo ? `<div class="s">解体費を足すと：土地1${unitLabel()}あたり ${man(conv(oh.sarachiLo)).toFixed(1)}〜${man(conv(oh.sarachiHi)).toFixed(1)}万円</div>` : "";
-  const mCard = !M ? `<div class="lhcard mansion none"><div class="t">中古マンション（区分）</div><p class="muted">この条件の取引はありません</p></div>` :
+      <div class="v">${fmtMan(x.price)}<small>（1件あたりの価格・中央値）</small></div>
+      <div class="s">土地 ${fmtArea(x.area)}${x.floor ? `／延床 ${fmtArea(x.floor)}` : ""}${x.age != null && c !== "land" ? `／築${Math.round(x.age)}年` : ""}</div>${extra || ""}</div>`;
+  const oldExtra = oh && oh.sarachiLo ? `<div class="s">解体費加算後：土地1${unitLabel()}あたり ${man(conv(oh.sarachiLo)).toFixed(1)}〜${man(conv(oh.sarachiHi)).toFixed(1)}万円</div>` : "";
+  const mCard = !M ? `<div class="lhcard mansion none"><div class="t">中古マンション（区分）</div><p class="muted">該当する取引なし</p></div>` :
     `<div class="lhcard mansion"><div class="t">中古マンション（区分）</div>
-      <div class="v">${fmtMan(M.price)}<small>（1件の値段・中央値）</small></div>
-      <div class="s">部屋の広さ（専有）${fmtArea(M.area)}${M.age != null ? `／築${Math.round(M.age)}年` : ""}</div>
-      <div class="s">部屋の広さ1${unitLabel()}あたり ${man(conv(M.unit)).toFixed(1)}万円（土地の値段ではありません）</div></div>`;
-  h += `<div class="lhcards">${card("land", "土地だけ", L)}${card("old", "古家付きの可能性", O, oldExtra)}${card("used", "中古戸建", U)}${card("new", "新築・築浅の戸建", N)}${mCard}</div>`;
+      <div class="v">${fmtMan(M.price)}<small>（1件あたりの価格・中央値）</small></div>
+      <div class="s">専有面積 ${fmtArea(M.area)}${M.age != null ? `／築${Math.round(M.age)}年` : ""}</div>
+      <div class="s">専有面積1${unitLabel()}あたり ${man(conv(M.unit)).toFixed(1)}万円（土地の価格ではありません）</div></div>`;
+  h += `<div class="lhcards">${card("land", "土地のみ", L)}${card("old", "古家付きの可能性", O, oldExtra)}${card("used", "中古戸建", U)}${card("new", "新築・築浅の戸建", N)}${mCard}</div>`;
   if (S.type === "宅地(土地)") {
-    h += O ? `<p class="note caution"><b>古家付きの可能性：あり（${O.n}件）</b>　${esc(where)}には、木造で築${C.OLD_HOUSE_AGE}年以上の戸建の取引が${O.n}件あります。国のデータでは、古家がついたまま売った土地は「土地」ではなく「土地と建物」に入ることが多く、実際は土地として売り買いされている例がまざっています。土地1${unitLabel()}あたりにすると ${man(conv(O.unit)).toFixed(1)}万円${oldExtra ? `、解体費を足すと ${man(conv(oh.sarachiLo)).toFixed(1)}〜${man(conv(oh.sarachiHi)).toFixed(1)}万円` : ""}で、土地だけの ${L ? man(conv(L.unit)).toFixed(1) + "万円" : "相場"} とくらべる目安になります。</p>`
-      : `<p class="muted small">古家付きの可能性（木造・築${C.OLD_HOUSE_AGE}年以上の戸建）の取引は、この条件では見つかりませんでした。</p>`;
+    h += O ? `<p class="note caution"><b>古家付きの可能性：あり（${O.n}件）</b>　${esc(where)}には、木造・築${C.OLD_HOUSE_AGE}年以上の戸建の取引が${O.n}件あります。国のデータでは、古家付きのまま売却された土地は「土地」ではなく「土地と建物」に分類されることが多く、実質的に土地として取引された例が混在しています。土地1${unitLabel()}あたりでは ${man(conv(O.unit)).toFixed(1)}万円${oldExtra ? `、解体費加算後は ${man(conv(oh.sarachiLo)).toFixed(1)}〜${man(conv(oh.sarachiHi)).toFixed(1)}万円` : ""}で、土地のみの ${L ? man(conv(L.unit)).toFixed(1) + "万円" : "相場"} と比較する際の目安になります。</p>`
+      : `<p class="muted small">古家付きの可能性（木造・築${C.OLD_HOUSE_AGE}年以上の戸建）の取引は、この条件では該当がありません。</p>`;
   }
-  h += `<p class="muted small">「古家付きの可能性」は、国のデータに古家付きの印が無いため、木造で築${C.OLD_HOUSE_AGE}年以上の戸建を目安で分けたものです。解体費は延べ床1坪あたりの一般的な目安（木造 ${DEMO_TXT("木造")}）です。</p>`;
+  h += `<p class="muted small">「古家付きの可能性」は、国のデータに古家付きの区分がないため、木造・築${C.OLD_HOUSE_AGE}年以上の戸建を目安として分類したものです。解体費は延床1坪あたりの一般的な目安（木造 ${DEMO_TXT("木造")}）です。</p>`;
   return h;
 }
 // ---------- 賃貸の相場（国の統計：住宅・土地統計調査 2023年・市と区ごと） ----------
 const RC = window.RENT_CITY || { c: {}, meta: {} };
 const fmtRentMan = v => v == null ? "—" : (v / 1e4).toFixed(1) + "万円";
 const rentRange = (a, b) => `${(a / 1e4).toFixed(1)}〜${(b / 1e4).toFixed(1)}万円`;
+// ひとつ広い間取りの想定家賃は、少なくともこの倍にする（テストで見た募集の相場の駅のうち、9割がこれより大きい差。3LDK以上だけは、2LDKと同じくらいの駅も多いので1.05倍）
+const RENT_STEP = [1.28, 1.16, 1.05];
+const RENT_LOCAL = 1000;   // 建て方ごとの想定家賃で、その市区の数字をそのまま使う戸数の下限（少ないと、小さな一戸建が広い一戸建より高く出るなど、ぶれで順番が逆になるため）
 const RENT_FEW = 300;   // 数えた戸数がこれより少ない欄は、ぶれやすいので薄く出す
 function rentCityOf(code) {   // 町村は表に無いので、都道府県の数字を使う
   if (RC.c[code]) return { d: RC.c[code], label: RC.c[code].name, pref: false };
@@ -1282,7 +1286,7 @@ function placeRel(rows, code) {
   const pick = (rs, t) => rs.filter(r => r.type === t && r.unit > 0 && r.cp !== "調整区域").map(r => r.unit);
   for (const [t, lab] of [["中古マンション等", "中古マンションの専有面積あたり"], ["宅地(土地)", "土地の面積あたり"]]) {
     const a = pick(rows.filter(r => r.city === code), t), b = pick(c.rows, t);
-    if (a.length >= 10 && b.length >= 30) return { rel: Math.min(1.8, Math.max(0.6, median(a) / median(b))), lab, n: a.length };
+    if (a.length >= 10 && b.length >= 30) return { rel: Math.min(1.8, Math.max(0.6, tmed(a) / tmed(b))), lab, n: a.length };
   }
   return null;
 }
@@ -1292,64 +1296,79 @@ function rentCityHtml(codes, ctx) {
   codes.forEach(code => {
     const r = rentCityOf(code); if (!r) return;
     const v = r.d.v, all = v["00"], A = rentAreaOf(code), reg = A ? (A.local ? "地方" : A.name) : "地方";
-    const name = r.pref ? `${cityName(code)}（表に無いので${r.label}全体の数字）` : r.label;
+    const name = r.pref ? `${cityName(code)}（統計表に該当がないため${r.label}全体の数値）` : r.label;
     h += `<h3>賃貸の相場（${esc(name)}）</h3>`;
-    if (!all) { h += `<p class="muted">数字がありません。</p>`; return; }
+    if (!all) { h += `<p class="muted">該当する数値がありません。</p>`; return; }
     const aLabel = !A ? "" : A.local ? `地方の参考（${RF.meta.local.join("・")}の平均）` : A.name;
-    if (RCO) {
-      const P = ctx ? placeRel(ctx.rows, code) : null, rel = P ? P.rel : 1;
-      h += `<h3 class="renttype est">いま募集するときの想定家賃<span>${esc(ctx && P ? (ctx.label === "この範囲" ? `この範囲の${name}` : ctx.label) : name)}・1か月・管理費なし</span></h3>`;
-      h += `<table class="rent estg"><thead><tr><th>間取り<span class="alt">広さのめやす</span></th><th class="num est">想定家賃</th><th class="num">国の統計<span class="alt">2023年・住んでいる人</span></th><th class="num">係数</th></tr></thead><tbody>` +
-        RENT_G.map(([lab, area], g) => { const x = v["0" + (g + 1)]; if (!x || x[0] < RENT_FEW) return "";
-          const k = rentK(reg, g), adj = Math.pow(rel, RCO.g[g].beta), est = x[3] * k * adj;
-          return `<tr><td>${lab}<span class="alt">${area}</span></td><td class="num est"><b>${fmtRentMan(est)}</b></td><td class="num">${fmtRentMan(x[3])}</td><td class="num muted">×${(k * adj).toFixed(2)}</td></tr>`; }).join("") + `</tbody></table>`;
-      h += `<p class="muted small">想定家賃＝国の統計（${esc(name)}・すべての建て方・その広さの中央値）×地域の係数${P ? `×場所の補正` : ""}。地域の係数は、${esc(RCO.asOf)}に募集中だった物件の相場（全国${RCO.nStation}駅・駅から徒歩10分以内・管理費なし）に合うように、地域と間取りごとに調整したものです${!RCO.g[0].k[reg] ? `（${esc(reg)}は、近い地域の係数から当てはめた参考値）` : ""}。${P ? `場所の補正は、${esc(ctx.label)}の売買の単価（${esc(P.lab)}・${P.n}件）が${esc(cityName(code))}全体の${P.rel.toFixed(2)}倍なので、その分だけ上げ下げしています（広い部屋ほど強く効きます）。` : "町を選ぶと、その町の売買の単価で上げ下げします。"}<br>ためしに作ったとき、駅ごとの相場とのずれは、半分の駅で次の大きさ以内でした：1R・1K・1DK 約${RCO.g[0].err}%／1LDK・2K・2DK 約${RCO.g[1].err}%／2LDK・3K・3DK 約${RCO.g[2].err}%／3LDK以上 約${RCO.g[3].err}%。築年数・駅からの距離・設備のちがいは入っていません。</p>`;
-    }
-    h += `<p class="muted small">下の3つの表は、国の統計（${esc(RC.meta.when)}・いま住んでいる人が払っている家賃・共益費なし）を建て方ごとに分けたものです。広さは建物の延べ床面積です。</p>`;
-    const kinds = [[4, "mansion", "m", "マンション（鉄筋・鉄骨）"], [3, "apart", "a", "アパート（木造）"], [1, "house", null, "一戸建"]];
-    const tsubo = { 1: "約9坪以下", 2: "約9〜15坪", 3: "約15〜21坪", 4: "約21〜30坪", 5: "約30〜45坪", 6: "約45坪以上" };
-    kinds.forEach(([b, c, fk, t]) => {
-      const tot = v[`${b}0`];
-      h += `<h3 class="renttype ${c}">${esc(t)}の家賃（国の統計）<span>${esc(name)}・1か月</span></h3>`;
-      const est = false;   // 想定家賃は上の表にまとめた
-      const rowsHtml = [1, 2, 3, 4, 5, 6].map(a => { const x = v[`${b}${a}`]; if (!x) return "";
-        const few = x[0] < RENT_FEW, f = est ? rentF(A, fk, a) : null;
-        const now = f ? `<td class="num est"><b>${fmtRentMan(x[3] * f)}</b>${few ? "※" : ""}</td>` : est ? `<td class="num muted">—</td>` : "";
-        return `<tr class="${few ? "few" : ""}"><td>${RC.meta.area[a]}<span class="alt">${tsubo[a]}</span></td>${now}<td class="num">${est ? "" : "<b>"}${fmtRentMan(x[3])}${est ? "" : "</b>"}${!est && few ? "※" : ""}<span class="alt">${rentRange(x[2], x[4])}</span></td>${est ? `<td class="num muted">${f ? "×" + f.toFixed(2) : ""}</td>` : `<td class="num muted">${x[0].toLocaleString()}戸</td>`}</tr>`; }).join("");
-      if (!rowsHtml) { h += `<p class="muted">数字がありません。</p>`; return; }
-      h += est ? `<p class="muted small">国の統計：${tot ? `${tot[0].toLocaleString()}戸` : ""}。想定家賃＝国の統計の中央値×倍率。</p>`
-        : `<p class="muted small">国の統計（${esc(RC.meta.when)}・いま住んでいる人の家賃・共益費なし）です。${tot ? `${tot[0].toLocaleString()}戸。` : ""}</p>`;
-      h += `<table class="rent ${c}"><thead><tr><th>部屋の広さ</th>${est ? `<th class="num est">想定家賃<span class="alt">いま募集なら</span></th><th class="num">国の統計<span class="alt">2023年・住んでいる人</span></th><th class="num">倍率</th>` : `<th class="num">国の統計<span class="alt">2023年・住んでいる人</span></th><th class="num">戸数</th>`}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
+    // 想定家賃：国の統計（2023年）の中央値 × 地域の係数 × 場所の補正。建て方ごとの表も、同じ広さなら同じ掛け算をする
+    if (!RCO) { h += `<p class="muted">想定家賃の係数を読み込めませんでした。</p>`; return; }
+    const P = ctx ? placeRel(ctx.rows, code) : null, rel = P ? P.rel : 1;
+    const fac = g => rentK(reg, g) * Math.pow(rel, RCO.g[g].beta);
+    const where = ctx && P ? (ctx.label === "この範囲" ? `この範囲の${name}` : ctx.label) : name;
+    // 建て方ごとの欄：その市区で数えた戸数が RENT_LOCAL より少ないときは、県（それも少なければ全国）の「その建て方 ÷ すべての建て方」の比を、すべての建て方の数字にかける
+    const PV = (RC.c[code.slice(0, 2) + "000"] || {}).v || {}, NV = (RC.c["00000"] || {}).v || {};
+    let borrowed = false;
+    const cell = (b, a) => {
+      const x = v[`${b}${a}`];
+      if (b === 0 || (x && x[0] >= RENT_LOCAL)) return x ? { x, ratio: 1 } : null;
+      const base = v[`0${a}`]; if (!base || base[0] < RENT_FEW) return null;
+      for (const W of [PV, NV]) { const xb = W[`${b}${a}`], x0 = W[`0${a}`]; if (xb && x0 && xb[0] >= RENT_FEW && x0[3] > 0) { borrowed = true; return { x: base, ratio: xb[3] / x0[3], n: x ? x[0] : 0, borrow: W === PV ? "県" : "全国" }; } }
+      return null;
+    };
+    // 広い間取りが、ひとつ狭い間取りより安く出ないようにする（RENT_STEP 倍より小さい差なら、その倍にそろえる）
+    let lifted = false;
+    const estRows = (b, withN) => { let prev = null;
+      return RENT_G.map(([lab, area], g) => { const c = cell(b, g + 1), f = fac(g);
+        if (!c || !f) { prev = null; return withN ? `<tr class="few"><td>${lab}<span class="alt">${area}</span></td><td class="num est">—</td><td class="num rng">件数不足のため非表示</td><td class="num muted"></td></tr>` : ""; }
+        let m = f * c.ratio; const x = c.x, low = prev != null && g > 0 ? prev * RENT_STEP[g - 1] : 0, up = x[3] * m < low;
+        if (up) { m = low / x[3]; lifted = true; }
+        prev = x[3] * m;
+        return `<tr class="${c.borrow ? "borrow" : ""}"><td>${lab}<span class="alt">${area}</span></td><td class="num est"><b>${fmtRentMan(x[3] * m)}</b>${c.borrow ? "＊" : ""}${up ? "†" : ""}</td><td class="num rng">${fmtRentMan(x[2] * m)}〜<wbr>${fmtRentMan(x[4] * m)}</td>${withN ? `<td class="num muted">${(c.borrow ? c.n : x[0]) ? (c.borrow ? c.n : x[0]).toLocaleString() + "戸" : "—"}</td>` : ""}</tr>`; }).join(""); };
+    const thead = withN => `<thead><tr><th>間取り<span class="alt">面積の目安</span></th><th class="num est">想定家賃</th><th class="num">主な賃料帯</th>${withN ? `<th class="num">戸数<span class="alt">集計対象</span></th>` : ""}</tr></thead>`;
+    const topRows = estRows(0, false);
+    h += `<h3 class="renttype est">現在募集する場合の想定家賃<span>${esc(where)}・全建て方・月額・管理費除く</span></h3>`;
+    h += `<table class="rent estg">${thead(false)}<tbody>${topRows}</tbody></table>`;
+    h += `<p class="muted small">想定家賃＝国の統計（${esc(name)}・2023年・該当面積帯の中央値）×地域係数${P ? `×立地補正` : ""}。地域係数は、${esc(RCO.asOf)}時点の募集物件の相場（全国${RCO.nStation}駅・駅徒歩10分以内・管理費除く）に合わせ、地域・間取りごとに調整したものです${!RCO.g[0].k[reg] ? `（${esc(reg)}は近隣地域の係数から推計した参考値）` : ""}。${P ? `立地補正は、${esc(ctx.label)}の売買単価（${esc(P.lab)}・${P.n}件）が${esc(cityName(code))}全体の${P.rel.toFixed(2)}倍であることを反映して増減しています（面積が大きいほど影響が大きくなります）。` : "町を選択すると、その町の売買単価に応じて立地補正を行います。"}「主な賃料帯」は、半数の住戸が含まれる範囲（四分位範囲）の目安です。${lifted ? `†印の欄は、一つ狭い間取りより低く算出されたため、一つ狭い間取りの一定倍率（${RENT_STEP.map((r, i) => `${RENT_G[i + 1][0]}は${RENT_G[i][0]}の${r}倍`).join("、")}）に調整しています（国の統計では面積の大きい借家に築年数の古い建物が多く、そのままでは広い住戸が低く算出されるため）。` : ""}<br>検証時の駅別相場との誤差は、半数の駅で次の範囲内でした：1R・1K・1DK 約${RCO.g[0].err}%／1LDK・2K・2DK 約${RCO.g[1].err}%／2LDK・3K・3DK 約${RCO.g[2].err}%／3LDK以上 約${RCO.g[3].err}%。築年数・駅距離・設備の差は反映していません。</p>`;
+    // 建て方ごと（国の統計の分け方は「木造」と「鉄筋コンクリート・鉄骨など」まで。鉄筋コンクリートと鉄骨は分けられていない）
+    lifted = false;   // ここからは建て方ごとの表で、そろえた欄があったかを数えなおす
+    const kinds = [[4, "mansion", "鉄筋コンクリート造・鉄骨造等の共同住宅", "マンション・鉄骨造アパート等。国の統計では鉄筋コンクリート造と鉄骨造を区別していません"], [3, "apart", "木造アパート", "木造の共同住宅"], [1, "house", "一戸建", "一戸建の貸家"]];
+    kinds.forEach(([b, c, t, d]) => {
+      const rowsHtml = estRows(b, true);
+      h += `<h3 class="renttype ${c}">${esc(t)}の想定家賃<span>${esc(where)}・月額・管理費除く</span></h3>`;
+      if (!rowsHtml) { h += `<p class="muted">該当する数値がありません。</p>`; return; }
+      h += `<p class="muted small">${esc(d)}。</p>`;
+      h += `<table class="rent ${c}">${thead(true)}<tbody>${rowsHtml}</tbody></table>`;
     });
+    h += `<p class="muted small">建て方別の想定家賃は、国の統計における同一建て方・同一面積帯の家賃に、上記と同じ係数を乗じたものです。「戸数」は、国の統計で該当する建て方・面積帯の住宅を借りている世帯数です。${borrowed ? `＊印の欄は、この市区の戸数が${RENT_LOCAL.toLocaleString()}戸未満で変動が大きいため、都道府県全体（不足する場合は全国）の「当該建て方と全建て方の家賃比」をこの市区の数値に乗じて算出しています。` : ""}${lifted ? `†印の欄は、一つ狭い間取りより低く算出されたため、一つ狭い間取りの一定倍率（${RENT_STEP.map((r, i) => `${RENT_G[i + 1][0]}は${RENT_G[i][0]}の${r}倍`).join("、")}）に調整しています。` : ""}100㎡以上の住宅は、係数の算出に必要な相場データが少ないため表示していません。<br>出典：${esc(RC.meta.src)} 第130表（民営借家）。</p>`;
   });
   return h;
 }
-function liqRankHtml(k) {
+function liqRankHtml(k, title) {
   const M = window.SOUBA_LIQ_META; if (!M) return "";
   const code = k.split("|")[0], ti = M.types.indexOf(S.type), o = LIQR[code];
-  let h = `<h3>流動性の順位（${esc(C.TYPES[S.type].short)}）</h3>`;
-  if (!o) return h + `<p class="muted small">順位を読みこんでいます…</p>`;
+  let h = `<h3>流動性の順位（${esc(C.TYPES[S.type].short)}${title ? "・" + esc(title) : ""}）</h3>`;
+  if (!o) return h + `<p class="muted small">順位を読込中…</p>`;
   const v = o.t[townName(k)] && o.t[townName(k)][ti];
-  if (!v) return h + `<p class="muted">この町は、そろえた条件での取引が${MIN_N}件未満なので、順位をつけていません。</p>`;
+  if (!v) return h + `<p class="muted">この町は、統一条件での取引が${MIN_N}件未満のため、順位の対象外です。</p>`;
   const pref = CITY[code] ? CITY[code].pref : "", prefN = (M.pref[pref] || [])[ti], natN = M.nat[ti], cityN = o.n[ti];
   const row = (lab, r, n) => `<tr><td>${esc(lab)}</td><td class="num"><b>${r.toLocaleString()}位</b>／${n.toLocaleString()}町</td><td class="num">上位 ${Math.max(1, Math.round(r / n * 100))}%</td></tr>`;
-  h += `<table class="kv rank"><tbody>${row(cityName(code) + "の中", v[1], cityN)}${prefN ? row(pref + "の中", v[2], prefN) : ""}${row("全国", v[3], natN)}</tbody></table>`;
-  h += `<p class="muted small">1000世帯あたりの1年の取引件数：${v[0].toFixed(1)}件。順位は、どこでも同じ条件（${esc(C.TYPES[S.type].short)}・全期間 ${esc(M.year.replace("-", "〜"))}年・データの種類は両方・市街化調整区域を除く・ほかの絞りこみなし）で、取引が${MIN_N}件以上の町だけを、件数の多い順に並べたものです。上の★（いまの条件で、表示中の町どうしをくらべたもの）とは、くらべる相手と条件がちがいます。</p>`;
+  h += `<table class="kv rank"><tbody>${row(cityName(code) + "内", v[1], cityN)}${prefN ? row(pref + "内", v[2], prefN) : ""}${row("全国", v[3], natN)}</tbody></table>`;
+  h += `<p class="muted small">1000世帯あたりの年間取引件数：${v[0].toFixed(1)}件。順位は全国共通の条件（${esc(C.TYPES[S.type].short)}・全期間 ${esc(M.year.replace("-", "〜"))}年・データの種類は両方・市街化調整区域を除く・その他の絞り込みなし）で、取引が${MIN_N}件以上の町を件数の多い順に並べたものです。上記の★（現在の条件で表示中の町同士を比較したもの）とは、比較対象と条件が異なります。</p>`;
   return h;
 }
 function liqExplain() {
   const f = v => v == null ? "—" : v.toFixed(1);
-  const where = S.cities.length > 1 ? `いま出している${S.cities.length}つの市区町村（${esc(S.cities.map(cityName).join("・"))}）の中で比べると` : `${esc(cityName(S.cities[0] || ""))}の中で比べると`;
-  return `<div class="explain"><h3>流動性の★の決め方</h3>
-  <p>流動性は「その町で、どれくらい活発に売り買いされているか」の目安です。</p>
+  const where = S.cities.length > 1 ? `表示中の${S.cities.length}市区町村（${esc(S.cities.map(cityName).join("・"))}）内で比較すると` : `${esc(cityName(S.cities[0] || ""))}内で比較すると`;
+  return `<div class="explain"><h3>流動性（★）の算出方法</h3>
+  <p>流動性は、その町で売買がどの程度活発に行われているかを示す目安です。</p>
   <ol>
-    <li>町ごとに、いまの条件（種類・期間・駅・広さなど）に合う取引の件数を数え、1年あたりにします。</li>
-    <li>町の大きさのちがいをならすため、その町の世帯数（国勢調査・令和2年）で割り、1000世帯あたりの件数にします。</li>
-    <li>件数が${MIN_N}件以上の町（いまは${LIQ.n}町）を多い順に並べ、上から3分の1を★★★、次の3分の1を★★、下の3分の1を★にします。</li>
+    <li>町ごとに、現在の条件（種類・期間・駅・面積等）に該当する取引件数を集計し、年間件数に換算します。</li>
+    <li>町の規模の差を補正するため、その町の世帯数（令和2年国勢調査）で割り、1000世帯あたりの件数にします。</li>
+    <li>件数が${MIN_N}件以上の町（現在${LIQ.n}町）を多い順に並べ、上位3分の1を★★★、中位3分の1を★★、下位3分の1を★とします。</li>
   </ol>
-  <p>いまの区切り：★★★＝年${f(LIQ.c2)}件以上／★★＝${f(LIQ.c1)}〜${f(LIQ.c2)}件／★＝${f(LIQ.c1)}件未満（1000世帯あたり）。</p>
-  <p>★1は「売れない」という意味ではなく、<b>${where}</b>取引が少なめ、という意味です。条件や表示する市区町村を変えると、比べる相手も変わるので★も変わります。</p>
-  <p>注意：国のデータは、すべての売り買いではなく、一部を集めたものです（取引価格はアンケートに答えた分、成約価格はレインズに登録された分）。そのため「何件売れたか」の正しい数ではなく、町どうしをくらべる目安です。「データの種類」が「両方」のときは、同じ取引が2回数えられることがあります。新築マンションや一戸建ての多い町は、世帯数のわりに中古の取引が少なく出やすく、ワンルームの多い町は多く出やすいです。査定の説明に使うときは、件数そのものと前年比もあわせて見てください。</p>
+  <p>現在の区分：★★★＝年${f(LIQ.c2)}件以上／★★＝${f(LIQ.c1)}〜${f(LIQ.c2)}件／★＝${f(LIQ.c1)}件未満（1000世帯あたり）。</p>
+  <p>★1つは「売れない」という意味ではなく、<b>${where}</b>取引が少なめであることを示します。条件や表示する市区町村を変更すると比較対象が変わるため、★も変わります。</p>
+  <p>注意：国のデータは全ての売買ではなく、一部を収集したものです（取引価格はアンケート回答分、成約価格はレインズ登録分）。そのため実際の売買件数ではなく、町同士を比較するための目安です。「データの種類」が「両方」の場合、同一の取引が重複して計上されることがあります。新築マンションや一戸建ての多い町は世帯数に比べて中古取引が少なく、ワンルームの多い町は多く出る傾向があります。査定の説明に用いる際は、件数そのものと前年比も併せて確認してください。</p>
   </div>`;
 }
 
@@ -1649,16 +1668,15 @@ function bindMine(P) {
 function sources() {
   const from = IDX.from ? `${IDX.from[0]}年${QLABEL[IDX.from[1]]}` : "", to = IDX.to ? `${IDX.to[0]}年${QLABEL[IDX.to[1]]}` : "";
   return `<footer class="src disclaimer">
-  ・価格：出典 国土交通省「不動産情報ライブラリ」（https://www.reinfolib.mlit.go.jp/）の取引価格情報・成約価格情報をもとに、この道具で集計・加工して作成（${from}〜${to}分）。<br>
-  ・町の形と世帯数：「令和2年国勢調査 小地域（町丁・字等）境界データ」（総務省統計局 e-Stat）。<br>
-  ・家賃：総務省統計局「令和5年住宅・土地統計調査」第130表（民営借家・専用住宅の1か月当たり家賃、2023年10月1日時点、e-Stat）をもとに、この道具で中央値などを計算。<br>
+  ・価格：出典 国土交通省「不動産情報ライブラリ」（https://www.reinfolib.mlit.go.jp/）の取引価格情報・成約価格情報をもとに、本ツールで集計・加工して作成（${from}〜${to}分）。<br>
+  ・町の区域と世帯数：「令和2年国勢調査 小地域（町丁・字等）境界データ」（総務省統計局 e-Stat）。<br>
+  ・家賃：総務省統計局「令和5年住宅・土地統計調査」第130表（民営借家・専用住宅の1か月当たり家賃、2023年10月1日時点、e-Stat）をもとに、本ツールで中央値等を算出。<br>
   ・地図：国土地理院。<br>
-  ・戸建＝成約価格の「土地と建物」（サイトの説明で戸建のこと）＋取引価格のうち用途が「住宅」のもの。アパート・店舗・ビルなどは「アパート・店舗等」に分けています。<br>
-  ・土地の形・間口は取引価格の情報にだけあり、成約価格にはありません。形や間口でしぼると、取引価格だけの数字になります。<br>
-  ・国のデータには借地・底地・再建築不可・高低差（擁壁・ひな壇）・古家付きの区別がありません。「目安の計算」は国税庁の表と一般的な目安による計算です。<br>
-  ・補正の表：国税庁「土地及び土地の上に存する権利の評価についての調整率表（平成31年1月分以降用）」、No.4611 借地権の評価、No.4613 貸宅地の評価、路線価図の説明（借地権割合 A〜G）。<br>
-  ・成約価格と取引価格に同じ取引が入っている場合があります。件数を見るときは「データの種類」をどちらか一方にするのがおすすめです。<br>
-  ・この地図は相場の目安です。実際の価格は物件ごとにちがいます（鑑定評価ではありません）。最後の判断は不動産会社・不動産鑑定士・役所に確かめてください。</footer>`;
+  ・戸建＝成約価格の「土地と建物」（不動産情報ライブラリの説明上、戸建を指す）＋取引価格のうち用途が「住宅」のもの。アパート・店舗・ビル等は「アパート・店舗等」に分類しています。<br>
+  ・土地の形状・間口は取引価格の情報にのみあり、成約価格にはありません。形状・間口で絞り込むと、取引価格のみの集計になります。<br>
+  ・国のデータには借地・底地・再建築不可・高低差（擁壁・ひな壇）・古家付きの区別がありません。<br>
+  ・成約価格と取引価格に同一の取引が含まれる場合があります。件数を確認する際は、「データの種類」をいずれか一方に絞り込むことを推奨します。<br>
+  ・本地図は相場の目安であり、鑑定評価ではありません。実際の価格は物件ごとに異なります。最終的な判断にあたっては、不動産会社・不動産鑑定士・役所等にご確認ください。</footer>`;
 }
 
 function select(k, fly) {
@@ -1697,7 +1715,6 @@ function refreshOptions() {
   Object.entries(used).forEach(([key, kinds]) => { if (!kinds.includes(kind)) S[key] = ""; });
   [["fPlan", "plan"], ["fStruct", "struct"], ["fAge", "age"], ["fWalk", "walk"], ["fSrc", "src"], ["fColor", "color"], ["fHouse", "house"],
     ["fShape", "shape"], ["fRoad", "road"], ["fWidth", "width"], ["fFront", "front"], ["fCp", "cp"], ["fJijo", "jijo"]].forEach(([id, key]) => { document.getElementById(id).value = S[key]; });
-  document.getElementById("fMine").checked = !!S.mine;
   document.getElementById("fKeep").checked = !!S.keep;
   document.querySelectorAll("#segType button").forEach(b => b.classList.toggle("on", b.dataset.v === S.type));
   document.querySelectorAll("#segUnit button").forEach(b => b.classList.toggle("on", b.dataset.v === S.unit));
@@ -1709,9 +1726,9 @@ function refreshArea() {
   prefSel.innerHTML = IDX.prefs.map(p => `<option value="${p.code}">${p.name}（${p.cities.filter(c => c[2]).length}/${p.cities.length}）</option>`).join("");
   prefSel.value = prefSel.dataset.v || pref;
   const p = IDX.prefs.find(x => x.code === prefSel.value);
-  citySel.innerHTML = `<option value="">— 選ぶ —</option>` + p.cities.map(([c, n, cnt]) => `<option value="${c}">${esc(n)}${cnt ? `（${cnt.toLocaleString()}件）` : "（価格データなし）"}</option>`).join("");
+  citySel.innerHTML = `<option value="">— 選択 —</option>` + p.cities.map(([c, n, cnt]) => `<option value="${c}">${esc(n)}${cnt ? `（${cnt.toLocaleString()}件）` : "（価格データなし）"}</option>`).join("");
   citySel.value = S.cities.includes(cur) && CITY_INFO[cur].pref === p.code ? cur : "";
-  document.getElementById("cityChips").innerHTML = S.cities.map(c => `<span class="chip">${esc(cityName(c))}${S.cities.length > 1 ? `<button data-c="${c}" title="外す" aria-label="${esc(cityName(c))}を外す">×</button>` : ""}</span>`).join("");
+  document.getElementById("cityChips").innerHTML = S.cities.map(c => `<span class="chip">${esc(cityName(c))}${S.cities.length > 1 ? `<button data-c="${c}" title="除外" aria-label="${esc(cityName(c))}を除外">×</button>` : ""}</span>`).join("");
   document.querySelectorAll("#cityChips button").forEach(b => b.onclick = () => { S.cities = S.cities.filter(c => c !== b.dataset.c); applyCities(); });
   const per = IDX.from ? `${IDX.from[0]}年${QLABEL[IDX.from[1]]}〜${IDX.to[0]}年${QLABEL[IDX.to[1]]}` : "";
   document.getElementById("subTitle").textContent = `${S.cities.map(cityName).join("・")}／${per}`;
@@ -1722,7 +1739,7 @@ async function applyCities(fit = true) {
   const my = ++loadSeq;
   const L1 = document.getElementById("loading"); L1.hidden = false;
   try { await Promise.all(S.cities.map(loadCity)); }
-  catch (e) { alert("市区町村のデータが読みこめませんでした（" + e.message + "）。scripts/build.py を動かしたか確かめてください。"); S.cities = S.cities.filter(c => CITY[c]); }
+  catch (e) { alert("市区町村のデータを読み込めませんでした（" + e.message + "）。scripts/build.py を実行済みか確認してください。"); S.cities = S.cities.filter(c => CITY[c]); }
   if (my !== loadSeq) return;
   L1.hidden = true;
   S.cities.forEach(code => cityLayer(CITY[code]));
@@ -1740,7 +1757,6 @@ const bind = (id, key) => document.getElementById(id).onchange = e => { S[key] =
 [["fColor", "color"], ["fSrc", "src"], ["fYear", "year"], ["fStation", "station"], ["fWalk", "walk"], ["fArea", "area"], ["fPlan", "plan"],
   ["fStruct", "struct"], ["fAge", "age"], ["fHouse", "house"], ["fShape", "shape"], ["fRoad", "road"], ["fWidth", "width"], ["fFront", "front"],
   ["fCp", "cp"], ["fJijo", "jijo"]].forEach(([id, key]) => bind(id, key));
-document.getElementById("fMine").onchange = e => { S.mine = e.target.checked; save(); paint(); };
 // 地図に重ねるものの切りかえ
 if (innerWidth < 700) document.getElementById("layerBox").classList.add("closed");
 document.getElementById("layerTtl").onclick = () => document.getElementById("layerBox").classList.toggle("closed");
@@ -1766,16 +1782,16 @@ syncKm();
 // 駅の数で見る
 document.getElementById("fStnName").value = S.stn || "";
 document.getElementById("fStnN").value = S.stnN || "";
-document.getElementById("fStnName").addEventListener("focus", () => loadStations().catch(() => stnMsg("駅のデータを読めませんでした。")), { once: true });
+document.getElementById("fStnName").addEventListener("focus", () => loadStations().catch(() => stnMsg("駅データを読み込めませんでした。")), { once: true });
 const stnChange = () => {
   S.stn = document.getElementById("fStnName").value.trim(); S.stnN = document.getElementById("fStnN").value;
   if (!S.stn || !S.stnN) { if (STN) { clearStation(); update(); } return; }
-  applyStation().catch(() => stnMsg("駅のデータを読めませんでした。"));
+  applyStation().catch(() => stnMsg("駅データを読み込めませんでした。"));
 };
 document.getElementById("fStnName").addEventListener("change", stnChange);
 document.getElementById("fStnN").addEventListener("change", stnChange);
-document.getElementById("fKms").onchange = () => { S.kms = [...document.querySelectorAll("#fKms input:checked")].map(i => i.value); syncKm(); if (S.km && !S.center) { circleMsg("中心の住所を入れるか、「地図を押して決める」を押してください。"); return; } applyCircle(); };
-document.getElementById("fPick").onclick = e => { PICKING = !PICKING; document.getElementById("map").classList.toggle("picking", PICKING); e.target.classList.toggle("on", PICKING); circleMsg(PICKING ? "地図の中心にしたい場所を押してください。" : ""); };
+document.getElementById("fKms").onchange = () => { S.kms = [...document.querySelectorAll("#fKms input:checked")].map(i => i.value); syncKm(); if (S.km && !S.center) { circleMsg("中心地点の住所を入力するか、「地図上で指定」を選択してください。"); return; } applyCircle(); };
+document.getElementById("fPick").onclick = e => { PICKING = !PICKING; document.getElementById("map").classList.toggle("picking", PICKING); e.target.classList.toggle("on", PICKING); circleMsg(PICKING ? "中心とする地点を地図上でクリックしてください。" : ""); };
 // 予備：国土地理院の住所検索につながらないとき、いま読みこんである町の名前が住所に入っていれば、その町の真ん中を使う
 function townFromText(q) {
   const t = q.normalize("NFKC").replace(/\s/g, "");
@@ -1785,31 +1801,31 @@ function townFromText(q) {
 }
 async function searchAddr() {
   const q = document.getElementById("fAddr").value.trim(); if (!q) return;
-  circleMsg("探しています…");
+  circleMsg("検索中…");
   try {
     const res = await fetch("https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(q)), list = await res.json();
-    if (!list || !list.length) { if (useTownFallback(q)) return; circleMsg("見つかりませんでした。市区町村の名前から入れてみてください。"); return; }
+    if (!list || !list.length) { if (useTownFallback(q)) return; circleMsg("該当する住所が見つかりません。市区町村名から入力してください。"); return; }
     const [lng, lat] = list[0].geometry.coordinates;
-    circleMsg(list[0].properties.title + " を中心にしました。");
+    circleMsg(list[0].properties.title + " を中心に設定しました。");
     S.center = [lat, lng]; if (!S.km) { S.kms = ["1"]; syncKm(); }
     surveyPoint(lat, lng, q);
     const m = document.getElementById("circleMsg").textContent;
     applyCircle(); if (S.center) circleMsg(m);
-  } catch (err) { if (useTownFallback(q)) return; circleMsg("住所を探せませんでした（国土地理院の住所検索につながりません）。地図を押して決めてください。"); }
+  } catch (err) { if (useTownFallback(q)) return; circleMsg("住所を検索できませんでした（国土地理院の住所検索に接続できません）。「地図上で指定」から地点を選択してください。"); }
 }
 function useTownFallback(q) {
   const b = townFromText(q); if (!b) return false;
   const [lat, lng] = TOWN_CENTER[b.k];
   S.center = [lat, lng]; if (!S.km) { S.kms = ["1"]; syncKm(); }
-  surveyPoint(lat, lng, townName(b.k) + "の真ん中（番地までは分かりません）");
-  applyCircle(); circleMsg(`住所検索につながらないので、${wardOf(b.k)} ${townName(b.k)} の真ん中を中心にしました。番地の場所は「地図を押して決める」で直せます。`);
+  surveyPoint(lat, lng, townName(b.k) + "の中心（番地は特定できません）");
+  applyCircle(); circleMsg(`住所検索に接続できないため、${wardOf(b.k)} ${townName(b.k)} の中心地点を中心に設定しました。番地の位置は「地図上で指定」で修正できます。`);
   return true;
 }
 document.getElementById("fAddrGo").onclick = searchAddr;
 document.getElementById("fAddr").addEventListener("keydown", e => { if (e.key === "Enter") searchAddr(); });
 document.getElementById("toggleFilters").onclick = e => {
   const f = document.getElementById("filters"), open = f.classList.toggle("open");
-  e.target.setAttribute("aria-expanded", open); e.target.textContent = open ? "条件を閉じる ▴" : "条件をしぼる ▾";
+  e.target.setAttribute("aria-expanded", open); e.target.textContent = open ? "条件を閉じる ▴" : "条件を絞り込む ▾";
   setTimeout(() => map.invalidateSize(), 50);
 };
 

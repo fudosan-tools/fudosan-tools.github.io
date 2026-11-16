@@ -339,9 +339,9 @@
   function kenpeiBonus(y, bouka) {
     var out = [];
     if (!y) return out;
-    if (bouka && bouka.code === 10) out.push("防火地域で耐火建築物などを建てると ＋10%（指定80%の地域では制限なし）");
-    if (bouka && bouka.code === 20) out.push("準防火地域で耐火・準耐火建築物などを建てると ＋10%");
-    out.push("役所が角地と認めた土地は ＋10%（市区町村の基準による）");
+    if (bouka && bouka.code === 10) out.push("防火地域内の耐火建築物等：＋10%（指定建ぺい率80%の地域では制限なし）");
+    if (bouka && bouka.code === 20) out.push("準防火地域内の耐火建築物等・準耐火建築物等：＋10%");
+    out.push("特定行政庁が指定する角地：＋10%（指定基準は自治体により異なる）");
     return out;
   }
 
