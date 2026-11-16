@@ -203,15 +203,16 @@
       const hh = hhOf(k) || 0;
       const t = TOWN[k] = { rows: rs, n: rs.length, med: st.med, q1: st.q1, q3: st.q3, st,
         perYear: rs.length / yrs, liq: hh > 0 ? rs.length / yrs / hh * 1000 : null, hh };
-      if (t.liq != null && t.n >= MIN_N) liqList.push(t.liq);
+      if (t.n >= MIN_N) liqList.push(t.perYear);
     }
-    // 流動性の★：いまの条件で比べられる町（5件以上）を、1000世帯あたり年間件数の多い順に並べて3つに分ける
+    // 流動性の★：いまの条件で比べられる町（5件以上）を、年間取引件数の多い順に並べて3つに分ける
+    // 2026-11-17 SHUさん「登戸は再開発もやっていて流動性高いはず」：世帯あたりでは世帯の多い町が低く出るので、件数で決める
     const c1 = quant(liqList, 1 / 3), c2 = quant(liqList, 2 / 3);
     const sorted = [...liqList].sort((a, b) => b - a);
     const LIQ = { n: liqList.length, c1, c2 };
     for (const k in TOWN) { const t = TOWN[k];
-      t.stars = t.liq == null || t.n < MIN_N ? 0 : (t.liq >= c2 ? 3 : t.liq >= c1 ? 2 : 1);
-      t.rank = t.stars ? sorted.indexOf(t.liq) + 1 : null; }
+      t.stars = t.n < MIN_N ? 0 : (t.perYear >= c2 ? 3 : t.perYear >= c1 ? 2 : 1);
+      t.rank = t.stars ? sorted.indexOf(t.perYear) + 1 : null; }
     return { TOWN, LIQ };
   }
   // 前年比：「期間」の条件を外して、1年分そろう最後の2年をくらべる
