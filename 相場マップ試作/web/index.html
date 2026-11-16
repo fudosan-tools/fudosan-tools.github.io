@@ -163,6 +163,7 @@
   h3.renttype span { font-size: 12px; font-weight: 400; color: var(--ink-2); }
   h3.renttype.apart { border-left-color: #b0722a; background: #faf3ea; }
   h3.renttype.mansion { border-left-color: #77736b; background: #f4f3f0; }
+  h3.renttype.est { border-left-color: #104281; background: #eef3fb; }
   table.rent { width: 100%; }
   table.rent td, table.rent th { padding-right: 8px !important; vertical-align: top; }
   table.rent tr.few td { color: var(--muted); }
@@ -170,6 +171,12 @@
   table.rent td.rng { width: 38%; font-size: 12px; white-space: nowrap; text-align: left; }
   table.rent th { white-space: nowrap !important; }
   #panel table.rent th.rng { text-align: left; }
+  table.rent th .alt { display: block; font-weight: 400; }
+  table.rent td.est b { font-size: 15px; color: #0b2f5e; }
+  table.rent th.est { color: #0b2f5e; }
+  table.kv.rentf td:first-child { white-space: normal; }
+  table.kv.rentf th .alt { display: block; font-weight: 400; font-size: 10.5px; }
+  table.kv.rentf th { vertical-align: bottom; }
   .rbar { position: relative; height: 8px; margin-top: 3px; background: #edece8; border-radius: 4px; }
   .rbar i { position: absolute; top: 0; height: 8px; border-radius: 4px; background: #6da7ec; }
   .rbar b { position: absolute; top: -2px; width: 2px; height: 12px; margin-left: -1px; background: #0b2f5e; }
@@ -385,6 +392,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="data/index.js"></script>
 <script src="data/rent_city.js"></script>
+<script src="data/rent_factor.js"></script>
+<script src="data/rent_coef.js"></script>
 <script src="data/liq_meta.js"></script>
 <script src="../../共通/hosei_data.js"></script>
 <script src="souba_calc.js"></script>
@@ -1014,7 +1023,7 @@ function detailHtml() {
   h += `<h3>年ごと</h3>` + breakdown(rows, r => String(r.y), yrs, yl);
   const st = {}; rows.forEach(r => { if (r.station) st[r.station] = (st[r.station] || 0) + 1; });
   h += `<h3>よく出てくる最寄駅</h3><p>` + Object.entries(st).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s, n]) => `${esc(s)}（${n}件）`).join("、") + `</p>`;
-  return h + cpCompareHtml(ALL.filter(r => r.k === k)) + liqExplain() + rentCityHtml([k.split("|")[0]]) + mineInTown(k);
+  return h + cpCompareHtml(ALL.filter(r => r.k === k)) + liqExplain() + rentCityHtml([k.split("|")[0]], { rows: ALL.filter(r => r.k === k), label: townName(k) }) + mineInTown(k);
 }
 // 都市計画ごとの比較。いまの「都市計画」の切りかえに関係なく、ほかの条件で比べる
 const CP_LABEL = { low: "低層住居", mid: "中高層住居", res: "住居", com: "商業", ind: "工業", chosei: "市街化調整区域", other: "非線引き・都市計画区域外など", none: "記載なし" };
@@ -1101,8 +1110,10 @@ function condText() {
 // 円の中の相場をまとめる。町ごとの取引を合わせて、距離ごとに比べる
 // 半径の賃貸：範囲に入る市・区の家賃（国の統計）＋登録した賃貸の成約例（あるときだけ）
 function circleRentHtml(km) {
-  const codes = [...new Set(Object.keys(INSIDE || {}).map(k => k.split("|")[0]))].filter(c => S.cities.includes(c));
-  let h = rentCityHtml(codes.length ? codes : S.cities);
+  // 範囲に入る市区は、範囲の中の取引が多い順に出す（中心の市区が先に来るように）
+  const SR = scopeRows(), cnt = {}; SR.forEach(r => { const c = r.k.split("|")[0]; cnt[c] = (cnt[c] || 0) + 1; });
+  const codes = [...new Set(Object.keys(INSIDE || {}).map(k => k.split("|")[0]))].filter(c => S.cities.includes(c)).sort((x, y) => (cnt[y] || 0) - (cnt[x] || 0));
+  let h = rentCityHtml(codes.length ? codes : S.cities, { rows: SR, label: STN ? `${S.stn}から${S.stnN}駅先まで` : "この範囲" });
   const all = MINE.filter(r => C.isRentKind(r.kind));
   const inn = all.filter(r => INSIDE[mineKey(r)] != null), out = all.length - inn.length;
   if (!inn.length) return h;
@@ -1243,35 +1254,73 @@ function rentCityOf(code) {   // 町村は表に無いので、都道府県の�
   const p = code.slice(0, 2) + "000";
   return RC.c[p] ? { d: RC.c[p], label: RC.c[p].name, pref: true } : null;
 }
-function rentCityHtml(codes) {
+// 想定家賃の倍率（scripts/analyze_rent_gap.js）。市区町村のコードから、募集家賃の統計の地域を決める
+const RF = window.RENT_FACTOR || null;
+const SEIREI = [["札幌市", 1100, 1110], ["仙台市", 4100, 4105], ["名古屋市", 23100, 23116], ["京都市", 26100, 26111], ["大阪市", 27100, 27128], ["神戸市", 28100, 28111], ["広島市", 34100, 34108], ["福岡市", 40130, 40137]];   // 市と区のコードの範囲
+function rentAreaOf(code) {
+  if (!RF) return null;
+  const n = +code, p = code.slice(0, 2);
+  if (p === "13") return n >= 13101 && n <= 13123 || code === "13100" ? { name: "東京23区" } : { name: "東京都下" };
+  if (p === "14") return { name: "神奈川県" }; if (p === "11") return { name: "埼玉県" }; if (p === "12") return { name: "千葉県" };
+  const sei = SEIREI.find(([, lo, hi]) => n >= lo && n <= hi);
+  if (sei) return { name: sei[0] };
+  return { name: "地方", local: true };
+}
+const rentF = (A, kind, a) => { const f = A.local ? RF.local : RF.area[A.name]; const arr = f && f[kind]; return arr ? arr[Math.min(a, 3) - 1] : null; };   // 70㎡以上は50〜70㎡の倍率
+// 想定家賃の係数（scripts/fit_rent_portal.js）：募集中の物件の相場（2026年11月・駅徒歩10分以内）に合うように、地域×間取りごとに調整したもの
+const RCO = window.RENT_COEF || null;
+const RENT_G = [["1R・1K・1DK", "29㎡以下"], ["1LDK・2K・2DK", "30〜49㎡"], ["2LDK・3K・3DK", "50〜69㎡"], ["3LDK以上", "70〜99㎡"]];
+function rentK(reg, g) {
+  const K = RCO.g[g].k; if (K[reg] != null) return K[reg];
+  // 係数を作っていない市（京都市・神戸市）は、募集家賃の統計の倍率の比で、作った地域から当てはめる
+  if (RF && RF.area[reg]) { const i = Math.min(g, 2), lam = Object.keys(K).filter(r => RF.area[r]).map(r => K[r] / RF.area[r].m[i]); return lam.reduce((a, b) => a + b, 0) / lam.length * RF.area[reg].m[i]; }
+  return K["地方"];
+}
+// 調べている所の売買の単価 ÷ 市区全体の単価（マンションの専有㎡あたり。少なければ土地の㎡あたり）
+function placeRel(rows, code) {
+  const c = CITY[code]; if (!rows || !c) return null;
+  const pick = (rs, t) => rs.filter(r => r.type === t && r.unit > 0 && r.cp !== "調整区域").map(r => r.unit);
+  for (const [t, lab] of [["中古マンション等", "中古マンションの専有面積あたり"], ["宅地(土地)", "土地の面積あたり"]]) {
+    const a = pick(rows.filter(r => r.city === code), t), b = pick(c.rows, t);
+    if (a.length >= 10 && b.length >= 30) return { rel: Math.min(1.8, Math.max(0.6, median(a) / median(b))), lab, n: a.length };
+  }
+  return null;
+}
+function rentCityHtml(codes, ctx) {
   codes = [...new Set(codes)].slice(0, 3);
   let h = "";
   codes.forEach(code => {
     const r = rentCityOf(code); if (!r) return;
-    const v = r.d.v, all = v["00"];
+    const v = r.d.v, all = v["00"], A = rentAreaOf(code), reg = A ? (A.local ? "地方" : A.name) : "地方";
     const name = r.pref ? `${cityName(code)}（表に無いので${r.label}全体の数字）` : r.label;
     h += `<h3>賃貸の相場（${esc(name)}）</h3>`;
     if (!all) { h += `<p class="muted">数字がありません。</p>`; return; }
-    h += `<p class="unitnote">金額は、民間の貸家に住んでいる人が払っている<b>1か月の家賃</b>です（共益費・管理費は入りません）。広さは<b>建物の延べ床面積</b>（部屋の広さ）です。町ごとの数字は国の統計に無いので、${r.pref ? "都道府県" : "市・区"}全体の数字です。前から住んでいる人の家賃もまざるので、新しく募集する家賃より低めに出ることが多いです。</p>`;
-    h += `<div class="figures"><div class="figure main"><div class="k">家賃の中央値（すべての家）</div><div class="v">${fmtRentMan(all[3])}<small>/月</small></div>
-      <div class="s">半分の世帯がこの間：${fmtRentMan(all[2])}〜${fmtRentMan(all[4])}</div></div>
-      <div class="figure"><div class="k">平均の家賃</div><div class="v">${fmtRentMan(all[1])}<small>/月</small></div><div class="s">数えた戸数 ${all[0].toLocaleString()}戸</div></div></div>`;
-    // 建て方ごとに1つずつ表を分ける（横に4つ並べると、どの数字がどれか分からないため）
-    const kinds = [[1, "house", "一戸建", "一戸建てを借りている世帯"], [3, "apart", "アパート（木造）", "木造の共同住宅（アパート）を借りている世帯"], [4, "mansion", "マンション等（鉄筋・鉄骨）", "鉄筋コンクリート・鉄骨の共同住宅を借りている世帯"]];
+    const aLabel = !A ? "" : A.local ? `地方の参考（${RF.meta.local.join("・")}の平均）` : A.name;
+    if (RCO) {
+      const P = ctx ? placeRel(ctx.rows, code) : null, rel = P ? P.rel : 1;
+      h += `<h3 class="renttype est">いま募集するときの想定家賃<span>${esc(ctx && P ? (ctx.label === "この範囲" ? `この範囲の${name}` : ctx.label) : name)}・1か月・管理費なし</span></h3>`;
+      h += `<table class="rent estg"><thead><tr><th>間取り<span class="alt">広さのめやす</span></th><th class="num est">想定家賃</th><th class="num">国の統計<span class="alt">2023年・住んでいる人</span></th><th class="num">係数</th></tr></thead><tbody>` +
+        RENT_G.map(([lab, area], g) => { const x = v["0" + (g + 1)]; if (!x || x[0] < RENT_FEW) return "";
+          const k = rentK(reg, g), adj = Math.pow(rel, RCO.g[g].beta), est = x[3] * k * adj;
+          return `<tr><td>${lab}<span class="alt">${area}</span></td><td class="num est"><b>${fmtRentMan(est)}</b></td><td class="num">${fmtRentMan(x[3])}</td><td class="num muted">×${(k * adj).toFixed(2)}</td></tr>`; }).join("") + `</tbody></table>`;
+      h += `<p class="muted small">想定家賃＝国の統計（${esc(name)}・すべての建て方・その広さの中央値）×地域の係数${P ? `×場所の補正` : ""}。地域の係数は、${esc(RCO.asOf)}に募集中だった物件の相場（全国${RCO.nStation}駅・駅から徒歩10分以内・管理費なし）に合うように、地域と間取りごとに調整したものです${!RCO.g[0].k[reg] ? `（${esc(reg)}は、近い地域の係数から当てはめた参考値）` : ""}。${P ? `場所の補正は、${esc(ctx.label)}の売買の単価（${esc(P.lab)}・${P.n}件）が${esc(cityName(code))}全体の${P.rel.toFixed(2)}倍なので、その分だけ上げ下げしています（広い部屋ほど強く効きます）。` : "町を選ぶと、その町の売買の単価で上げ下げします。"}<br>ためしに作ったとき、駅ごとの相場とのずれは、半分の駅で次の大きさ以内でした：1R・1K・1DK 約${RCO.g[0].err}%／1LDK・2K・2DK 約${RCO.g[1].err}%／2LDK・3K・3DK 約${RCO.g[2].err}%／3LDK以上 約${RCO.g[3].err}%。築年数・駅からの距離・設備のちがいは入っていません。</p>`;
+    }
+    h += `<p class="muted small">下の3つの表は、国の統計（${esc(RC.meta.when)}・いま住んでいる人が払っている家賃・共益費なし）を建て方ごとに分けたものです。広さは建物の延べ床面積です。</p>`;
+    const kinds = [[4, "mansion", "m", "マンション（鉄筋・鉄骨）"], [3, "apart", "a", "アパート（木造）"], [1, "house", null, "一戸建"]];
     const tsubo = { 1: "約9坪以下", 2: "約9〜15坪", 3: "約15〜21坪", 4: "約21〜30坪", 5: "約30〜45坪", 6: "約45坪以上" };
-    let top = 0; kinds.forEach(([b]) => [1, 2, 3, 4, 5, 6].forEach(a => { const x = v[`${b}${a}`]; if (x && x[0] >= RENT_FEW) top = Math.max(top, x[4]); }));
-    top = Math.max(top, all[4]) * 1.05;
-    const bar = x => `<div class="rbar" aria-hidden="true"><i style="left:${(x[2] / top * 100).toFixed(1)}%;width:${(Math.min(x[4], top) - x[2]) / top * 100 > 0 ? ((Math.min(x[4], top) - x[2]) / top * 100).toFixed(1) : 1}%"></i><b style="left:${(Math.min(x[3], top) / top * 100).toFixed(1)}%"></b></div>`;
-    kinds.forEach(([b, c, t, d]) => {
-      const rowsHtml = [1, 2, 3, 4, 5, 6].map(a => { const x = v[`${b}${a}`]; if (!x) return "";
-        const few = x[0] < RENT_FEW;
-        return `<tr class="${few ? "few" : ""}"><td>${RC.meta.area[a]}<span class="alt">${tsubo[a]}</span></td><td class="num"><b>${fmtRentMan(x[3])}</b>${few ? "※" : ""}</td><td class="rng">${rentRange(x[2], x[4])}${bar(x)}</td><td class="num muted">${x[0].toLocaleString()}戸</td></tr>`; }).join("");
-      h += `<h3 class="renttype ${c}">${esc(t)}の家賃<span>${esc(name)}・1か月</span></h3>`;
+    kinds.forEach(([b, c, fk, t]) => {
       const tot = v[`${b}0`];
-      h += `<p class="muted small">${esc(d)}が払っている家賃です。${tot ? `全体の中央値 <b>${fmtRentMan(tot[3])}</b>（${tot[0].toLocaleString()}戸）。` : ""}</p>`;
-      h += rowsHtml ? `<table class="rent ${c}"><thead><tr><th>部屋の広さ</th><th class="num">中央値</th><th class="rng">よくある幅</th><th class="num">戸数</th></tr></thead><tbody>${rowsHtml}</tbody></table>` : `<p class="muted">数字がありません。</p>`;
+      h += `<h3 class="renttype ${c}">${esc(t)}の家賃（国の統計）<span>${esc(name)}・1か月</span></h3>`;
+      const est = false;   // 想定家賃は上の表にまとめた
+      const rowsHtml = [1, 2, 3, 4, 5, 6].map(a => { const x = v[`${b}${a}`]; if (!x) return "";
+        const few = x[0] < RENT_FEW, f = est ? rentF(A, fk, a) : null;
+        const now = f ? `<td class="num est"><b>${fmtRentMan(x[3] * f)}</b>${few ? "※" : ""}</td>` : est ? `<td class="num muted">—</td>` : "";
+        return `<tr class="${few ? "few" : ""}"><td>${RC.meta.area[a]}<span class="alt">${tsubo[a]}</span></td>${now}<td class="num">${est ? "" : "<b>"}${fmtRentMan(x[3])}${est ? "" : "</b>"}${!est && few ? "※" : ""}<span class="alt">${rentRange(x[2], x[4])}</span></td>${est ? `<td class="num muted">${f ? "×" + f.toFixed(2) : ""}</td>` : `<td class="num muted">${x[0].toLocaleString()}戸</td>`}</tr>`; }).join("");
+      if (!rowsHtml) { h += `<p class="muted">数字がありません。</p>`; return; }
+      h += est ? `<p class="muted small">国の統計：${tot ? `${tot[0].toLocaleString()}戸` : ""}。想定家賃＝国の統計の中央値×倍率。</p>`
+        : `<p class="muted small">国の統計（${esc(RC.meta.when)}・いま住んでいる人の家賃・共益費なし）です。${tot ? `${tot[0].toLocaleString()}戸。` : ""}</p>`;
+      h += `<table class="rent ${c}"><thead><tr><th>部屋の広さ</th>${est ? `<th class="num est">想定家賃<span class="alt">いま募集なら</span></th><th class="num">国の統計<span class="alt">2023年・住んでいる人</span></th><th class="num">倍率</th>` : `<th class="num">国の統計<span class="alt">2023年・住んでいる人</span></th><th class="num">戸数</th>`}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
     });
-    h += `<p class="muted small">部屋の広さは、建物の延べ床面積です。「中央値」は、半分の世帯がこれより安く、半分がこれより高い家賃です。「よくある家賃の幅」は、半分の世帯がこの間に入る範囲で、横の帯の濃い線が中央値です（帯の長さは3つの表で同じものさし）。どれも1か月・共益費なし。※と薄い字は、数えた戸数が${RENT_FEW}戸より少なく、ぶれやすい数字です。長屋建とその他の家は、上の「すべての家」にだけ入っています。<br>出典：${esc(RC.meta.src)} 第130表（${esc(RC.meta.when)}時点）。国の統計は家賃の階級ごとの戸数なので、中央値と幅は、階級の中に同じように散らばっているとして計算しています。</p>`;
   });
   return h;
 }
