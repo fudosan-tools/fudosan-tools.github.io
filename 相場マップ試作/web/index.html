@@ -116,6 +116,30 @@
   #panel .ktfr details.more { font-size: 13px; color: var(--ink); }
   #panel .ktfr .kt input[type=number] { width: 100%; }
   .btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: center; }
+  .unitline { font-size: 10.5px; color: var(--ink-2); margin: 1px 0 3px; }
+  .unitnote { font-size: 12px; color: var(--ink-2); background: var(--sheet); border-left: 3px solid var(--accent); padding: 5px 8px; margin: 8px 0; }
+  #printBtn { margin-left: auto; }
+  #printBtn + #toggleFilters { margin-left: 0; }
+  #printHead { display: none; }
+  /* PDF（印刷）：地図をA4の幅にそろえる。画面でも同じ大きさにしてから印刷するので、地図の絵がずれない */
+  body.printing #mapWrap { width: 190mm; height: 120mm; }
+  @page { size: A4 portrait; margin: 10mm; }
+  @media print {
+    html, body { height: auto; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #app { display: block; height: auto; }
+    header.bar, .layerbox, .leaflet-control-zoom, .loading, #panel .tabs, #panel .btn, #panel .btnrow, #back { display: none !important; }
+    #printHead { display: block; margin: 0 0 3mm; font-size: 10pt; line-height: 1.6; }
+    #printHead h1 { font-size: 15pt; margin: 0 0 1mm; }
+    #printHead p { margin: 0; color: #333; }
+    main.mapmain { display: block; }
+    #mapWrap { width: 190mm; height: 120mm; border: 1px solid #999; break-inside: avoid; }
+    .legend.small .row { display: flex !important; }
+    .legend.small::after { content: none !important; }
+    #panel { border: 0; overflow: visible; padding: 4mm 0 0; background: #fff; }
+    #panel td, #panel th { white-space: normal; }
+    #panel tr, #panel .figure, .unitnote { break-inside: avoid; }
+    #panel h2, #panel h3 { break-after: avoid; }
+  }
   .leaflet-tooltip { font-family: var(--font); font-size: 12px; border-radius: 2px; }
   .leaflet-control-zoom a { border-radius: 2px !important; }
   @media (max-width: 760px) {
@@ -141,6 +165,7 @@
     <div class="title">
       <h1>相場マップ（売買・賃貸）</h1>
       <span class="sub" id="subTitle"></span>
+      <button id="printBtn" class="btn primary" type="button" title="いまの地図と右の相場を、A4の紙の形でPDFに保存します">PDFで保存</button>
       <button id="toggleFilters" class="btn" aria-expanded="false">条件をしぼる ▾</button>
     </div>
     <div class="areapick">
@@ -267,6 +292,7 @@
       <label class="inline"><input type="checkbox" id="fMine"> 自分の記録を地図に出す</label>
     </div>
   </header>
+  <div id="printHead"></div>
   <main class="mapmain">
     <div id="mapWrap">
       <div id="map" role="application" aria-label="町ごとの相場の地図"></div>
@@ -353,7 +379,13 @@ const isTotalType = () => C.isTotal(S.type);
 const kindOf = () => ({ "中古マンション等": "mansion", "宅地(土地と建物)": "house", "宅地(土地)": "land", "宅地(土地と建物・戸建以外)": "other" })[S.type];
 const mainVal = r => C.mainVal(r, S.type);
 const fmtMain = v => isTotalType() ? fmtMan(v) : fmtUnitHtml(v);
-const mainName = () => isTotalType() ? "総額の中央値" : (S.type === "宅地(土地)" ? "土地の単価（中央値）" : "単価（中央値）");
+const perUnit = () => "1" + unitLabel() + "あたり";
+const mainName = () => isTotalType() ? "総額の中央値" : (S.type === "宅地(土地)" ? `土地の単価（土地${perUnit()}・中央値）` : `単価（専有面積${perUnit()}・中央値）`);
+const colName = (total = isTotalType()) => total ? "総額（1件）" : "単価（" + perUnit() + "）";
+// 数字の単位の説明（画面の一覧とPDFの頭に出す）
+const unitText = () => isTotalType()
+  ? "金額は、1件あたりの総額（土地と建物こみ・万円）です。"
+  : `単価は、${S.type === "宅地(土地)" ? "土地" : "専有面積"}1${unitLabel()}あたりの金額（万円/${unitLabel()}）です。小さい字は1${otherLabel()}あたり。1坪＝約3.31㎡。`;
 const median = C.median, quant = C.quant;
 const townName = k => k.split("|")[1];
 const cityName = code => CITY_INFO[code] ? CITY_INFO[code].name : code;
@@ -622,6 +654,46 @@ map.on("moveend", drawZoning);
 document.getElementById("legend").onclick = e => e.currentTarget.classList.toggle("small");
 if (window.innerWidth < 760) document.getElementById("legend").classList.add("small");   // スマホでは最初は小さく
 
+// ---------- PDFで保存（ブラウザの印刷で「PDFに保存」を選ぶ） ----------
+// 地図をA4の幅の大きさにしてから、地図の絵（タイル）が読みこまれるのを待って印刷する
+function fillPrintHead() {
+  const now = new Date(), d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const where = S.sel ? `${wardOf(S.sel)} ${townName(S.sel)}` : S.cities.map(cityName).join("・");
+  const per = document.getElementById("subTitle").textContent.split("／").pop();
+  const tab = S.tab === "calc" ? "目安の計算" : S.tab === "mine" ? "自分の記録" : S.sel ? "町の相場" : "町の一覧";
+  document.getElementById("printHead").innerHTML =
+    `<h1>相場マップ　${esc(where)}（${esc(tab)}）</h1>` +
+    `<p>種類：${esc(C.TYPES[S.type].label)}　条件：${esc(condText())}</p>` +
+    `<p>${esc(unitText())}</p>` +
+    `<p>データの期間：${esc(per)}　作成日：${d}　出典：国土交通省「不動産情報ライブラリ」をもとに加工。相場の目安で、鑑定評価ではありません。</p>`;
+  return { where, d };
+}
+window.addEventListener("beforeprint", fillPrintHead);   // ブラウザのメニューから印刷したときも、条件と単位を頭に入れる
+function printPdf() {
+  const view = { c: map.getCenter(), z: map.getZoom() }, b = map.getBounds();
+  const { where, d } = fillPrintHead();
+  const oldTitle = document.title;
+  document.title = `相場_${where}_${C.TYPES[S.type].short}_${d}`.replace(/[\\/:*?"<>|\s]/g, "");   // PDFのファイル名になる
+  document.body.classList.add("printing");
+  map.invalidateSize(false);
+  map.fitBounds(b, { animate: false });
+  let done = false;
+  const go = () => {
+    if (done) return; done = true;
+    const back = () => {
+      window.removeEventListener("afterprint", back);
+      document.title = oldTitle; document.body.classList.remove("printing");
+      map.invalidateSize(false); map.setView(view.c, view.z, { animate: false });
+    };
+    window.addEventListener("afterprint", back);
+    window.print();
+  };
+  let tl = null; map.eachLayer(l => { if (l instanceof L.TileLayer) tl = l; });
+  if (tl) tl.once("load", () => setTimeout(go, 300));
+  setTimeout(go, 2500);   // 読みこみの知らせが来なくても、2.5秒で印刷にすすむ
+}
+document.getElementById("printBtn").onclick = printPdf;
+
 let breaks = [];
 function colorMetric(t) { return S.color === "price" ? t.med : S.color === "liq" ? t.liq : t.perYear; }
 function computeBreaks() {
@@ -646,14 +718,16 @@ function paint() {
       if (sel) selLayers.push(l);
     }); });
   selLayers.forEach(l => l.bringToFront());
-  const fmtB = v => S.color === "price" ? (isTotalType() ? fmtMan(v) : man(conv(v)).toFixed(0) + "万") : v < 1 ? v.toFixed(2) : v.toFixed(1);
-  const title = S.color === "price" ? mainName() + (isTotalType() ? "" : "（" + unitLabel() + "あたり）")
+  const fmtB = v => S.color === "price" ? (isTotalType() ? fmtMan(v) : man(conv(v)).toFixed(0) + "万円") : v < 1 ? v.toFixed(2) : v.toFixed(1);
+  const title = S.color === "price" ? mainName()
     : S.color === "liq" ? "流動性（1000世帯あたりの年間件数）" : "1年あたりの件数";
   let h = `<b>${title}</b>`;
+  if (S.color === "price") h += `<div class="unitline">単位：${isTotalType() ? "万円（1件の総額）" : "万円/" + unitLabel()}</div>`;
   if (breaks.length && breaks[0] != null) {
     RAMP.forEach((c, i) => {
       const lo = i === 0 ? null : breaks[i - 1], hi = breaks[i];
-      const txt = i === 0 ? `〜${fmtB(hi)}` : i === RAMP.length - 1 ? `${fmtB(lo)}〜` : `${fmtB(lo)}〜${fmtB(hi)}`;
+      const lo2 = S.color === "price" && !isTotalType() ? fmtB(lo).replace(/万円$/, "") : fmtB(lo);   // 「100〜109万円」のように単位は後ろに1回
+      const txt = i === 0 ? `〜${fmtB(hi)}` : i === RAMP.length - 1 ? `${fmtB(lo)}〜` : `${lo2}〜${fmtB(hi)}`;
       h += `<div class="row"><i style="background:${c}"></i>${txt}</div>`;
     });
   }
@@ -696,7 +770,7 @@ function breakdown(rows, keyFn, order, labels, valFn = mainVal, total = isTotalT
   if (!list.length) return `<p class="muted">データなし</p>`;
   const max = Math.max(...list.map(x => x.med));
   const f = v => total ? fmtMan(v) : fmtUnitHtml(v);
-  return `<table><thead><tr><th></th><th>件数</th><th>${total ? "総額" : "単価"}（中央値）</th><th></th></tr></thead><tbody>` +
+  return `<table><thead><tr><th></th><th>件数</th><th>${colName(total)}の中央値</th><th></th></tr></thead><tbody>` +
     list.map(x => `<tr class="${x.n < MIN_N ? "few" : ""}"><td>${x.label}</td><td>${x.n}</td><td>${f(x.med)}</td>` +
       `<td class="bar"><div class="barw"><span style="width:${(x.med / max * 100).toFixed(0)}%"></span></div></td></tr>`).join("") +
     `</tbody></table>`;
@@ -756,7 +830,7 @@ function bindMarket(P) {
 function detailHtml() {
   const k = S.sel, t = TOWN[k];
   let h = `<button id="back" class="btn link">← 町の一覧へ</button><h2>${esc(wardOf(k))} ${esc(townName(k))}</h2>`;
-  h += `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div>`;
+  h += `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div><p class="unitnote">${unitText()}</p>`;
   if (!t) return h + `<p class="warnline">この条件では取引がありません。条件をゆるめてください。</p>` + cpCompareHtml(ALL.filter(r => r.k === k)) + mineInTown(k);
   if (t.n < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満なので「参考値」です。数字が大きくぶれることがあります。</p>`;
   const y = C.yoy(ALL, k, S, QUARTERS);
@@ -915,7 +989,7 @@ function circleHtml(list) {
   }
   if (rings.length > 1) {
     const f = v => isTotalType() ? fmtMan(v) : fmtUnitHtml(v);
-    h += `<h3>距離ごとの比較</h3><table><thead><tr><th>中心から</th><th>件数</th><th>${isTotalType() ? "総額" : "単価"}（中央値）</th></tr></thead><tbody>` +
+    h += `<h3>距離ごとの比較</h3><table><thead><tr><th>中心から</th><th>件数</th><th>${colName()}の中央値</th></tr></thead><tbody>` +
       rings.map(d => { const r = rows.filter(x => INSIDE[x.k] <= d), v = r.map(mainVal);
         return `<tr class="${r.length < MIN_N ? "few" : ""}"><td>${d < 1 ? d * 1000 + "m" : d + "km"}以内</td><td>${r.length}</td><td>${r.length ? f(median(v)) : "—"}</td></tr>`; }).join("") + `</tbody></table>`;
   }
@@ -939,7 +1013,7 @@ function listHtml() {
   const mt = mineByTown();
   if (INSIDE) list.sort((a, b) => INSIDE[a[0]] - INSIDE[b[0]]);
   let h = (INSIDE ? circleHtml(list) : "") + choseiNote();
-  h += `<h2>町の一覧</h2><div class="muted">${C.TYPES[S.type].label}／${esc(condText())}<br>地図の町をタップ（クリック）すると、くわしい相場が出ます。</div>`;
+  h += `<h2>町の一覧</h2><div class="muted">${C.TYPES[S.type].label}／${esc(condText())}<br>地図の町をタップ（クリック）すると、くわしい相場が出ます。</div><p class="unitnote">${unitText()}</p>`;
   const total = list.reduce((s, [, t]) => s + t.n, 0);
   h += `<p class="muted">この条件の取引：${total.toLocaleString()}件・${list.length}町（${esc(S.cities.map(cityName).join("・"))}）</p>`;
   const noData = S.cities.filter(c => CITY_INFO[c] && !CITY_INFO[c].n);
@@ -947,7 +1021,7 @@ function listHtml() {
   const noType = S.cities.filter(c => CITY_INFO[c] && CITY_INFO[c].n && !CITY_INFO[c].byType[S.type]);
   if (noType.length) h += `<p class="note caution">${esc(noType.map(cityName).join("・"))}は、「${C.TYPES[S.type].short}」の価格データがまだ入っていません（ほかの種類だけ入っています）。国のサイトで種類「${S.type === "中古マンション等" ? "中古マンション等" : "すべて"}」を選んでCSVを取り、置きなおしてください。</p>`;
   if (!list.length) return h + `<p class="warnline">この条件では取引がありません。</p>`;
-  h += `<div class="tablewrap"><table id="townList"><thead><tr><th>町</th><th>件数</th><th>${isTotalType() ? "総額" : "単価"}</th><th>流動性</th></tr></thead><tbody>` +
+  h += `<div class="tablewrap"><table id="townList"><thead><tr><th>町</th><th>件数</th><th>${colName()}</th><th>流動性</th></tr></thead><tbody>` +
     list.map(([k, t]) => `<tr data-k="${esc(k)}" class="${t.n < MIN_N ? "few" : ""}"><td>${esc(townName(k))}<span class="muted">（${esc(wardOf(k))}${INSIDE ? "・約" + INSIDE[k].toFixed(1) + "km" : ""}）</span>${mt[k] ? `<span class="minemark">記録${mt[k].length}</span>` : ""}</td><td>${t.n}</td><td>${fmtMain(t.med)}</td><td class="stars">${t.n < MIN_N ? '<span class="muted">参考値</span>' : t.stars ? "★".repeat(t.stars) : '<span class="muted" title="世帯数のデータが無い町">—</span>'}</td></tr>`).join("") +
     `</tbody></table></div>` + liqExplain();
   return h;
