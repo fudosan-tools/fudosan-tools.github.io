@@ -26,7 +26,7 @@
   };
   // 高度地区。1〜4 は東京都のデータの番号。0 は「国のデータで、種類・高さが分からない高度地区」
   var KOUDO = {
-    0: { name: "高度地区（種類・高さはデータに無い）", base: null },
+    0: { name: "高度地区（種類・最高高さは未収録）", base: null },
     1: { name: "第1種高度地区", base: 5, s1: 0.6, s2: 0.6, brk: 0 },
     2: { name: "第2種高度地区", base: 5, s1: 1.25, s2: 0.6, brk: 8 },
     3: { name: "第3種高度地区", base: 10, s1: 1.25, s2: 0.6, brk: 8 },
@@ -197,7 +197,7 @@
     res.boukaEdgeM = b.length ? distToEdge(b[0], lon, lat, cr) : null;
 
     res.chiku = findAll(db.chiku, lon, lat).map(function (f) {
-      return { name: f.p[0] || "名前がデータに無い地区計画", ha: f.p[1], first: ymd(f.p[2]), last: ymd(f.p[3]), contact: f.p[4] };
+      return { name: f.p[0] || "地区計画（名称未収録）", ha: f.p[1], first: ymd(f.p[2]), last: ymd(f.p[3]), contact: f.p[4] };
     });
     res.chikuState = res.chiku.length ? "yes" : availState(res.muni, "chiku");
     res.fuchi = findAll(db.fuchi, lon, lat).map(function (f) { return { name: f.p[0] || "風致地区", no: f.p[1] }; });
