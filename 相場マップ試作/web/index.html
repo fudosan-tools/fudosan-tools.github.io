@@ -100,20 +100,24 @@
   details.explain { margin: 14px 0; font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--rule); padding-top: 8px; }
   details.explain summary { cursor: pointer; color: var(--accent); }
   details.explain p { margin: 6px 0 0; line-height: 1.7; }
-  #panel details.blk > summary { list-style: none; cursor: pointer; position: relative; }
-  #panel details.blk > summary::-webkit-details-marker { display: none; }
-  #panel details.blk > summary h3 { padding-right: 22px; }
-  #panel details.blk > summary::after { content: "＋"; position: absolute; right: 2px; bottom: 6px; font-size: 12px; color: var(--accent); }
-  #panel details.blk[open] > summary::after { content: "－"; }
-  #panel details.blk:not([open]) > summary h3 { color: var(--ink-2); font-weight: 600; }
-  #panel details.notes { margin: 6px 0 2px; font-size: 12px; color: var(--ink-2); }
-  #panel details.notes > summary { cursor: pointer; color: var(--accent); font-size: 12px; }
-  #panel details.notes p { margin: 4px 0; }
-  #panel details.srcbox { margin-top: 22px; }
-  #panel details.srcbox > summary { cursor: pointer; color: var(--accent); font-size: 12px; }
-  #townList td.stars .rk { color: var(--ink-2); letter-spacing: 0; font-size: 11px; }
+  #panel section.cat { margin-top: 26px; scroll-margin-top: 60px; }
+  /* 条件別の表は、どの表も同じ列の幅にそろえる */
+  #panel table.bd { table-layout: fixed; width: 100%; }
+  #panel table.bd col.c1 { width: 36%; } #panel table.bd col.c2 { width: 13%; } #panel table.bd col.c3 { width: 33%; } #panel table.bd col.c4 { width: 18%; }
+  #panel table.bd td:first-child, #panel table.bd th:first-child { white-space: normal; text-align: left; }
+  #panel table.bd td:nth-child(2), #panel table.bd td:nth-child(3), #panel table.bd th.num { text-align: right; }
+  #panel h2.cathead { font-size: 15px; margin: 0 0 4px; padding: 6px 10px; background: var(--accent-weak, #eef3fb); border-left: 5px solid var(--accent); }
+  #panel section.cat > section.blk:first-of-type > h3 { margin-top: 10px; }
+  #panel nav.catnav { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 4px; }
+  #panel nav.catnav button { font: inherit; font-size: 12px; padding: 4px 9px; border: 1px solid var(--rule-strong); background: #fff; color: var(--ink); border-radius: 2px; cursor: pointer; }
+  #panel nav.catnav button:hover { border-color: var(--accent); color: var(--accent); }
+  #panel .noteitem { font-size: 12px; color: var(--ink-2); line-height: 1.7; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+  #panel .noteitem h4 { font-size: 12.5px; margin: 0 0 2px; color: var(--ink); }
+  #panel .noteitem p, #panel .noteitem ol { margin: 2px 0; font-size: 12px; }
+  @media print { #panel nav.catnav { display: none !important; } #panel h2.cathead { -webkit-print-color-adjust: exact; print-color-adjust: exact; break-after: avoid; } }
   #panel table.rank td .pc { display: block; font-size: 11px; color: var(--muted); }
   #panel table.rank th { font-size: 12px; font-weight: 600; }
+  #panel table.rank td:first-child { white-space: nowrap; }
   #panel table.rank td .of { color: var(--muted); font-size: 11.5px; margin-left: 2px; }
   footer.src { font-size: 11px; color: var(--muted); margin-top: 26px; line-height: 1.7; border-top: 1px solid var(--rule); padding-top: 10px; }
   /* 目安の計算・登録した成約例の入力 */
@@ -939,7 +943,7 @@ function breakdown(rows, keyFn, order, labels, valFn = mainVal, total = isTotalT
   if (!list.length) return `<p class="muted">データなし</p>`;
   const max = Math.max(...list.map(x => x.med));
   const f = v => total ? fmtMan(v) : fmtUnitHtml(v);
-  return `<table><thead><tr><th></th><th>件数</th><th>${colName(total)}の中央値<span class="alt">最小〜最大</span></th><th></th></tr></thead><tbody>` +
+  return `<table class="bd"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup><thead><tr><th>区分</th><th class="num">件数</th><th class="num">中央値<span class="alt">最小〜最大</span></th><th></th></tr></thead><tbody>` +
     list.map(x => `<tr class="${x.n < MIN_N ? "few" : ""}"><td>${x.label}</td><td>${x.n}</td><td>${f(x.med)}<span class="alt mm">${fmtRng(x.st.min, x.st.max)}</span></td>` +
       `<td class="bar"><div class="barw"><span style="width:${(x.med / max * 100).toFixed(0)}%"></span></div></td></tr>`).join("") +
     `</tbody></table>`;
@@ -976,32 +980,74 @@ function baseLand(k) {
   return null;
 }
 
-// 開いておく見出し（ほかは閉じて、見出しを押すと開く）
-const OPEN_BLK = /^(この地点の都市計画|流動性ランキング|賃貸の相場|現在募集する場合の想定家賃)/;
-function foldNotes(box) {
-  const notes = [...box.querySelectorAll(":scope > p.muted.small, :scope > p.note, :scope > .lhpart > p.muted.small")];
-  if (!notes.length || (notes.length === 1 && notes[0].textContent.length < 70)) return;
-  const d = document.createElement("details"); d.className = "notes"; d.innerHTML = "<summary>注記</summary>";
-  notes.forEach(n => d.append(n)); box.append(d);
-}
+// 画面の整理（2026-11-17 SHUさん「何故閉じてる項目があるの？内容を整理して項目別で分けて」）
+// 折りたたみはやめ、全部開いたまま「項目」ごとにまとめる。長い説明は最後の「算出方法と注記」へ集める。上に項目への移動ボタンを置く
+const CATS = [
+  ["zoning", "この地点の都市計画", /^この地点の都市計画/],
+  ["rank", "流動性ランキング", /^流動性ランキング/],
+  ["list", "町の一覧", null],
+  ["compare", "種類別の比較（土地・戸建・マンション）", /の比較（|^古家付きの可能性/],
+  ["bldg", "広さ・建物の条件別", /^(間取り別|築年数別|構造別|面積別)/],
+  ["land", "土地の条件別", /^(土地の形状別|前面道路別|前面道路の幅員別|間口別|.+全体の価格差)/],
+  ["loc", "立地別（駅・距離・都市計画）", /^(駅徒歩分数別|距離別の比較|駅数別の比較|駅別の相場|主な最寄駅|都市計画区分別)/],
+  ["time", "年別の推移", /^年別/],
+  ["rent", "賃貸の相場", /^(賃貸の相場|現在募集する場合|.+の想定家賃)/],
+  ["notes", "算出方法と注記", null],
+];
+const SHORT_NOTE = 70;   // これより短い説明は、その場に残す
 function groupBlocks(P) {
+  // 1) 見出し（h3）ごとに、次の見出しまでを1つのかたまりにする
   const stop = n => n.nodeType === 1 && (/^(H2|H3|FOOTER|SECTION|DETAILS)$/.test(n.tagName) || n.classList.contains("explain") || n.classList.contains("tablewrap"));
   [...P.querySelectorAll(":scope > h3")].forEach(h => {
-    const box = document.createElement("details"); box.className = "blk";
-    if (h.textContent.includes("の比較（")) box.classList.add("split");   // 長いので、中の部品ごとに切れないようにする
-    if (OPEN_BLK.test(h.textContent)) box.open = true;
-    const sum = document.createElement("summary");
-    h.before(box); box.append(sum); sum.append(h);
+    const box = document.createElement("section"); box.className = "blk";
+    if (h.textContent.includes("の比較（")) box.classList.add("split");
+    h.before(box); box.append(h);
     while (box.nextSibling && !stop(box.nextSibling)) box.append(box.nextSibling);
-    foldNotes(box);
   });
-  P.querySelectorAll(":scope > section.blk").forEach(foldNotes);
+  // 2) かたまりを項目に振り分ける。長い説明はぬき出して「算出方法と注記」へ
+  const bins = {}; CATS.forEach(([k]) => bins[k] = []);
+  const head = [], noteOf = (label, nodes) => { if (nodes.length) bins.notes.push([label, nodes]); };
+  let seenBlock = false, srcFoot = null;
+  [...P.children].forEach(el => {
+    if (el.classList.contains("srcbox")) { srcFoot = el.querySelector("footer"); el.remove(); return; }
+    if (el.matches("section.blk")) {
+      seenBlock = true;
+      const h = el.querySelector("h3"), title = h ? (h.childNodes[0] || h).textContent : "", cat = CATS.find(([, , re]) => re && re.test(title));
+      const long = [...el.querySelectorAll(":scope > p.muted.small, :scope > p.note, :scope > .lhpart > p.muted.small")].filter(n => n.textContent.length >= SHORT_NOTE);
+      noteOf(title.replace(/[（(].*$/, ""), long);
+      bins[cat ? cat[0] : "loc"].push(el); return;
+    }
+    if (el.matches("details.explain")) { const sm = el.querySelector("summary"); noteOf(sm ? sm.textContent : "", [...el.childNodes].filter(n => n !== sm)); el.remove(); return; }
+    if (el.matches("h2") && seenBlock) { el.remove(); return; }   // 半径の画面の「範囲内の町」の見出しは、項目の見出しに置きかえる
+    if (el.classList.contains("tablewrap") || (el.matches("p.muted") && el.textContent.startsWith("該当する取引"))) { bins.list.push(el); return; }
+    if (el.matches("p.muted.small, p.note") && el.textContent.length >= SHORT_NOTE) { noteOf("全体", [el]); el.remove(); return; }
+    head.push(el);
+  });
+  // 3) 組み立てなおす：頭の部分 → 項目への移動ボタン → 項目ごと → 出典
+  P.innerHTML = ""; head.forEach(e => P.append(e));
+  const used = CATS.filter(([k]) => bins[k].length);
+  const nav = document.createElement("nav"); nav.className = "catnav";
+  nav.innerHTML = used.map(([k, t]) => `<button type="button" data-cat="${k}">${esc(k === "list" && INSIDE ? "範囲内の町" : t.replace(/（.*$/, ""))}</button>`).join("");
+  if (used.length > 1) P.append(nav);
+  used.forEach(([k, t]) => {
+    const sec = document.createElement("section"); sec.className = "cat"; sec.id = "cat-" + k;
+    sec.innerHTML = `<h2 class="cathead">${esc(k === "list" && INSIDE ? "範囲内の町" : t)}</h2>`;
+    if (k === "notes") bins.notes.forEach(([label, nodes]) => { const d = document.createElement("div"); d.className = "noteitem"; d.innerHTML = label ? `<h4>${esc(label)}</h4>` : ""; nodes.forEach(n => d.append(n)); sec.append(d); });
+    else bins[k].forEach(e => {
+      // 項目の見出しと同じ言葉で始まる小見出しは、重ならないように残りだけにする（「流動性ランキング（土地・堀切）」→「土地・堀切」、「年別」→ 消す）
+      const h = e.querySelector(":scope > h3"), base = t.replace(/（.*$/, ""), first = h && h.childNodes[0];
+      if (h && h.childNodes.length === 1 && base.startsWith(h.textContent)) h.remove();   // 「年別の推移」の中の「年別」
+      else if (first && first.nodeType === 3 && first.textContent.startsWith(base)) {
+        const rest = first.textContent.slice(base.length).replace(/^（(.*)）$/, "$1");
+        if (rest) first.textContent = rest; else if (h.childNodes.length === 1) h.remove(); else first.textContent = "";
+      }
+      sec.append(e);
+    });
+    P.append(sec);
+  });
+  if (srcFoot) P.append(srcFoot);
+  nav.querySelectorAll("button").forEach(b => b.onclick = () => document.getElementById("cat-" + b.dataset.cat).scrollIntoView({ behavior: "smooth", block: "start" }));
 }
-// PDFでは、閉じたかたまりも全部開いて出す（終わったら元にもどす）
-let PRINT_CLOSED = [];
-function openForPrint() { const c = [...document.querySelectorAll("#panel details:not([open])")]; c.forEach(d => d.open = true); PRINT_CLOSED = PRINT_CLOSED.concat(c); }
-window.addEventListener("beforeprint", openForPrint);
-window.addEventListener("afterprint", () => { PRINT_CLOSED.forEach(d => d.open = false); PRINT_CLOSED = []; });
 function renderPanel() {
   const P = document.getElementById("panel");
   // 目安の計算・成約例の登録のタブは外した（2026-11-17）。相場の画面だけを出す
