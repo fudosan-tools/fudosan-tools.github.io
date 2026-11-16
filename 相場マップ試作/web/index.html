@@ -21,6 +21,9 @@
   .title h1 { font-size: 20px; margin: 0; }
   .title .sub { color: var(--muted); font-size: 12px; }
   #toggleFilters { margin-left: auto; display: none; }
+  .filters:not(.advopen) .adv { display: none !important; }
+  #advBtn { align-self: flex-end; font-size: 12.5px; }
+  @media print { #advBtn { display: none !important; } }
   .areapick { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; align-items: end; }
   .areapick label, .filters label { display: flex; flex-direction: column; font-size: 11px; color: var(--ink-2); gap: 3px; }
   .areapick select { width: auto; max-width: 200px; font-size: 13px; padding: 5px 8px; }
@@ -73,10 +76,12 @@
   #panel .tabs .seg button { min-height: 34px; }
   #panel h2 { font-size: 20px; margin: 10px 0 2px; padding: 0; border: 0; display: block; }
   #panel h3 { font-size: 13px; margin: 22px 0 6px; color: var(--ink); border-bottom: 1px solid var(--rule-strong); padding-bottom: 4px; }
-  #panel .figures { margin-top: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  #panel .figure { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--rule); }
-  #panel .figure:nth-child(odd) { border-right: 1px solid var(--rule); }
-  #panel .figure:nth-child(even) { padding-left: 12px; border-right: 0; }
+  #panel .figures { margin-top: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #panel .figure { padding: 8px 10px; border-bottom: 1px solid var(--rule); border-right: 1px solid var(--rule); }
+  #panel .figure:last-child { border-right: 0; }
+  #panel .figures > .figure:nth-child(2) { padding-left: 0 !important; }
+  #panel .figure.main + .figure:last-child { grid-column: 1 / -1; }
+  #panel .figure.main { grid-column: 1 / -1; border-right: 0; padding-left: 0; }
   #panel .figure .v { font-size: 21px; }
   .alt { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
   .warnline { font-size: 12.5px; color: var(--alert); margin: 10px 0; }
@@ -94,6 +99,20 @@
   #townList tbody tr:hover td { background: var(--accent-weak); }
   details.explain { margin: 14px 0; font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--rule); padding-top: 8px; }
   details.explain summary { cursor: pointer; color: var(--accent); }
+  details.explain p { margin: 6px 0 0; line-height: 1.7; }
+  #panel details.blk > summary { list-style: none; cursor: pointer; position: relative; }
+  #panel details.blk > summary::-webkit-details-marker { display: none; }
+  #panel details.blk > summary h3 { padding-right: 22px; }
+  #panel details.blk > summary::after { content: "＋"; position: absolute; right: 2px; bottom: 6px; font-size: 12px; color: var(--accent); }
+  #panel details.blk[open] > summary::after { content: "－"; }
+  #panel details.blk:not([open]) > summary h3 { color: var(--ink-2); font-weight: 600; }
+  #panel details.notes { margin: 6px 0 2px; font-size: 12px; color: var(--ink-2); }
+  #panel details.notes > summary { cursor: pointer; color: var(--accent); font-size: 12px; }
+  #panel details.notes p { margin: 4px 0; }
+  #panel details.srcbox { margin-top: 22px; }
+  #panel details.srcbox > summary { cursor: pointer; color: var(--accent); font-size: 12px; }
+  #townList td.stars .rk { color: var(--ink-2); letter-spacing: 0; font-size: 11px; }
+  #panel table.rank td .of { color: var(--muted); font-size: 11.5px; margin-left: 2px; }
   footer.src { font-size: 11px; color: var(--muted); margin-top: 26px; line-height: 1.7; border-top: 1px solid var(--rule); padding-top: 10px; }
   /* 目安の計算・登録した成約例の入力 */
   #panel .formrows .fr { grid-template-columns: 7.5em minmax(0, 1fr); padding: 8px 0; }
@@ -200,7 +219,8 @@
     #printFoot { display: block; margin-top: 6mm; padding-top: 2mm; border-top: 1px solid #999; font-size: 9pt; color: #333; break-inside: avoid; }
     #panel .typebadge { display: none; }   /* PDFでは頭に1回だけ出す */
     #panel .lhbars, #panel .lhcards, .typebadge, h3.renttype, .rbar, .rbar i, .rbar b { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    #panel section.blk.split { break-inside: auto !important; page-break-inside: auto !important; }
+    #panel section.blk.split, #panel details.blk.split { break-inside: auto !important; page-break-inside: auto !important; }
+    #panel details > summary::after, #panel details.notes > summary, #panel details.explain > summary, #panel details.srcbox > summary { display: none !important; }
     #panel .lhpart, #panel .lhcard { break-inside: avoid; page-break-inside: avoid; }
     #panel section.blk.split > h3 { break-after: avoid; page-break-after: avoid; }
     #panel .blk, #panel .figures, #panel table.kv, #panel .unitnote, #panel .explain, #panel footer.src { break-inside: avoid; page-break-inside: avoid; }
@@ -363,6 +383,7 @@
           <option value="private">私道を含む取引のみ</option>
         </select>
       </label>
+      <button id="advBtn" class="btn" type="button" aria-expanded="false">詳細条件 ▾</button>
     </div>
   </header>
   <div id="printHead"></div>
@@ -462,11 +483,11 @@ const perUnit = () => "1" + unitLabel() + "あたり";
 const mainName = () => isTotalType() ? "取引価格（土地と建物の合計）の中央値" : (S.type === "宅地(土地)" ? `土地の単価（土地${perUnit()}・中央値）` : `単価（専有面積${perUnit()}・中央値）`);
 const colName = (total = isTotalType()) => total ? "取引価格（土地＋建物の合計）" : "単価（" + (S.type === "中古マンション等" ? "専有面積" : "土地") + perUnit() + "）";
 // 「主な価格帯」＝安い方から25%〜75%（取引の半分がこの間に入る）
-const rangeLabel = () => "主な価格帯（四分位範囲：中央の50%）";
+const rangeLabel = () => "主な価格帯（中央50%）";
 // 数字の単位の説明（画面の一覧とPDFの頭に出す）
 const unitText = () => isTotalType()
-  ? "金額は1件ごとの取引価格（土地・建物の合計、万円）です。面積は土地面積です。"
-  : `単価は${S.type === "宅地(土地)" ? "土地" : "専有面積"}1${unitLabel()}あたりの金額（万円/${unitLabel()}）です。小さい文字は1${otherLabel()}あたりの金額です（1坪＝約3.31㎡）。`;
+  ? "金額：1件あたりの取引価格（土地・建物の合計）"
+  : `単位：${S.type === "宅地(土地)" ? "土地" : "専有面積"}1${unitLabel()}あたり万円（小さい文字は1${otherLabel()}あたり）`;
 const median = C.median, quant = C.quant, stats = C.stats, tmed = C.tmed;
 const townName = k => k.split("|")[1];
 const cityName = code => CITY_INFO[code] ? CITY_INFO[code].name : code;
@@ -476,10 +497,10 @@ const wardOf = k => cityName(k.split("|")[0]);
 const CITY = {}, PENDING = {};
 // 流動性の順位（scripts/build_liq_rank.js で前もって数えたもの）。市区町村のデータといっしょに読む
 const LIQR = {};
-window.SOUBA_LIQ = { add(o) { LIQR[o.code] = o; if ((S.sel && S.sel.startsWith(o.code + "|")) || (INSIDE && S.cities.includes(o.code))) renderPanel(); } };
+window.SOUBA_LIQ = { add(o) { LIQR[o.code] = o; if ((S.sel && S.sel.startsWith(o.code + "|")) || S.cities.includes(o.code)) renderPanel(); } };
 function loadLiq(code) {
   if (LIQR[code] || document.querySelector(`script[data-liq="${code}"]`)) return;
-  const s = document.createElement("script"); s.src = "data/l_" + code + ".js"; s.dataset.liq = code; s.onerror = () => {}; document.head.appendChild(s);
+  const s = document.createElement("script"); s.src = "data/l_" + code + ".js"; s.dataset.liq = code; s.onerror = () => window.SOUBA_LIQ.add({ code, n: [], t: {} }); document.head.appendChild(s);   // 順位の対象になる町が無い市区町村は、ファイルが無いので空で入れる
 }
 window.SOUBA = { add(o) { const c = C.decodeCity(o); CITY[c.code] = c; if (PENDING[c.code]) { PENDING[c.code](c); delete PENDING[c.code]; } } };
 function loadCity(code) {
@@ -562,18 +583,20 @@ async function applyStation(fit = true) {
 
 // ---------- 円（半径）。国のデータは町ごとなので、町の代表点が円の中にある町と、中心が入っている町を数える ----------
 let INSIDE = null;          // 町 → 中心からの距離（km）。円を使わないときは null
+let CENTER_TOWN = null;     // 中心地点を含む町
 const TOWN_RINGS = {};      // 町 → 外側の線の並び
 const TOWN_CENTER = {};     // 町 → 代表点
 const circleOn = () => !!(S.center && S.km);
 function computeInside() {
+  CENTER_TOWN = null;
   if (STN) { const out = {}; ALL.forEach(r => { const h = rowHop(r); if (h != null && (out[r.k] == null || h < out[r.k])) out[r.k] = h; }); INSIDE = out; return; }
   if (!circleOn()) { INSIDE = null; return; }
   const km = +S.km, out = {};
   S.cities.forEach(code => { const c = CITY[code]; if (!c) return;
     c.towns.forEach(t => { const p = TOWN_CENTER[t.key]; if (!p) return;
-      const d = C.distKm(S.center, p);
-      if (d <= km) out[t.key] = d;
-      else if (TOWN_RINGS[t.key].some(r => C.inRing(S.center, r))) out[t.key] = 0; }); });
+      const d = C.distKm(S.center, p), here = TOWN_RINGS[t.key].some(r => C.inRing(S.center, r));
+      if (here) { CENTER_TOWN = t.key; out[t.key] = Math.min(d, km); }
+      else if (d <= km) out[t.key] = d; }); });
   INSIDE = out;
 }
 function citiesInCircle() {
@@ -643,7 +666,7 @@ function zoningHtml() {
   rows.push(["用途地域", y ? esc(y.name) + (r.youtoMixed ? "（付近で複数の用途地域にまたがっています）" : "") : "指定なし"]);
   if (y) {
     rows.push(["建ぺい率", `<b>${pct(y.kenpei)}</b>${y.fill2019 ? "（2019年のデータで補完）" : ""}`]);
-    rows.push(["容積率", `<b>${pct(y.youseki)}</b>${y.youseki > 0 ? `<span class="alt">前面道路の幅員が12m未満の場合は「前面道路幅員×${y.kind === "res" ? "4/10" : "6/10"}」と比較して小さい方が上限（例：幅員4mの場合は${4 * (y.kind === "res" ? 40 : 60)}%${4 * (y.kind === "res" ? 40 : 60) < y.youseki ? `に制限` : `のため、指定容積率${y.youseki}%のまま`}）</span>` : ""}`]);
+    rows.push(["容積率", `<b>${pct(y.youseki)}</b>${y.youseki > 0 ? `<span class="alt">前面道路12m未満は幅員×${y.kind === "res" ? "4/10" : "6/10"}と比較（幅員4mで${4 * (y.kind === "res" ? 40 : 60)}%）</span>` : ""}`]);
   }
   rows.push(["防火・準防火地域", esc(r.bouka ? r.bouka.name : "—")]);
   rows.push(["高度地区", r.koudo ? esc(r.koudo.name) + (r.koudo.max > 0 ? `（最高高さ ${r.koudo.max}m）` : "") : r.koudoState === "nodata" ? "データなし（役所で確認）" : "指定なし"]);
@@ -829,6 +852,7 @@ function printPdf() {
       map.invalidateSize(false); map.setView(view.c, view.z, { animate: false });
     };
     window.addEventListener("afterprint", back);
+    openForPrint();
     window.print();
   };
   let tl = null; map.eachLayer(l => { if (l instanceof L.TileLayer) tl = l; });
@@ -950,15 +974,32 @@ function baseLand(k) {
   return null;
 }
 
-function groupBlocks(P) {
-  const stop = n => n.nodeType === 1 && (/^(H2|H3|FOOTER|SECTION)$/.test(n.tagName) || n.classList.contains("explain"));
-  [...P.querySelectorAll(":scope > h3")].forEach(h => {
-    const box = document.createElement("section"); box.className = "blk";
-    if (h.textContent.includes("の比較（")) box.classList.add("split");   // 長いので、中の部品ごとに切れないようにする
-    h.before(box); box.append(h);
-    while (box.nextSibling && !stop(box.nextSibling)) box.append(box.nextSibling);
-  });
+// 開いておく見出し（ほかは閉じて、見出しを押すと開く）
+const OPEN_BLK = /^(この地点の都市計画|流動性ランキング|賃貸の相場|現在募集する場合の想定家賃)/;
+function foldNotes(box) {
+  const notes = [...box.querySelectorAll(":scope > p.muted.small, :scope > p.note, :scope > .lhpart > p.muted.small")];
+  if (!notes.length || (notes.length === 1 && notes[0].textContent.length < 70)) return;
+  const d = document.createElement("details"); d.className = "notes"; d.innerHTML = "<summary>注記</summary>";
+  notes.forEach(n => d.append(n)); box.append(d);
 }
+function groupBlocks(P) {
+  const stop = n => n.nodeType === 1 && (/^(H2|H3|FOOTER|SECTION|DETAILS)$/.test(n.tagName) || n.classList.contains("explain") || n.classList.contains("tablewrap"));
+  [...P.querySelectorAll(":scope > h3")].forEach(h => {
+    const box = document.createElement("details"); box.className = "blk";
+    if (h.textContent.includes("の比較（")) box.classList.add("split");   // 長いので、中の部品ごとに切れないようにする
+    if (OPEN_BLK.test(h.textContent)) box.open = true;
+    const sum = document.createElement("summary");
+    h.before(box); box.append(sum); sum.append(h);
+    while (box.nextSibling && !stop(box.nextSibling)) box.append(box.nextSibling);
+    foldNotes(box);
+  });
+  P.querySelectorAll(":scope > section.blk").forEach(foldNotes);
+}
+// PDFでは、閉じたかたまりも全部開いて出す（終わったら元にもどす）
+let PRINT_CLOSED = [];
+function openForPrint() { const c = [...document.querySelectorAll("#panel details:not([open])")]; c.forEach(d => d.open = true); PRINT_CLOSED = PRINT_CLOSED.concat(c); }
+window.addEventListener("beforeprint", openForPrint);
+window.addEventListener("afterprint", () => { PRINT_CLOSED.forEach(d => d.open = false); PRINT_CLOSED = []; });
 function renderPanel() {
   const P = document.getElementById("panel");
   // 目安の計算・成約例の登録のタブは外した（2026-11-17）。相場の画面だけを出す
@@ -980,10 +1021,10 @@ function mainFigure(st) {
   return `<div class="figure main"><div class="k">${mainName()}</div><div class="v">${fmtMain(st.med)}</div>
     <div class="s">${rangeLabel()}：${fmtRng(st.q1, st.q3)}</div>
     <div class="s">最小〜最大：${fmtRng(st.min, st.max)}</div>
-    <div class="s">外れ値として除外：${out ? `${st.nHi ? `高値側 ${st.nHi}件` : ""}${st.nHi && st.nLo ? "・" : ""}${st.nLo ? `安値側 ${st.nLo}件` : ""}（全${st.nAll}件中）` : st.nAll < 5 ? `なし（${st.nAll}件のため判定対象外）` : "なし"}</div></div>`;
+    <div class="s">外れ値除外：${out ? `${[st.nHi ? `高値${st.nHi}件` : "", st.nLo ? `安値${st.nLo}件` : ""].filter(Boolean).join("・")}／全${st.nAll}件` : st.nAll < 5 ? "なし（4件以下は判定せず）" : "なし"}</div></div>`;
 }
 function outlierNote() {
-  return `<p class="muted small">中央値・主な価格帯・最小〜最大は、外れ値を除外して算出しています。外れ値は、隣地の買い増しや開発用地の取りまとめ等の特殊事情による極端な高値、擁壁・再建築不可・訳あり物件等の事情による極端な安値を想定しています。判定方法：価格比率の四分位（下位25%・上位25%の境界）を求め、その外側に四分位範囲の1.5倍（取引が5〜9件の場合は3倍）以上離れた取引を除外します。取引が4件以下の場合は除外しません。</p>`;
+  return `<details class="explain"><summary>外れ値の除外方法</summary><p>中央値・価格帯・最小〜最大は外れ値を除いて算出。高値側は隣地の買い増し・開発用地等、安値側は擁壁・再建築不可・訳あり等を想定。価格の四分位範囲の1.5倍（5〜9件は3倍）を超えて離れた取引を除外し、4件以下は除外しません。</p></details>`;
 }
 function detailHtml() {
   const k = S.sel, t = TOWN[k];
@@ -993,18 +1034,17 @@ function detailHtml() {
   if (t.n < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満のため参考値です。数値が大きく変動する可能性があります。</p>`;
   const y = C.yoy(ALL, k, S, QUARTERS);
   const liqText = t.liq == null ? "世帯数のデータなし"
-    : (t.stars ? `${LIQ.n}町中 ${t.rank}位／1000世帯あたり 年${t.liq.toFixed(1)}件` : `1000世帯あたり 年${t.liq.toFixed(1)}件（件数不足のため★なし）`);
+    : `1000世帯あたり 年${t.liq.toFixed(1)}件${t.stars ? "" : "（件数不足）"}`;
   const fy = FULL.length >= 2 ? `${FULL[FULL.length - 1]}年÷${FULL[FULL.length - 1] - 1}年` : "";
   h += `<div class="figures">
     ${mainFigure(t.st)}
     <div class="figure"><div class="k">件数</div><div class="v">${t.n}<small>件</small></div><div class="s">年間 ${t.perYear.toFixed(1)}件</div></div>
     <div class="figure"><div class="k">流動性</div><div class="v stars">${t.stars ? "★".repeat(t.stars) + "☆".repeat(3 - t.stars) : "—"}</div>
       <div class="s">${liqText}</div></div>
-    <div class="figure"><div class="k">前年比（${fy}）</div>` +
-    (y ? `<div class="v ${y.p >= 0 ? "up" : "down"}">${pct(y.p)}</div><div class="s">件数 ${pct(y.c)}（${y.n1}→${y.n2}件）</div>`
+    <div class="figure"><div class="k">前年比</div>` +
+    (y ? `<div class="v ${y.p >= 0 ? "up" : "down"}">${pct(y.p)}</div><div class="s">${fy.replace("÷", "/")}・件数${y.n1}→${y.n2}件</div>`
        : `<div class="v">—</div><div class="s">いずれかの年が${MIN_N}件未満のため算出不可</div>`) + `</div></div>`;
-  h += outlierNote() + liqRankHtml(k);
-  if (isLandHouse()) h += landHouseHtml(ALL.filter(r => r.k === k), "この町");
+  h += liqRankHtml(k) + outlierNote();
   const rows = t.rows;
   if (isTotalType()) {
     h += `<table class="kv"><tbody><tr><td class="wrap">取引価格（土地＋建物）÷土地面積の単価（中央値）</td><td>${fmtUnitHtml(tmed(rows.map(r => r.unit)))}</td></tr>
@@ -1014,6 +1054,7 @@ function detailHtml() {
     h += `<table class="kv"><tbody><tr><td>取引価格（1件あたり・中央値）</td><td>${fmtMan(tmed(rows.map(r => r.price)))}</td></tr>
       <tr><td>${S.type === "宅地(土地)" ? "土地面積" : "専有面積"}（中央値）</td><td>${fmtArea(median(rows.map(r => r.area)))}</td></tr></tbody></table>`;
   }
+  if (isLandHouse()) h += landHouseHtml(ALL.filter(r => r.k === k), "この町");
   if (S.type === "宅地(土地と建物)" || S.type === "宅地(土地と建物・戸建以外)") h += oldHouseHtml(k, rows);
   if (S.type !== "宅地(土地)") {
     if (S.type === "中古マンション等") h += `<h3>間取り別</h3>` + breakdown(rows, r => C.planGroup(r.plan), Object.keys(PLAN_LABEL), PLAN_LABEL);
@@ -1123,6 +1164,7 @@ function circleRentHtml(km) {
 }
 // 半径・駅の画面の「中心の町」：中心からいちばん近い町（同じなら取引の多い町）
 function centerTown(list) {
+  if (CENTER_TOWN && INSIDE && INSIDE[CENTER_TOWN] != null) return CENTER_TOWN;
   if (!INSIDE || !list.length) return null;
   return [...list].sort((a, b) => INSIDE[a[0]] - INSIDE[b[0]] || b[1].n - a[1].n)[0][0];
 }
@@ -1135,9 +1177,9 @@ function circleHtml(list) {
   const vals = rows.map(mainVal), yrs = C.yearsInRange(S.year, QUARTERS), cst = stats(vals);
   h += `<div class="figures">${mainFigure(cst)}
     <div class="figure"><div class="k">件数</div><div class="v">${rows.length.toLocaleString()}<small>件</small></div><div class="s">年間 ${(rows.length / yrs).toFixed(1)}件・${list.length}町</div></div></div>`;
-  h += outlierNote();
   const ck = centerTown(list);
-  if (ck) h += liqRankHtml(ck, `中心の町：${wardOf(ck)} ${townName(ck)}`);
+  if (ck) h += liqRankHtml(ck, `中心の町：${townName(ck)}`);
+  h += outlierNote();
   if (isLandHouse()) h += landHouseHtml(scopeRows(), STN ? `${S.stn}から${S.stnN}駅先まで` : `半径${label}`);
   const rings = STN ? [] : ringList(km);
   if (STN) {
@@ -1173,18 +1215,20 @@ function listHtml() {
   const mt = mineByTown();
   if (INSIDE) list.sort((a, b) => INSIDE[a[0]] - INSIDE[b[0]]);
   let h = (INSIDE ? circleHtml(list) : "") + choseiNote();
-  h += `<h2>町の一覧</h2>` + typeBadge() + `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}<br>地図上の町を選択すると、詳細な相場を表示します。</div><p class="unitnote">${unitText()}</p>`;
+  h += INSIDE ? `<h2>範囲内の町</h2>` : `<h2>町の一覧</h2>` + typeBadge() + `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div><p class="unitnote">${unitText()}</p>`;
+  if (!INSIDE) h += S.cities.slice(0, 3).map(cityRankHtml).join("");
   const total = list.reduce((s, [, t]) => s + t.n, 0);
   h += `<p class="muted">該当する取引：${total.toLocaleString()}件・${list.length}町（${esc(S.cities.map(cityName).join("・"))}）</p>`;
-  if (isLandHouse() && !INSIDE) h += landHouseHtml(scopeRows(), S.cities.map(cityName).join("・") + "全体");
   const noData = S.cities.filter(c => CITY_INFO[c] && !CITY_INFO[c].n);
   if (noData.length) h += `<p class="note caution">${esc(noData.map(cityName).join("・"))}は価格データが未登録です（町の区域のみ表示）。データは準備中です。</p>`;
   const noType = S.cities.filter(c => CITY_INFO[c] && CITY_INFO[c].n && !CITY_INFO[c].byType[S.type]);
   if (noType.length) h += `<p class="note caution">${esc(noType.map(cityName).join("・"))}は「${C.TYPES[S.type].short}」の価格データが未登録です（他の種類のみ登録済み）。国のサイトで種類「${S.type === "中古マンション等" ? "中古マンション等" : "すべて"}」を選択してCSVを取得し、再配置してください。</p>`;
   if (!list.length) return h + `<p class="warnline">この条件に該当する売買取引はありません。</p>` + (INSIDE ? "" : rentCityHtml(S.cities));
-  h += `<div class="tablewrap"><table id="townList"><thead><tr><th>町</th><th>件数</th><th>${colName()}</th><th>流動性</th></tr></thead><tbody>` +
-    list.map(([k, t]) => `<tr data-k="${esc(k)}" class="${t.n < MIN_N ? "few" : ""}"><td>${esc(townName(k))}<span class="muted">（${esc(wardOf(k))}${INSIDE ? "・約" + INSIDE[k].toFixed(1) + "km" : ""}）</span></td><td>${t.n}</td><td>${fmtMain(t.med)}</td><td class="stars">${t.n < MIN_N ? '<span class="muted">参考値</span>' : t.stars ? "★".repeat(t.stars) : '<span class="muted" title="世帯数データなし">—</span>'}</td></tr>`).join("") +
+  h += `<div class="tablewrap"><table id="townList"><thead><tr><th>町</th><th>件数</th><th>${colName()}</th><th>流動性<span class="alt">市区町村内の順位</span></th></tr></thead><tbody>` +
+    list.map(([k, t]) => { const sub = [S.cities.length > 1 || INSIDE ? wardOf(k) : "", INSIDE ? "約" + INSIDE[k].toFixed(1) + "km" : ""].filter(Boolean).join("・"), rk = townRank(k);
+      return `<tr data-k="${esc(k)}" class="${t.n < MIN_N ? "few" : ""}"><td>${esc(townName(k))}${sub ? `<span class="muted">（${esc(sub)}）</span>` : ""}</td><td>${t.n}</td><td>${fmtMain(t.med)}</td><td class="stars">${t.n < MIN_N ? '<span class="muted">参考値</span>' : t.stars ? "★".repeat(t.stars) : '<span class="muted" title="世帯数データなし">—</span>'}${rk ? `<span class="alt rk">${rk}</span>` : ""}</td></tr>`; }).join("") +
     `</tbody></table></div>` + liqExplain();
+  if (isLandHouse() && !INSIDE) h += landHouseHtml(scopeRows(), S.cities.map(cityName).join("・") + "全体");
   if (!INSIDE) h += rentCityHtml(S.cities);
   return h;
 }
@@ -1343,33 +1387,39 @@ function rentCityHtml(codes, ctx) {
   });
   return h;
 }
+// 一覧の表に出す、町の市区町村内の順位（統一条件）
+function townRank(k) {
+  const M = window.SOUBA_LIQ_META, o = LIQR[k.split("|")[0]]; if (!M || !o) return "";
+  const ti = M.types.indexOf(S.type), v = o.t[townName(k)] && o.t[townName(k)][ti];
+  return v ? `${v[1]}位／${o.n[ti]}` : "";
+}
+const rankRow = (lab, r, n, unit) => `<tr><td>${esc(lab)}</td><td class="num"><b>${r.toLocaleString()}位</b><span class="of">／${n.toLocaleString()}${unit}</span></td><td class="num muted">上位${Math.max(1, Math.round(r / n * 100))}%</td></tr>`;
 function liqRankHtml(k, title) {
   const M = window.SOUBA_LIQ_META; if (!M) return "";
   const code = k.split("|")[0], ti = M.types.indexOf(S.type), o = LIQR[code];
-  let h = `<h3>流動性の順位（${esc(C.TYPES[S.type].short)}${title ? "・" + esc(title) : ""}）</h3>`;
-  if (!o) return h + `<p class="muted small">順位を読込中…</p>`;
+  let h = `<h3>流動性ランキング（${esc(C.TYPES[S.type].short)}・${title ? esc(title) : esc(townName(k))}）</h3>`;
+  if (!o) return h + `<p class="muted">読込中…</p>`;
   const v = o.t[townName(k)] && o.t[townName(k)][ti];
-  if (!v) return h + `<p class="muted">この町は、統一条件での取引が${MIN_N}件未満のため、順位の対象外です。</p>`;
-  const pref = CITY[code] ? CITY[code].pref : "", prefN = (M.pref[pref] || [])[ti], natN = M.nat[ti], cityN = o.n[ti];
-  const row = (lab, r, n) => `<tr><td>${esc(lab)}</td><td class="num"><b>${r.toLocaleString()}位</b>／${n.toLocaleString()}町</td><td class="num">上位 ${Math.max(1, Math.round(r / n * 100))}%</td></tr>`;
-  h += `<table class="kv rank"><tbody>${row(cityName(code) + "内", v[1], cityN)}${prefN ? row(pref + "内", v[2], prefN) : ""}${row("全国", v[3], natN)}</tbody></table>`;
-  h += `<p class="muted small">1000世帯あたりの年間取引件数：${v[0].toFixed(1)}件。順位は全国共通の条件（${esc(C.TYPES[S.type].short)}・全期間 ${esc(M.year.replace("-", "〜"))}年・データの種類は両方・市街化調整区域を除く・その他の絞り込みなし）で、取引が${MIN_N}件以上の町を件数の多い順に並べたものです。上記の★（現在の条件で表示中の町同士を比較したもの）とは、比較対象と条件が異なります。</p>`;
-  return h;
+  if (!v) return h + `<p class="muted">取引が${MIN_N}件未満のため、順位の対象外です。</p>`;
+  const pref = CITY[code] ? CITY[code].pref : "", prefN = (M.pref[pref] || [])[ti];
+  h += `<table class="kv rank"><tbody>${rankRow(cityName(code) + "内", v[1], o.n[ti], "町")}${prefN ? rankRow(pref + "内", v[2], prefN, "町") : ""}${rankRow("全国", v[3], M.nat[ti], "町")}</tbody></table>`;
+  return h + `<p class="muted small">1000世帯あたり年${v[0].toFixed(1)}件。全期間・統一条件で取引${MIN_N}件以上の町を比較。</p>`;
+}
+function cityRankHtml(code) {
+  const M = window.SOUBA_LIQ_META; if (!M || !M.cityNat) return "";
+  const ti = M.types.indexOf(S.type), o = LIQR[code];
+  let h = `<h3>流動性ランキング（${esc(C.TYPES[S.type].short)}・${esc(cityName(code))}）</h3>`;
+  if (!o) return h + `<p class="muted">読込中…</p>`;
+  const v = o.city && o.city[ti];
+  if (!v) return h + `<p class="muted">取引件数が少ないため、順位の対象外です。</p>`;
+  const pref = CITY[code] ? CITY[code].pref : "", prefN = (M.cityPref[pref] || [])[ti];
+  h += `<table class="kv rank"><tbody>${prefN ? rankRow(pref + "内", v[1], prefN, "市区町村") : ""}${rankRow("全国", v[2], M.cityNat[ti], "市区町村")}</tbody></table>`;
+  return h + `<p class="muted small">1000世帯あたり年${v[0].toFixed(1)}件（市区町村全体）。町ごとの順位は、地図または下の一覧で町を選択すると表示します。</p>`;
 }
 function liqExplain() {
   const f = v => v == null ? "—" : v.toFixed(1);
-  const where = S.cities.length > 1 ? `表示中の${S.cities.length}市区町村（${esc(S.cities.map(cityName).join("・"))}）内で比較すると` : `${esc(cityName(S.cities[0] || ""))}内で比較すると`;
-  return `<div class="explain"><h3>流動性（★）の算出方法</h3>
-  <p>流動性は、その町で売買がどの程度活発に行われているかを示す目安です。</p>
-  <ol>
-    <li>町ごとに、現在の条件（種類・期間・駅・面積等）に該当する取引件数を集計し、年間件数に換算します。</li>
-    <li>町の規模の差を補正するため、その町の世帯数（令和2年国勢調査）で割り、1000世帯あたりの件数にします。</li>
-    <li>件数が${MIN_N}件以上の町（現在${LIQ.n}町）を多い順に並べ、上位3分の1を★★★、中位3分の1を★★、下位3分の1を★とします。</li>
-  </ol>
-  <p>現在の区分：★★★＝年${f(LIQ.c2)}件以上／★★＝${f(LIQ.c1)}〜${f(LIQ.c2)}件／★＝${f(LIQ.c1)}件未満（1000世帯あたり）。</p>
-  <p>★1つは「売れない」という意味ではなく、<b>${where}</b>取引が少なめであることを示します。条件や表示する市区町村を変更すると比較対象が変わるため、★も変わります。</p>
-  <p>注意：国のデータは全ての売買ではなく、一部を収集したものです（取引価格はアンケート回答分、成約価格はレインズ登録分）。そのため実際の売買件数ではなく、町同士を比較するための目安です。「データの種類」が「両方」の場合、同一の取引が重複して計上されることがあります。新築マンションや一戸建ての多い町は世帯数に比べて中古取引が少なく、ワンルームの多い町は多く出る傾向があります。査定の説明に用いる際は、件数そのものと前年比も併せて確認してください。</p>
-  </div>`;
+  return `<details class="explain"><summary>流動性（★）の算出方法</summary>
+  <p>年間取引件数を町の世帯数（令和2年国勢調査）で割った「1000世帯あたりの件数」を、表示中の町（${MIN_N}件以上・${LIQ.n}町）で3等分。★★★＝年${f(LIQ.c2)}件以上／★★＝${f(LIQ.c1)}〜${f(LIQ.c2)}件／★＝${f(LIQ.c1)}件未満。条件や表示する市区町村を変えると変わります。国のデータは売買の一部のみのため、実件数ではなく比較の目安です。</p></details>`;
 }
 
 // ---------- 目安の計算（借地・底地・再建築不可・高低差・形・古家） ----------
@@ -1667,7 +1717,7 @@ function bindMine(P) {
 
 function sources() {
   const from = IDX.from ? `${IDX.from[0]}年${QLABEL[IDX.from[1]]}` : "", to = IDX.to ? `${IDX.to[0]}年${QLABEL[IDX.to[1]]}` : "";
-  return `<footer class="src disclaimer">
+  return `<details class="srcbox"><summary>出典・ご利用上の注意</summary><footer class="src disclaimer">
   ・価格：出典 国土交通省「不動産情報ライブラリ」（https://www.reinfolib.mlit.go.jp/）の取引価格情報・成約価格情報をもとに、本ツールで集計・加工して作成（${from}〜${to}分）。<br>
   ・町の区域と世帯数：「令和2年国勢調査 小地域（町丁・字等）境界データ」（総務省統計局 e-Stat）。<br>
   ・家賃：総務省統計局「令和5年住宅・土地統計調査」第130表（民営借家・専用住宅の1か月当たり家賃、2023年10月1日時点、e-Stat）をもとに、本ツールで中央値等を算出。<br>
@@ -1676,7 +1726,7 @@ function sources() {
   ・土地の形状・間口は取引価格の情報にのみあり、成約価格にはありません。形状・間口で絞り込むと、取引価格のみの集計になります。<br>
   ・国のデータには借地・底地・再建築不可・高低差（擁壁・ひな壇）・古家付きの区別がありません。<br>
   ・成約価格と取引価格に同一の取引が含まれる場合があります。件数を確認する際は、「データの種類」をいずれか一方に絞り込むことを推奨します。<br>
-  ・本地図は相場の目安であり、鑑定評価ではありません。実際の価格は物件ごとに異なります。最終的な判断にあたっては、不動産会社・不動産鑑定士・役所等にご確認ください。</footer>`;
+  ・本地図は相場の目安であり、鑑定評価ではありません。実際の価格は物件ごとに異なります。最終的な判断にあたっては、不動産会社・不動産鑑定士・役所等にご確認ください。</footer></details>`;
 }
 
 function select(k, fly) {
@@ -1823,6 +1873,16 @@ function useTownFallback(q) {
 }
 document.getElementById("fAddrGo").onclick = searchAddr;
 document.getElementById("fAddr").addEventListener("keydown", e => { if (e.key === "Enter") searchAddr(); });
+// 詳細条件（よく使う種類・単位・地図の色・期間以外）は、ふだん閉じておく。指定中の数はボタンに出す
+const ADV_IDS = ["fSrc", "fStation", "fWalk", "fArea", "fPlan", "fStruct", "fAge", "fHouse", "fShape", "fRoad", "fWidth", "fFront", "fCp", "fJijo"];
+ADV_IDS.forEach(id => { const l = document.getElementById(id).closest("label"); if (l) l.classList.add("adv"); });
+document.querySelectorAll("#filters .grp").forEach(g => g.classList.add("adv"));
+function advLabel() {
+  const f = document.getElementById("filters"), n = ADV_IDS.filter(id => { const e = document.getElementById(id); return e.value && e.value !== "all" && e.value !== "noChosei"; }).length;
+  document.getElementById("advBtn").textContent = (f.classList.contains("advopen") ? "詳細条件を閉じる ▴" : "詳細条件 ▾") + (n ? `（${n}件指定中）` : "");
+}
+document.getElementById("advBtn").onclick = () => { document.getElementById("filters").classList.toggle("advopen"); advLabel(); setTimeout(() => map.invalidateSize(), 50); };
+document.getElementById("filters").addEventListener("change", advLabel);
 document.getElementById("toggleFilters").onclick = e => {
   const f = document.getElementById("filters"), open = f.classList.toggle("open");
   e.target.setAttribute("aria-expanded", open); e.target.textContent = open ? "条件を閉じる ▴" : "条件を絞り込む ▾";
@@ -1831,6 +1891,7 @@ document.getElementById("toggleFilters").onclick = e => {
 
 refreshArea();
 refreshOptions();
+advLabel();
 let STARTED = false;
 const startMap = () => { if (STARTED) return; STARTED = true; (S.stn && S.stnN ? applyStation() : circleOn() ? applyCircle() : applyCities(true)); drawZoning(); };
 requestAnimationFrame(startMap);   // 画面の大きさが決まってから地図を合わせる
