@@ -121,6 +121,34 @@
   #printBtn { margin-left: auto; }
   #printBtn + #toggleFilters { margin-left: 0; }
   #printHead, #printFoot { display: none; }
+  /* 種類の札：土地だけ＝こい青、中古戸建＝水色、古家付き＝茶色（色だけでなく文字でも分ける） */
+  .typebadge { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 6px 0 8px; padding: 6px 10px; border-left: 6px solid #104281; background: #eef3fb; }
+  .typebadge b { font-size: 15px; color: #0b2f5e; }
+  .typebadge span { font-size: 12px; color: var(--ink-2); }
+  .typebadge.house { border-left-color: #6da7ec; background: #f1f7fe; }
+  .typebadge.mansion, .typebadge.apart { border-left-color: #77736b; background: #f4f3f0; }
+  .typebadge.mansion b, .typebadge.apart b { color: var(--ink); }
+  .lhbars { margin: 10px 0 12px; }
+  .lhrow { margin: 8px 0; }
+  .lhlab { font-size: 12px; color: var(--ink); display: flex; justify-content: space-between; gap: 8px; }
+  .lhlab span { color: var(--muted); white-space: nowrap; }
+  .lhbar { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+  .lhbar i { display: block; height: 14px; border-radius: 0 3px 3px 0; background: #104281; }
+  .lhbar b { font-size: 13px; white-space: nowrap; }
+  .lhrow.old .lhbar i { background: #b0722a; }
+  .lhrow.used .lhbar i { background: #3987e5; }
+  .lhrow.new .lhbar i { background: #9ec5f4; }
+  .lhrow.few .lhbar i { opacity: .5; }
+  .lhcards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+  .lhcard { border: 1px solid var(--rule-strong); border-top: 5px solid #104281; padding: 7px 8px; background: #fff; min-width: 0; }
+  .lhcard.old { border-top-color: #b0722a; }
+  .lhcard.used { border-top-color: #3987e5; }
+  .lhcard.new { border-top-color: #9ec5f4; }
+  .lhcard .t { font-size: 12px; font-weight: 600; }
+  .lhcard .v { font-size: 17px; font-weight: 600; margin: 3px 0; }
+  .lhcard .v small { display: block; font-size: 10.5px; font-weight: 400; color: var(--muted); }
+  .lhcard .s { font-size: 11px; color: var(--ink-2); }
+  @media (max-width: 380px) { .lhcards { grid-template-columns: minmax(0, 1fr); } }
   table.kv td:last-child { text-align: right; }
   #panel thead th { white-space: normal; }   /* 見出しが長くても横にはみ出さないように折り返す */
   #panel table.kv td:first-child { white-space: normal; }
@@ -140,6 +168,8 @@
     #printHead h1 { font-size: 15pt; margin: 0 0 1mm; }
     #printHead p { margin: 0; color: #333; }
     #printFoot { display: block; margin-top: 6mm; padding-top: 2mm; border-top: 1px solid #999; font-size: 9pt; color: #333; break-inside: avoid; }
+    #panel .typebadge { display: none; }   /* PDFでは頭に1回だけ出す */
+    #panel .lhbars, #panel .lhcards, .typebadge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     #panel .blk, #panel .figures, #panel table.kv, #panel .unitnote, #panel .explain, #panel footer.src { break-inside: avoid; page-break-inside: avoid; }
     #panel h2, #panel h3 { break-after: avoid; page-break-after: avoid; }
     main.mapmain { display: block; }
@@ -678,7 +708,7 @@ function fillPrintHead() {
   const tab = S.tab === "calc" ? "目安の計算" : S.tab === "mine" ? "成約例の登録" : S.sel ? "町の相場" : "町の一覧";
   document.getElementById("printHead").innerHTML =
     `<h1>相場マップ　${esc(where)}（${esc(tab)}）</h1>` +
-    `<p>種類：${esc(C.TYPES[S.type].label)}　条件：${esc(condText())}</p>` +
+    typeBadge() + `<p>条件：${esc(condText())}</p>` +
     `<p>${esc(unitText())}</p>`;
   document.getElementById("printFoot").innerHTML =
     `<p>データの期間：${esc(per)}（売買）／家賃は${esc(RC.meta.when || "")}時点　作成日：${d}<br>出典：国土交通省「不動産情報ライブラリ」、${esc(RC.meta.src || "")}をもとに加工。相場の目安で、鑑定評価ではありません。</p>`;
@@ -855,8 +885,8 @@ function bindMarket(P) {
 function detailHtml() {
   const k = S.sel, t = TOWN[k];
   let h = `<button id="back" class="btn link">← 町の一覧へ</button><h2>${esc(wardOf(k))} ${esc(townName(k))}</h2>`;
-  h += `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div><p class="unitnote">${unitText()}</p>`;
-  if (!t) return h + `<p class="warnline">この条件では取引がありません。条件をゆるめてください。</p>` + cpCompareHtml(ALL.filter(r => r.k === k)) + mineInTown(k);
+  h += typeBadge() + `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}</div><p class="unitnote">${unitText()}</p>`;
+  if (!t) return h + `<p class="warnline">この条件では取引がありません。条件をゆるめてください。</p>` + (isLandHouse() ? landHouseHtml(ALL.filter(r => r.k === k), "この町") : "") + cpCompareHtml(ALL.filter(r => r.k === k)) + mineInTown(k);
   if (t.n < MIN_N) h += `<p class="warnline">件数が${MIN_N}件未満なので「参考値」です。数字が大きくぶれることがあります。</p>`;
   const y = C.yoy(ALL, k, S, QUARTERS);
   const liqText = t.liq == null ? "世帯数のデータなし"
@@ -871,6 +901,7 @@ function detailHtml() {
     <div class="figure"><div class="k">前年比（${fy}）</div>` +
     (y ? `<div class="v ${y.p >= 0 ? "up" : "down"}">${pct(y.p)}</div><div class="s">件数 ${pct(y.c)}（${y.n1}→${y.n2}件）</div>`
        : `<div class="v">—</div><div class="s">どちらかの年が${MIN_N}件未満</div>`) + `</div></div>`;
+  if (isLandHouse()) h += landHouseHtml(ALL.filter(r => r.k === k), "この町");
   const rows = t.rows;
   if (isTotalType()) {
     h += `<table class="kv"><tbody><tr><td class="wrap">土地＋建物の値段を、土地の広さで割った単価（中央値）</td><td>${fmtUnitHtml(median(rows.map(r => r.unit)))}</td></tr>
@@ -1041,9 +1072,10 @@ function listHtml() {
   const mt = mineByTown();
   if (INSIDE) list.sort((a, b) => INSIDE[a[0]] - INSIDE[b[0]]);
   let h = (INSIDE ? circleHtml(list) : "") + choseiNote();
-  h += `<h2>町の一覧</h2><div class="muted">${C.TYPES[S.type].label}／${esc(condText())}<br>地図の町をタップ（クリック）すると、くわしい相場が出ます。</div><p class="unitnote">${unitText()}</p>`;
+  h += `<h2>町の一覧</h2>` + typeBadge() + `<div class="muted">${C.TYPES[S.type].label}／${esc(condText())}<br>地図の町をタップ（クリック）すると、くわしい相場が出ます。</div><p class="unitnote">${unitText()}</p>`;
   const total = list.reduce((s, [, t]) => s + t.n, 0);
   h += `<p class="muted">この条件の取引：${total.toLocaleString()}件・${list.length}町（${esc(S.cities.map(cityName).join("・"))}）</p>`;
+  if (isLandHouse() && !INSIDE) h += landHouseHtml(scopeRows(), S.cities.map(cityName).join("・") + "全体");
   const noData = S.cities.filter(c => CITY_INFO[c] && !CITY_INFO[c].n);
   if (noData.length) h += `<p class="note caution">${esc(noData.map(cityName).join("・"))}は、まだ価格のデータを入れていません（町の形だけ出ています）。データは準備中です。</p>`;
   const noType = S.cities.filter(c => CITY_INFO[c] && CITY_INFO[c].n && !CITY_INFO[c].byType[S.type]);
@@ -1053,6 +1085,50 @@ function listHtml() {
     list.map(([k, t]) => `<tr data-k="${esc(k)}" class="${t.n < MIN_N ? "few" : ""}"><td>${esc(townName(k))}<span class="muted">（${esc(wardOf(k))}${INSIDE ? "・約" + INSIDE[k].toFixed(1) + "km" : ""}）</span>${mt[k] ? `<span class="minemark">記録${mt[k].length}</span>` : ""}</td><td>${t.n}</td><td>${fmtMain(t.med)}</td><td class="stars">${t.n < MIN_N ? '<span class="muted">参考値</span>' : t.stars ? "★".repeat(t.stars) : '<span class="muted" title="世帯数のデータが無い町">—</span>'}</td></tr>`).join("") +
     `</tbody></table></div>` + liqExplain();
   if (!INSIDE) h += rentCityHtml(S.cities);
+  return h;
+}
+// ---------- 「土地だけ」と「中古戸建（土地＋建物）」のくらべ ----------
+const isLandHouse = () => S.type === "宅地(土地)" || S.type === "宅地(土地と建物)";
+const TYPE_BADGE = {
+  "宅地(土地)": ["land", "土地だけの相場", "建物のない土地の売買です"],
+  "宅地(土地と建物)": ["house", "戸建の相場（土地＋建物）", "土地と建物をいっしょに売った値段です（中古と新築の建売をふくむ）"],
+  "中古マンション等": ["mansion", "中古マンションの相場", "部屋（専有部分）の売買です"],
+  "宅地(土地と建物・戸建以外)": ["apart", "アパート・店舗などの相場（土地＋建物）", "土地と建物をいっしょに売った値段です"],
+};
+const typeBadge = () => { const [c, t, d] = TYPE_BADGE[S.type] || ["", "", ""]; return `<div class="typebadge ${c}"><b>${t}</b><span>${d}</span></div>`; };
+function landHouseHtml(pool, where) {
+  // くらべるときは、建物だけの条件（広さ・構造・築年数・間取り・古家）を外し、ほかの条件（期間・駅・道路など）はそのまま使う
+  const base = { ...S, area: "", plan: "", struct: "", age: "", house: "" };
+  const land = pool.filter(r => C.pass(r, { ...base, type: "宅地(土地)" }));
+  const house = pool.filter(r => C.pass(r, { ...base, type: "宅地(土地と建物)" }));
+  const NEW_AGE = 2;   // 築2年までを「新築・築浅」とする（国のデータの戸建には新築の建売もたくさん入っている）
+  const old = house.filter(C.isOldHouse), brandNew = house.filter(r => !C.isOldHouse(r) && r.age != null && r.age <= NEW_AGE),
+    used = house.filter(r => !C.isOldHouse(r) && !(r.age != null && r.age <= NEW_AGE));
+  const sum = rs => rs.length ? { n: rs.length, unit: median(rs.map(r => r.unit)), price: median(rs.map(r => r.price)), area: median(rs.map(r => r.area)),
+    floor: median(rs.filter(r => r.floor).map(r => r.floor)), age: median(rs.filter(r => r.age != null).map(r => r.age)) } : null;
+  const L = sum(land), O = sum(old), U = sum(used), N = sum(brandNew);
+  const oh = old.length ? C.oldHouseStats(old) : null;
+  const bars = [["land", "土地だけ（建物なし）", L], ["old", `古家付きの可能性（木造・築${C.OLD_HOUSE_AGE}年以上の戸建）`, O],
+    ["used", `中古戸建（築${NEW_AGE + 1}年以上・古家を除く）`, U], ["new", `新築・築浅の戸建（築${NEW_AGE}年まで）`, N]].filter(b => b[2]);
+  if (!bars.length) return "";
+  const max = Math.max(...bars.map(b => b[2].unit));
+  const few = x => x.n < MIN_N ? "（参考値）" : "";
+  let h = `<h3>土地だけと戸建のくらべ（${esc(where)}）</h3>`;
+  h += `<p class="muted small">どれも「売った値段 ÷ 土地の広さ」で、土地1${unitLabel()}あたりにそろえています。戸建は建物の分も入るので、ふつうは土地だけより高く出ます。古い家ほど建物の値打ちが小さくなり、土地だけの値段に近づきます。</p>`;
+  h += `<div class="lhbars">` + bars.map(([c, t, x]) => `<div class="lhrow ${c}${x.n < MIN_N ? " few" : ""}">
+      <div class="lhlab">${t}<span>${x.n}件${few(x)}</span></div>
+      <div class="lhbar"><i style="width:${Math.max(3, x.unit / max * 68).toFixed(0)}%"></i><b>${man(conv(x.unit)).toFixed(1)}万円/${unitLabel()}</b></div></div>`).join("") + `</div>`;
+  const card = (c, t, x, extra) => !x ? `<div class="lhcard ${c} none"><div class="t">${t}</div><p class="muted">この条件の取引はありません</p></div>` :
+    `<div class="lhcard ${c}"><div class="t">${t}</div>
+      <div class="v">${fmtMan(x.price)}<small>（1件の値段・中央値）</small></div>
+      <div class="s">土地 ${fmtArea(x.area)}${x.floor ? `／建物 延べ床 ${fmtArea(x.floor)}` : ""}${x.age != null && c !== "land" ? `／築${Math.round(x.age)}年` : ""}</div>${extra || ""}</div>`;
+  const oldExtra = oh && oh.sarachiLo ? `<div class="s">解体費を足すと：土地1${unitLabel()}あたり ${man(conv(oh.sarachiLo)).toFixed(1)}〜${man(conv(oh.sarachiHi)).toFixed(1)}万円</div>` : "";
+  h += `<div class="lhcards">${card("land", "土地だけ", L)}${card("old", "古家付きの可能性", O, oldExtra)}${card("used", "中古戸建", U)}${card("new", "新築・築浅の戸建", N)}</div>`;
+  if (S.type === "宅地(土地)") {
+    h += O ? `<p class="note caution"><b>古家付きの可能性：あり（${O.n}件）</b>　${esc(where)}には、木造で築${C.OLD_HOUSE_AGE}年以上の戸建の取引が${O.n}件あります。国のデータでは、古家がついたまま売った土地は「土地」ではなく「土地と建物」に入ることが多く、実際は土地として売り買いされている例がまざっています。土地1${unitLabel()}あたりにすると ${man(conv(O.unit)).toFixed(1)}万円${oldExtra ? `、解体費を足すと ${man(conv(oh.sarachiLo)).toFixed(1)}〜${man(conv(oh.sarachiHi)).toFixed(1)}万円` : ""}で、土地だけの ${L ? man(conv(L.unit)).toFixed(1) + "万円" : "相場"} とくらべる目安になります。</p>`
+      : `<p class="muted small">古家付きの可能性（木造・築${C.OLD_HOUSE_AGE}年以上の戸建）の取引は、この条件では見つかりませんでした。</p>`;
+  }
+  h += `<p class="muted small">「古家付きの可能性」は、国のデータに古家付きの印が無いため、木造で築${C.OLD_HOUSE_AGE}年以上の戸建を目安で分けたものです。解体費は延べ床1坪あたりの一般的な目安（木造 ${DEMO_TXT("木造")}）です。</p>`;
   return h;
 }
 // ---------- 賃貸の相場（国の統計：住宅・土地統計調査 2023年・市と区ごと） ----------
