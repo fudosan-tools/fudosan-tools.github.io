@@ -112,6 +112,8 @@
   #panel details.srcbox { margin-top: 22px; }
   #panel details.srcbox > summary { cursor: pointer; color: var(--accent); font-size: 12px; }
   #townList td.stars .rk { color: var(--ink-2); letter-spacing: 0; font-size: 11px; }
+  #panel table.rank td .pc { display: block; font-size: 11px; color: var(--muted); }
+  #panel table.rank th { font-size: 12px; font-weight: 600; }
   #panel table.rank td .of { color: var(--muted); font-size: 11.5px; margin-left: 2px; }
   footer.src { font-size: 11px; color: var(--muted); margin-top: 26px; line-height: 1.7; border-top: 1px solid var(--rule); padding-top: 10px; }
   /* 目安の計算・登録した成約例の入力 */
@@ -1224,7 +1226,7 @@ function listHtml() {
   const noType = S.cities.filter(c => CITY_INFO[c] && CITY_INFO[c].n && !CITY_INFO[c].byType[S.type]);
   if (noType.length) h += `<p class="note caution">${esc(noType.map(cityName).join("・"))}は「${C.TYPES[S.type].short}」の価格データが未登録です（他の種類のみ登録済み）。国のサイトで種類「${S.type === "中古マンション等" ? "中古マンション等" : "すべて"}」を選択してCSVを取得し、再配置してください。</p>`;
   if (!list.length) return h + `<p class="warnline">この条件に該当する売買取引はありません。</p>` + (INSIDE ? "" : rentCityHtml(S.cities));
-  h += `<div class="tablewrap"><table id="townList"><thead><tr><th>町</th><th>件数</th><th>${colName()}</th><th>流動性<span class="alt">市区町村内の順位</span></th></tr></thead><tbody>` +
+  h += `<div class="tablewrap"><table id="townList"><thead><tr><th>町</th><th>件数</th><th>${colName()}</th><th>流動性<span class="alt">★世帯あたり・順位は件数</span></th></tr></thead><tbody>` +
     list.map(([k, t]) => { const sub = [S.cities.length > 1 || INSIDE ? wardOf(k) : "", INSIDE ? "約" + INSIDE[k].toFixed(1) + "km" : ""].filter(Boolean).join("・"), rk = townRank(k);
       return `<tr data-k="${esc(k)}" class="${t.n < MIN_N ? "few" : ""}"><td>${esc(townName(k))}${sub ? `<span class="muted">（${esc(sub)}）</span>` : ""}</td><td>${t.n}</td><td>${fmtMain(t.med)}</td><td class="stars">${t.n < MIN_N ? '<span class="muted">参考値</span>' : t.stars ? "★".repeat(t.stars) : '<span class="muted" title="世帯数データなし">—</span>'}${rk ? `<span class="alt rk">${rk}</span>` : ""}</td></tr>`; }).join("") +
     `</tbody></table></div>` + liqExplain();
@@ -1387,13 +1389,18 @@ function rentCityHtml(codes, ctx) {
   });
   return h;
 }
-// 一覧の表に出す、町の市区町村内の順位（統一条件）
-function townRank(k) {
+// 流動性ランキング（scripts/build_liq_rank.js）：取引件数の順位と、1000世帯あたりの順位の2つ。
+// 上位・下位は、真ん中より上なら「上位◯%」、下なら「下位◯%」（「上位93%」は下の方なのに上に見えるため）
+const topPct = (r, n) => r / n <= 0.5 ? `上位${Math.max(1, Math.round(r / n * 100))}%` : `下位${Math.max(1, Math.round((n - r + 1) / n * 100))}%`;
+function townRank(k) {   // 一覧の表：市区町村内の取引件数の順位
   const M = window.SOUBA_LIQ_META, o = LIQR[k.split("|")[0]]; if (!M || !o) return "";
   const ti = M.types.indexOf(S.type), v = o.t[townName(k)] && o.t[townName(k)][ti];
   return v ? `${v[1]}位／${o.n[ti]}` : "";
 }
-const rankRow = (lab, r, n, unit) => `<tr><td>${esc(lab)}</td><td class="num"><b>${r.toLocaleString()}位</b><span class="of">／${n.toLocaleString()}${unit}</span></td><td class="num muted">上位${Math.max(1, Math.round(r / n * 100))}%</td></tr>`;
+const rankCell = (r, n, unit) => r ? `<td class="num"><b>${r.toLocaleString()}位</b><span class="of">／${n.toLocaleString()}${unit}</span><span class="pc">${topPct(r, n)}</span></td>` : `<td class="num muted">—</td>`;
+const rankTable = (rows, cnt, liq, unit) => `<table class="kv rank"><thead><tr><th></th><th class="num">取引件数<span class="alt">年${cnt.toFixed(1)}件</span></th><th class="num">1000世帯あたり<span class="alt">年${liq.toFixed(1)}件</span></th></tr></thead><tbody>` +
+  rows.filter(Boolean).map(([lab, rc, rl, n]) => `<tr><td>${esc(lab)}</td>${rankCell(rc, n, unit)}${rankCell(rl, n, unit)}</tr>`).join("") + `</tbody></table>`;
+const RANK_NOTE = `<p class="muted small">取引件数＝取引の多さ（市場の厚み）。1000世帯あたり＝町の大きさをならした売買の頻度。全期間・統一条件で比較。</p>`;
 function liqRankHtml(k, title) {
   const M = window.SOUBA_LIQ_META; if (!M) return "";
   const code = k.split("|")[0], ti = M.types.indexOf(S.type), o = LIQR[code];
@@ -1402,8 +1409,7 @@ function liqRankHtml(k, title) {
   const v = o.t[townName(k)] && o.t[townName(k)][ti];
   if (!v) return h + `<p class="muted">取引が${MIN_N}件未満のため、順位の対象外です。</p>`;
   const pref = CITY[code] ? CITY[code].pref : "", prefN = (M.pref[pref] || [])[ti];
-  h += `<table class="kv rank"><tbody>${rankRow(cityName(code) + "内", v[1], o.n[ti], "町")}${prefN ? rankRow(pref + "内", v[2], prefN, "町") : ""}${rankRow("全国", v[3], M.nat[ti], "町")}</tbody></table>`;
-  return h + `<p class="muted small">1000世帯あたり年${v[0].toFixed(1)}件。全期間・統一条件で取引${MIN_N}件以上の町を比較。</p>`;
+  return h + rankTable([[cityName(code) + "内", v[1], v[5], o.n[ti]], prefN ? [pref + "内", v[2], v[6], prefN] : null, ["全国", v[3], v[7], M.nat[ti]]], v[0], v[4], "町") + RANK_NOTE;
 }
 function cityRankHtml(code) {
   const M = window.SOUBA_LIQ_META; if (!M || !M.cityNat) return "";
@@ -1413,8 +1419,7 @@ function cityRankHtml(code) {
   const v = o.city && o.city[ti];
   if (!v) return h + `<p class="muted">取引件数が少ないため、順位の対象外です。</p>`;
   const pref = CITY[code] ? CITY[code].pref : "", prefN = (M.cityPref[pref] || [])[ti];
-  h += `<table class="kv rank"><tbody>${v[3] ? rankRow(o.grp + "内", v[3], v[4], "区") : ""}${prefN ? rankRow(pref + "内", v[1], prefN, "市区町村") : ""}${rankRow("全国", v[2], M.cityNat[ti], "市区町村")}</tbody></table>`;
-  return h + `<p class="muted small">1000世帯あたり年${v[0].toFixed(1)}件（市区町村全体）。町ごとの順位は、地図または下の一覧で町を選択すると表示します。</p>`;
+  return h + rankTable([v[8] ? [o.grp + "内", v[3], v[7], v[8]] : null, prefN ? [pref + "内", v[1], v[5], prefN] : null, ["全国", v[2], v[6], M.cityNat[ti]]], v[0], v[4], "") + RANK_NOTE;
 }
 function liqExplain() {
   const f = v => v == null ? "—" : v.toFixed(1);
