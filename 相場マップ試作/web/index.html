@@ -1272,7 +1272,7 @@ function listHtml() {
   const noType = S.cities.filter(c => CITY_INFO[c] && CITY_INFO[c].n && !CITY_INFO[c].byType[S.type]);
   if (noType.length) h += `<p class="note caution">${esc(noType.map(cityName).join("・"))}は「${C.TYPES[S.type].short}」の価格データが未登録です（他の種類のみ登録済み）。国のサイトで種類「${S.type === "中古マンション等" ? "中古マンション等" : "すべて"}」を選択してCSVを取得し、再配置してください。</p>`;
   if (!list.length) return h + `<p class="warnline">この条件に該当する売買取引はありません。</p>` + (INSIDE ? "" : rentCityHtml(S.cities));
-  h += `<div class="tablewrap"><table id="townList"><thead><tr><th>町</th><th>件数</th><th>${colName()}</th><th>流動性<span class="alt">★世帯あたり・順位は件数</span></th></tr></thead><tbody>` +
+  h += `<div class="tablewrap"><table id="townList"><thead><tr><th>町</th><th>件数</th><th>${colName()}</th><th>流動性<span class="alt">★世帯あたり・順位は${esc((() => { const o = LIQR[S.cities[0]]; return o && o.grp && o.grp !== "東京23区" ? o.grp : S.cities.length === 1 ? cityName(S.cities[0]) : "市区町村"; })())}内の件数</span></th></tr></thead><tbody>` +
     list.map(([k, t]) => { const sub = [S.cities.length > 1 || INSIDE ? wardOf(k) : "", INSIDE ? "約" + INSIDE[k].toFixed(1) + "km" : ""].filter(Boolean).join("・"), rk = townRank(k);
       return `<tr data-k="${esc(k)}" class="${t.n < MIN_N ? "few" : ""}"><td>${esc(townName(k))}${sub ? `<span class="muted">（${esc(sub)}）</span>` : ""}</td><td>${t.n}</td><td>${fmtMain(t.med)}</td><td class="stars">${t.n < MIN_N ? '<span class="muted">参考値</span>' : t.stars ? "★".repeat(t.stars) : '<span class="muted" title="世帯数データなし">—</span>'}${rk ? `<span class="alt rk">${rk}</span>` : ""}</td></tr>`; }).join("") +
     `</tbody></table></div>` + liqExplain();
@@ -1445,7 +1445,7 @@ function townRank(k) {   // 一覧の表：市区町村内の取引件数の順�
 }
 const rankCell = (r, n, unit) => r ? `<td class="num"><b>${r.toLocaleString()}位</b><span class="of">／${n.toLocaleString()}${unit}</span><span class="pc">${topPct(r, n)}</span></td>` : `<td class="num muted">—</td>`;
 const rankTable = (rows, cnt, liq, unit) => `<table class="kv rank"><thead><tr><th></th><th class="num">取引件数<span class="alt">年${cnt.toFixed(1)}件</span></th><th class="num">1000世帯あたり<span class="alt">年${liq.toFixed(1)}件</span></th></tr></thead><tbody>` +
-  rows.filter(Boolean).map(([lab, rc, rl, n]) => `<tr><td>${esc(lab)}</td>${rankCell(rc, n, unit)}${rankCell(rl, n, unit)}</tr>`).join("") + `</tbody></table>`;
+  rows.filter(Boolean).map(([lab, rc, rl, n, u]) => `<tr><td>${esc(lab)}</td>${rankCell(rc, n, u ?? unit)}${rankCell(rl, n, u ?? unit)}</tr>`).join("") + `</tbody></table>`;
 const RANK_NOTE = `<p class="muted small">取引件数＝取引の多さ（市場の厚み）。1000世帯あたり＝町の大きさをならした売買の頻度。全期間・統一条件で比較。</p>`;
 function liqRankHtml(k, title) {
   const M = window.SOUBA_LIQ_META; if (!M) return "";
@@ -1455,7 +1455,8 @@ function liqRankHtml(k, title) {
   const v = o.t[townName(k)] && o.t[townName(k)][ti];
   if (!v) return h + `<p class="muted">取引が${MIN_N}件未満のため、順位の対象外です。</p>`;
   const pref = CITY[code] ? CITY[code].pref : "", prefN = (M.pref[pref] || [])[ti];
-  return h + rankTable([[cityName(code) + "内", v[1], v[5], o.n[ti]], prefN ? [pref + "内", v[2], v[6], prefN] : null, ["全国", v[3], v[7], M.nat[ti]]], v[0], v[4], "町") + RANK_NOTE;
+  const areaLab = o.grp && o.grp !== "東京23区" ? o.grp + "内" : cityName(code) + "内";   // 政令市の区の町は市全体で比べる（川崎市内）
+  return h + rankTable([[areaLab, v[1], v[5], o.n[ti]], prefN ? [pref + "内", v[2], v[6], prefN] : null, ["全国", v[3], v[7], M.nat[ti]]], v[0], v[4], "町") + RANK_NOTE;
 }
 function cityRankHtml(code) {
   const M = window.SOUBA_LIQ_META; if (!M || !M.cityNat) return "";
@@ -1465,7 +1466,7 @@ function cityRankHtml(code) {
   const v = o.city && o.city[ti];
   if (!v) return h + `<p class="muted">取引件数が少ないため、順位の対象外です。</p>`;
   const pref = CITY[code] ? CITY[code].pref : "", prefN = (M.cityPref[pref] || [])[ti];
-  return h + rankTable([v[8] ? [o.grp + "内", v[3], v[7], v[8]] : null, prefN ? [pref + "内", v[1], v[5], prefN] : null, ["全国", v[2], v[6], M.cityNat[ti]]], v[0], v[4], "") + RANK_NOTE;
+  return h + rankTable([v[8] ? [o.grp + "内", v[3], v[7], v[8], "区"] : null, prefN ? [pref + "内", v[1], v[5], prefN] : null, ["全国", v[2], v[6], M.cityNat[ti]]], v[0], v[4], "") + RANK_NOTE;
 }
 function liqExplain() {
   const f = v => v == null ? "—" : v.toFixed(1);
